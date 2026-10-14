@@ -1,0 +1,11 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "ob-pulse",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": ["apps/desktop/package.json"]
+    }
+  }
+}

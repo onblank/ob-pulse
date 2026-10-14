@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing immutable release tag to rebuild native assets for
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Request organization-owned release token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.ONBLANK_RELEASE_APP_ID }}
+          private-key: ${{ secrets.ONBLANK_RELEASE_APP_PRIVATE_KEY }}
+      - id: release
+        name: Run Release Please
+        uses: googleapis/release-please-action@v5
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  native-builds:
+    needs: release-please
+    if: >-
+      ${{ always() &&
+          ((github.event_name == 'push' &&
+            needs.release-please.result == 'success' &&
+            needs.release-please.outputs.release_created == 'true') ||
+           (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: package:win
+          - os: macos-latest
+            command: package:mac
+          - os: ubuntu-latest
+            command: package:linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Enable pinned pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.6.0 --activate
+      - name: Install dependencies
+        shell: bash
+        run: pnpm install --frozen-lockfile
+      - name: Validate source version against immutable tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
+        run: |
+          actual="$(node -p "require('./package.json').version")"
+          expected="${RELEASE_TAG#v}"
+          test "$actual" = "$expected" || (echo "Version mismatch $actual != $expected" >&2; exit 1)
+      - name: Build native installer
+        run: pnpm ${{ matrix.command }}
+      - name: Upload native build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ runner.os }}
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+          if-no-files-found: error
+
+  publish-assets:
+    needs: [release-please, native-builds]
+    if: >-
+      ${{ always() && needs.native-builds.result == 'success' &&
+          ((github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
+           (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect all assets and SHA-256 checksums
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f -exec cp {} release-assets/ \;
+          cd release-assets
+          sha256sum * > SHA256SUMS
+      - name: Upload files to existing GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
+        run: gh release upload "$TAG" release-assets/* --clobber

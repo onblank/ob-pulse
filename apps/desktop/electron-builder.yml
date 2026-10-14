@@ -1,0 +1,29 @@
+appId: com.onblanksystems.obpulse
+productName: OB-Pulse
+artifactName: '${productName}-${version}-${os}-${arch}.${ext}'
+directories:
+  output: release
+files:
+  - dist/**/*
+  - assets/**/*
+  - package.json
+asar: true
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  category: public.app-category.developer-tools
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+linux:
+  category: Development
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true

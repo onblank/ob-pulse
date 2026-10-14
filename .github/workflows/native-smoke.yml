@@ -1,0 +1,47 @@
+name: Native packaging smoke
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: package:win
+          - os: macos-latest
+            command: package:mac
+          - os: ubuntu-latest
+            command: package:linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Activate pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.6.0 --activate
+      - name: Install
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
+      - name: Build unsigned smoke artifact
+        run: pnpm ${{ matrix.command }}
+      - name: Upload smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-smoke-${{ runner.os }}
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.deb
+          if-no-files-found: error

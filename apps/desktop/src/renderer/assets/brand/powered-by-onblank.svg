@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" role="img" aria-label="powered by onBlank development placeholder">
+  <text x="0" y="23" font-family="Arial,sans-serif" font-size="15" fill="#DCEBFF">powered by</text>
+  <text x="0" y="62" font-family="Arial,sans-serif" font-size="35" font-weight="700" fill="#F7F8FC">onBlank</text>
+  <rect x="190" y="35" width="42" height="32" rx="10" fill="#5C6BFF"/>
+  <circle cx="211" cy="51" r="8" fill="#B8FFD8"/>
+</svg>

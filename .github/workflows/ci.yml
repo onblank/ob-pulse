@@ -1,0 +1,28 @@
+name: CI
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Activate pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.6.0 --activate
+      - name: Install
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install --no-frozen-lockfile
+          fi
+      - run: pnpm check

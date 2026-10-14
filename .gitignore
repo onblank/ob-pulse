@@ -1,0 +1,13 @@
+node_modules/
+.pnpm-store/
+.turbo/
+**/dist/
+**/release/
+.env
+.env.*
+!.env.example
+.DS_Store
+coverage/
+*.log
+*.sqlite
+*.sqlite-*

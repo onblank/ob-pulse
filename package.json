@@ -1,0 +1,34 @@
+{
+  "name": "ob-pulse",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OB-Pulse — local-first AI model monitor by onBlank",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @obpulse/desktop dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "package:mac": "pnpm --filter @obpulse/desktop package:mac",
+    "package:win": "pnpm --filter @obpulse/desktop package:win",
+    "package:linux": "pnpm --filter @obpulse/desktop package:linux"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.13.4",
+    "eslint": "10.10.0",
+    "prettier": "3.9.9",
+    "turbo": "2.11.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.2"
+  }
+}
