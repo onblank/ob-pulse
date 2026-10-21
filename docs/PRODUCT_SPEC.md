@@ -20,8 +20,10 @@ pin/always-on-top control, and closing the window hides it in the tray.
 
 The compact gadget shows the runtime-safe power action, loaded model and one-hour RAM, reported GPU
 residency and benchmark output-speed charts. The expanded dashboard adds runtime/model controls and
-the detailed host and benchmark readings. Accessible settings and further customization remain
-later deliverables.
+the detailed host and benchmark readings. Its widget settings persist a tray/corner position, one
+of four deliberately bounded opacity levels and an accessible high-contrast mode. Window placement
+is best-effort on display servers such as Wayland that reserve placement decisions for the
+compositor.
 A background/tray process is not a promise of monitoring when the **application quits**.
 
 ## Core acceptance tests for v1
@@ -58,6 +60,8 @@ A background/tray process is not a promise of monitoring when the **application 
 ### Storage and controls
 
 - A rolling one-hour numeric history lives in process memory and disappears on quit/restart.
+- Widget appearance preferences are machine-local, contain no telemetry and are independent from
+  the volatile metric history.
 - Opt-in client request history uses the same volatile boundary, has a 7,200-sample hard cap and is
   cleared immediately when its loopback bridge is disabled.
 - Any future SQLite sample history is opt-in, bounded by retention and contains no inference content.

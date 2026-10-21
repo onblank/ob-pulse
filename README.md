@@ -6,7 +6,9 @@
 
 ## What currently works in the scaffold
 
-- Electron tray application with tray-only, compact gadget and expanded dashboard surfaces, an always-on-top toggle and hide-to-tray behavior.
+- Electron tray application with tray-only, compact gadget and expanded dashboard surfaces,
+  always-on-top and hide-to-tray behavior, plus local widget position, opacity and high-contrast
+  preferences.
 - Ollama detection, list installed/loaded models, **app-managed** Ollama start/stop, and explicit model load/unload.
 - LM Studio v1 local server detection, installed/loaded-model listing and explicit model
   load/unload through its native loopback API. Server lifecycle remains externally managed.

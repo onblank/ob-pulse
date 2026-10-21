@@ -14,3 +14,7 @@ reuse remote providers' account/user identifiers.
 
 History should be opt-in, bounded (7/30/90 days, configurable) and disabled by default.
 Export CSV/JSON only on explicit user action. Deleting history should be irreversible and transactional.
+
+Widget position, opacity and high-contrast preferences are not telemetry and do not justify this
+database. They live in a validated machine-local JSON file under Electron `userData`; corrupt or
+unsupported values fall back to safe defaults.

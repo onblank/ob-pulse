@@ -24,7 +24,9 @@
 - LM Studio has an explicit non-persistent native v1 benchmark for provider-reported decode speed,
   token counts and first-token latency; prefill speed remains unavailable rather than estimated.
 - Runtime PID CPU/RAM, reliable GPU metrics per platform where supported, multi-device profiles.
-- Widget customization (corner/dock/opacity), tray menu and accessible high-contrast mode.
+- Widget customization is implemented with tray/corner positioning, safe opacity presets,
+  accessible high-contrast mode and a tray shortcut to settings. Programmatic positioning remains
+  best-effort on Wayland, where the compositor may control placement.
 
 ## 1.0 — public release
 

@@ -40,7 +40,8 @@ body {
 }
 
 button,
-select {
+select,
+input {
   font: inherit;
 }
 
@@ -420,6 +421,54 @@ select option {
 
 .expanded-toolbar .power-symbol {
   font-size: 27px;
+}
+
+.widget-settings {
+  padding: 11px 16px;
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) repeat(3, minmax(135px, auto));
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #1e2a3c;
+}
+
+.widget-settings h2 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.widget-settings label {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.widget-settings select {
+  width: 100%;
+  padding: 4px 22px 4px 0;
+  font-size: 11px;
+}
+
+.widget-settings .contrast-setting {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 7px;
+  color: var(--white);
+  font-size: 10px;
+  text-transform: none;
+}
+
+.contrast-setting input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--lime);
 }
 
 .instrumentation-card {
@@ -944,9 +993,47 @@ footer img {
 }
 
 button:focus-visible,
-select:focus-visible {
+select:focus-visible,
+input:focus-visible {
   outline: 2px solid var(--lime);
   outline-offset: 2px;
+}
+
+.app.high-contrast {
+  --navy: #000;
+  --panel: #080808;
+  --panel-raised: #111;
+  --line: #d8d8d8;
+  --white: #fff;
+  --muted: #e3e3e3;
+  --blue: #aeb7ff;
+  --lime: #7dffd2;
+  --amber: #ffd18d;
+  background: #000;
+  border-color: #fff;
+}
+
+.app.high-contrast
+  :is(
+    .loaded-model,
+    .history-card,
+    .expanded-toolbar,
+    .widget-settings,
+    .instrumentation-card,
+    .bridge-access,
+    .session-readout,
+    .session-picker,
+    .request-history,
+    .models-panel,
+    .model-card,
+    .resource-grid > div
+  ) {
+  background: #080808;
+  border-color: #d8d8d8;
+}
+
+.app.high-contrast :is(.eyebrow, .identity span, footer, .history-unavailable, .history-axis) {
+  color: #e3e3e3;
 }
 
 @media (max-width: 780px) {
@@ -956,6 +1043,10 @@ select:focus-visible {
   }
 
   .resource-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .widget-settings {
     grid-template-columns: 1fr;
   }
 }
