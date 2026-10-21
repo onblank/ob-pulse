@@ -3,3 +3,5 @@ node_modules
 dist
 release
 *.svg
+# Release Please owns this generated file and applies its own Markdown formatting.
+CHANGELOG.md
