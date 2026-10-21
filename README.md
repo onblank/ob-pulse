@@ -6,10 +6,11 @@
 
 ## What currently works in the scaffold
 
-- Electron tray application with a compact, resizable widget, always-on-top toggle and hide-to-tray behavior.
+- Electron tray application with tray-only, compact gadget and expanded dashboard surfaces, an always-on-top toggle and hide-to-tray behavior.
 - Ollama detection, list installed/loaded models, **app-managed** Ollama start/stop, and explicit model load/unload.
 - LM Studio local server detection and loaded-model listing (**read-only experimental adapter**).
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
+- A rolling one-hour chart kept only in process memory for host RAM, provider-reported GPU residency and explicit benchmark output speed.
 - A user-invoked Ollama sample request with real prompt-eval and generation tokens/sec metrics, **clearly labeled as a benchmark**, not a live stream from unrelated clients.
 - A typed, provider-agnostic contract plus domain tests for token throughput/context semantics.
 
@@ -17,7 +18,7 @@
 
 - Passive token-speed capture from third-party apps (requires an opt-in proxy/plugin or runtime-specific event feed).
 - Real session-context utilization from arbitrary clients and automatic compaction detection.
-- Per-model CPU/GPU utilization on every OS, long-term SQLite chart history and external model installs.
+- Per-model CPU/GPU utilization on every OS, persistent/long-term chart history and external model installs.
 - LM Studio start/stop/load/unload, llama.cpp/MLX adapters, signing/notarization, production native installers, automated distribution.
 
 Unsupported values appear as `—`, **never** as fabricated zero.

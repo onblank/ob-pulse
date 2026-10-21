@@ -13,8 +13,15 @@ zero cloud dependency. Keep it out of the way until you need it.
 
 ## Navigation / surface
 
-Default: tiny tray/menu-bar widget (window ~420×605, resizable), hide on close, manual pin/always-on-top.
-Accessible app menu + dedicated expandable history/settings panel are later deliverables.
+OB-Pulse has three surfaces: tray-only while hidden, a compact 360×430 gadget for daily monitoring
+and control, and an expanded 900×680 dashboard for model selection and detailed readings. The
+compact surface is fixed-size; the expanded surface is resizable. Both provide a manual
+pin/always-on-top control, and closing the window hides it in the tray.
+
+The compact gadget shows the runtime-safe power action, loaded model and one-hour RAM, reported GPU
+residency and benchmark output-speed charts. The expanded dashboard adds runtime/model controls and
+the detailed host and benchmark readings. Accessible settings and further customization remain
+later deliverables.
 A background/tray process is not a promise of monitoring when the **application quits**.
 
 ## Core acceptance tests for v1
@@ -50,7 +57,8 @@ A background/tray process is not a promise of monitoring when the **application 
 
 ### Storage and controls
 
-- Default no history beyond process memory; future SQLite sample history opt-in with retention.
+- A rolling one-hour numeric history lives in process memory and disappears on quit/restart.
+- Any future SQLite sample history is opt-in, bounded by retention and contains no inference content.
 - No remote account, onBlank telemetry, cloud sync or access to Central/Gateway.
 - No prompts, completions or tool arguments in sample data.
 - Never bind monitoring bridge to a public IP or unspecified interface.

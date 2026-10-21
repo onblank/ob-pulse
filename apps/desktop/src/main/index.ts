@@ -1,7 +1,8 @@
 import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, screen } from 'electron';
+import type { Rectangle } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MonitorService } from '@obpulse/application';
+import { HISTORY_SAMPLE_INTERVAL_MS, MonitorService } from '@obpulse/application';
 import type { RuntimeId, RuntimePort } from '@obpulse/contracts';
 import { RUNTIME_IDS } from '@obpulse/contracts';
 import { NodeHostMetrics } from '@obpulse/host-metrics';
@@ -18,6 +19,13 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let allowExit = false;
 let alwaysOnTop = false;
+let windowMode: 'compact' | 'expanded' = 'compact';
+let sampler: NodeJS.Timeout | null = null;
+let sampleInFlight = false;
+const WINDOW_SIZES = {
+  compact: { width: 360, height: 430, minWidth: 340, minHeight: 400 },
+  expanded: { width: 900, height: 680, minWidth: 720, minHeight: 560 },
+} as const;
 function containsControlCharacter(value: string): boolean {
   return Array.from(value).some((character) => character.charCodeAt(0) <= 0x1f);
 }
@@ -36,8 +44,63 @@ function validRuntime(value: unknown): RuntimeId {
     throw new Error('Unsupported runtime');
   return value as RuntimeId;
 }
+function validWindowMode(value: unknown): 'compact' | 'expanded' {
+  if (value !== 'compact' && value !== 'expanded') throw new Error('Unsupported window mode');
+  return value;
+}
+function applyWindowMode(mode: 'compact' | 'expanded'): void {
+  if (!mainWindow) return;
+  windowMode = mode;
+  const dimensions = WINDOW_SIZES[mode];
+  mainWindow.setResizable(mode === 'expanded');
+  mainWindow.setMinimumSize(dimensions.minWidth, dimensions.minHeight);
+  mainWindow.setSize(dimensions.width, dimensions.height, true);
+  mainWindow.setSkipTaskbar(mode === 'compact');
+  positionWindow();
+}
+function positionWindow(trayBounds?: Rectangle): void {
+  if (!mainWindow) return;
+  const size = mainWindow.getSize();
+  const width = size[0] ?? WINDOW_SIZES[windowMode].width;
+  const height = size[1] ?? WINDOW_SIZES[windowMode].height;
+  const display = trayBounds
+    ? screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y })
+    : screen.getDisplayMatching(mainWindow.getBounds());
+  const area = display.workArea;
+  const preferredX = trayBounds
+    ? trayBounds.x + trayBounds.width - width
+    : area.x + area.width - width - 16;
+  const trayIsBelowCenter = trayBounds ? trayBounds.y > area.y + area.height / 2 : false;
+  const preferredY = trayBounds
+    ? trayIsBelowCenter
+      ? trayBounds.y - height - 8
+      : trayBounds.y + trayBounds.height + 8
+    : area.y + 16;
+  mainWindow.setPosition(
+    Math.max(area.x, Math.min(preferredX, area.x + area.width - width)),
+    Math.max(area.y, Math.min(preferredY, area.y + area.height - height)),
+    false,
+  );
+}
+async function captureHistory(): Promise<void> {
+  if (sampleInFlight) return;
+  sampleInFlight = true;
+  try {
+    await service.captureHistory();
+  } catch (error) {
+    console.warn('OB-Pulse history sample failed', error);
+  } finally {
+    sampleInFlight = false;
+  }
+}
+function startSampler(): void {
+  if (sampler) return;
+  void captureHistory();
+  sampler = setInterval(() => void captureHistory(), HISTORY_SAMPLE_INTERVAL_MS);
+}
 function registerIPC() {
   ipcMain.handle('pulse:snapshot', () => service.snapshot());
+  ipcMain.handle('pulse:history', () => service.history());
   ipcMain.handle('pulse:runtimes', () => service.runtimes());
   ipcMain.handle('pulse:select-runtime', (_event, id: unknown) =>
     service.useRuntime(validRuntime(id)),
@@ -55,17 +118,28 @@ function registerIPC() {
   });
   ipcMain.handle('pulse:is-on-top', () => alwaysOnTop);
   ipcMain.handle('pulse:hide', () => mainWindow?.hide());
+  ipcMain.handle('pulse:window-mode', (_event, mode: unknown) => {
+    applyWindowMode(validWindowMode(mode));
+    return windowMode;
+  });
+  ipcMain.handle('pulse:get-window-mode', () => windowMode);
 }
-function show() {
+function show(trayBounds?: Rectangle) {
   if (!mainWindow) return;
+  positionWindow(trayBounds);
   mainWindow.show();
   mainWindow.focus();
+}
+function toggleWindow(trayBounds?: Rectangle): void {
+  if (!mainWindow) return;
+  if (mainWindow.isVisible() && mainWindow.isFocused()) mainWindow.hide();
+  else show(trayBounds);
 }
 function refreshMenu() {
   if (!tray) return;
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: 'Open OB-Pulse', click: show },
+      { label: 'Open OB-Pulse', click: () => show() },
       {
         label: 'Always on top',
         type: 'checkbox',
@@ -88,16 +162,17 @@ function refreshMenu() {
   );
 }
 function createWindow() {
-  const { workArea } = screen.getPrimaryDisplay();
+  const dimensions = WINDOW_SIZES.compact;
   mainWindow = new BrowserWindow({
-    width: 420,
-    height: 605,
-    minWidth: 375,
-    minHeight: 485,
-    x: Math.max(workArea.x, workArea.x + workArea.width - 445),
-    y: workArea.y + 40,
+    width: dimensions.width,
+    height: dimensions.height,
+    minWidth: dimensions.minWidth,
+    minHeight: dimensions.minHeight,
     backgroundColor: '#182332',
     show: false,
+    frame: false,
+    resizable: false,
+    skipTaskbar: true,
     autoHideMenuBar: true,
     title: 'OB-Pulse · Local AI Monitor',
     webPreferences: {
@@ -108,7 +183,7 @@ function createWindow() {
       webSecurity: true,
     },
   });
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.once('ready-to-show', () => show());
   mainWindow.on('close', (event) => {
     if (!allowExit) {
       event.preventDefault();
@@ -129,11 +204,13 @@ app
   .then(() => {
     registerIPC();
     createWindow();
+    if (process.platform === 'darwin') app.dock?.hide();
     const trayIcon = nativeImage.createFromPath(path.resolve(here, '../../assets/tray.png'));
     tray = new Tray(trayIcon);
     tray.setToolTip('OB-Pulse — Local AI Monitor');
-    tray.on('click', show);
+    tray.on('click', (_event, bounds) => toggleWindow(bounds));
     refreshMenu();
+    startSampler();
   })
   .catch((error) => {
     console.error('OB-Pulse initialization failed', error);
@@ -141,6 +218,7 @@ app
   });
 app.on('before-quit', () => {
   allowExit = true;
+  if (sampler) clearInterval(sampler);
   ollama.stopManagedImmediately();
 });
 app.on('activate', () => {
