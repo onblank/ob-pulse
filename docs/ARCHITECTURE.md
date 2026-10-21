@@ -42,5 +42,7 @@ only. Its candidate schema is described in `docs/DATA_MODEL.md`; it is not wired
 **Client instrumentation**: the HTTP adapter is inactive at startup. A user action creates a fresh
 256-bit bearer token and binds an ephemeral port on `127.0.0.1`; disable or quit closes the server
 and discards the token. The adapter limits bodies and request rates, rejects unknown fields and
-passes only validated v1 numeric events to the in-memory application session store. It has no
-runtime-control, filesystem, product or Agent OS permissions.
+passes only validated v1 numeric events to the in-memory application session store. That store
+retains at most one hour and 7,200 request samples, supports multiple observed sessions and clears
+all instrumentation state when the bridge is disabled. It has no runtime-control, filesystem,
+product or Agent OS permissions.

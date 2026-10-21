@@ -3,6 +3,7 @@ import type {
   DashboardSnapshot,
   InstrumentationBridgeStatus,
   InstrumentationSnapshot,
+  InstrumentedRequestSample,
   InstrumentedSession,
   MetricHistorySample,
   MetricHistoryWindow,
@@ -19,7 +20,10 @@ const DISABLED_BRIDGE: InstrumentationBridgeStatus = {
   endpoint: null,
   authToken: null,
 };
-const EMPTY_INSTRUMENTATION: InstrumentationSnapshot = { sessions: [] };
+const EMPTY_INSTRUMENTATION: InstrumentationSnapshot = {
+  sessions: [],
+  requestHistory: { retentionMs: 60 * 60 * 1000, maxSamples: 7200, samples: [] },
+};
 
 const fmt = (value: number | null, places = 1) => (value == null ? '—' : value.toFixed(places));
 const gib = (value: number | null) =>
@@ -347,6 +351,73 @@ function SessionReadout({ session }: { session: InstrumentedSession }) {
   );
 }
 
+function RequestHistoryPanel({
+  session,
+  samples,
+}: {
+  session: InstrumentedSession;
+  samples: readonly InstrumentedRequestSample[];
+}) {
+  const sessionSamples = samples.filter((sample) => sample.sessionId === session.sessionId);
+  const context = sessionSamples.map((sample) => sample.contextUsedPercent);
+  const prefill = sessionSamples.map((sample) => sample.readTokensPerSecond);
+  const decode = sessionSamples.map((sample) => sample.writeTokensPerSecond);
+  const firstToken = sessionSamples.map((sample) => sample.timeToFirstTokenMs);
+  return (
+    <div className="request-history">
+      <div className="request-history-heading">
+        <div>
+          <span className="eyebrow">REQUEST HISTORY</span>
+          <strong>Last hour · memory only</strong>
+        </div>
+        <span className="live-pill">
+          {sessionSamples.length} {sessionSamples.length === 1 ? 'SAMPLE' : 'SAMPLES'}
+        </span>
+      </div>
+      {sessionSamples.length ? (
+        <>
+          <MetricChart
+            label="Context"
+            value={pct(lastKnown(context))}
+            unit=""
+            values={context}
+            color="#69e6bd"
+          />
+          <MetricChart
+            label="Prefill"
+            value={fmt(lastKnown(prefill))}
+            unit="tok/s"
+            values={prefill}
+            color="#7f8cff"
+          />
+          <MetricChart
+            label="Decode"
+            value={fmt(lastKnown(decode))}
+            unit="tok/s"
+            values={decode}
+            color="#f4ba72"
+          />
+          <MetricChart
+            label="First token"
+            value={fmt(lastKnown(firstToken))}
+            unit="ms"
+            values={firstToken}
+            color="#dc8fff"
+          />
+          <div className="history-axis">
+            <span>−60 min</span>
+            <span>now</span>
+          </div>
+        </>
+      ) : (
+        <div className="empty request-history-empty">
+          Waiting for an authenticated <code>request.completed</code> event.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InstrumentationPanel({
   bridge,
   instrumentation,
@@ -359,14 +430,18 @@ function InstrumentationPanel({
   onToggle: () => void;
 }) {
   const [revealToken, setRevealToken] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   useEffect(() => setRevealToken(false), [bridge.authToken]);
-  const session = instrumentation.sessions[0] ?? null;
+  const session =
+    instrumentation.sessions.find((entry) => entry.sessionId === selectedSessionId) ??
+    instrumentation.sessions[0] ??
+    null;
   return (
     <section className="instrumentation-card">
       <div className="instrumentation-heading">
         <div>
           <span className="eyebrow">OPT-IN CLIENT INSTRUMENTATION</span>
-          <h2>Session context</h2>
+          <h2>Sessions & request history</h2>
         </div>
         <button
           className={bridge.enabled ? 'bridge-toggle enabled' : 'bridge-toggle'}
@@ -415,7 +490,26 @@ function InstrumentationPanel({
             <small>Rotates whenever the bridge is enabled or OB-Pulse restarts.</small>
           </div>
           {session ? (
-            <SessionReadout session={session} />
+            <div className="session-stack">
+              <label className="session-picker">
+                <span>Observed session</span>
+                <select
+                  value={session.sessionId}
+                  onChange={(event) => setSelectedSessionId(event.target.value)}
+                >
+                  {instrumentation.sessions.map((entry) => (
+                    <option key={entry.sessionId} value={entry.sessionId}>
+                      {entry.active ? '●' : '○'} {entry.modelId} · {entry.origin}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <SessionReadout session={session} />
+              <RequestHistoryPanel
+                session={session}
+                samples={instrumentation.requestHistory.samples}
+              />
+            </div>
           ) : (
             <div className="empty instrumentation-empty">
               Waiting for an authenticated <code>session.started</code> event.

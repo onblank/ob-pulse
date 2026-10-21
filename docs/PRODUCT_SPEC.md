@@ -58,6 +58,8 @@ A background/tray process is not a promise of monitoring when the **application 
 ### Storage and controls
 
 - A rolling one-hour numeric history lives in process memory and disappears on quit/restart.
+- Opt-in client request history uses the same volatile boundary, has a 7,200-sample hard cap and is
+  cleared immediately when its loopback bridge is disabled.
 - Any future SQLite sample history is opt-in, bounded by retention and contains no inference content.
 - No remote account, onBlank telemetry, cloud sync or access to Central/Gateway.
 - No prompts, completions or tool arguments in sample data.

@@ -1,6 +1,7 @@
 import type {
   InstrumentationEvent,
   InstrumentationSnapshot,
+  InstrumentedRequestSample,
   InstrumentedSession,
 } from '@obpulse/contracts';
 import {
@@ -14,14 +15,42 @@ import {
 } from '@obpulse/domain';
 
 const MAX_SESSIONS = 100;
-const MAX_EVENT_IDS = 4096;
+const MAX_EVENT_IDS = 8192;
+export const INSTRUMENTATION_HISTORY_RETENTION_MS = 60 * 60 * 1000;
+export const INSTRUMENTATION_HISTORY_MAX_SAMPLES = 7200;
+
+interface InstrumentationStoreOptions {
+  readonly retentionMs?: number;
+  readonly maxRequestSamples?: number;
+  readonly now?: () => number;
+}
+
+interface RetainedRequestSample {
+  readonly receivedAtMs: number;
+  readonly sample: InstrumentedRequestSample;
+}
 
 export class InstrumentationSessionStore {
   private readonly sessions = new Map<string, InstrumentedSession>();
+  private readonly sessionReceivedAt = new Map<string, number>();
   private readonly processedEventIds = new Map<string, string>();
   private readonly eventIdOrder: string[] = [];
+  private readonly requestSamples: RetainedRequestSample[] = [];
+  private readonly retentionMs: number;
+  private readonly maxRequestSamples: number;
+  private readonly now: () => number;
+
+  constructor(options: InstrumentationStoreOptions = {}) {
+    this.retentionMs = options.retentionMs ?? INSTRUMENTATION_HISTORY_RETENTION_MS;
+    this.maxRequestSamples = options.maxRequestSamples ?? INSTRUMENTATION_HISTORY_MAX_SAMPLES;
+    this.now = options.now ?? Date.now;
+    if (this.retentionMs <= 0 || this.maxRequestSamples <= 0)
+      throw new Error('Instrumentation history bounds must be positive');
+  }
 
   ingest(event: InstrumentationEvent): InstrumentedSession {
+    const receivedAtMs = this.now();
+    this.prune(receivedAtMs);
     const processedSessionId = this.processedEventIds.get(event.event_id);
     if (processedSessionId) {
       if (processedSessionId !== event.session_id) throw new Error('Event ID replay mismatch');
@@ -116,17 +145,52 @@ export class InstrumentationSessionStore {
     }
 
     this.sessions.set(event.session_id, next);
+    this.sessionReceivedAt.set(event.session_id, receivedAtMs);
+    if (event.type === 'request.completed') {
+      this.requestSamples.push({
+        receivedAtMs,
+        sample: {
+          sampleId: event.event_id,
+          sampledAt: event.at,
+          sessionId: event.session_id,
+          runtimeId: event.runtime_id,
+          modelId: event.model_id,
+          epoch: next.epoch,
+          contextUsedTokens: next.contextUsedTokens,
+          contextCapacityTokens: next.contextCapacityTokens,
+          contextUsedPercent: next.contextUsedPercent,
+          readTokensPerSecond: next.readTokensPerSecond,
+          writeTokensPerSecond: next.writeTokensPerSecond,
+          timeToFirstTokenMs: next.timeToFirstTokenMs,
+        },
+      });
+      this.prune(receivedAtMs);
+    }
     this.remember(event.event_id, event.session_id);
     return next;
   }
 
-  snapshot(): InstrumentationSnapshot {
+  snapshot(nowMs = this.now()): InstrumentationSnapshot {
+    this.prune(nowMs);
     return {
       sessions: [...this.sessions.values()].sort((left, right) => {
         if (left.active !== right.active) return left.active ? -1 : 1;
         return Date.parse(right.lastEventAt) - Date.parse(left.lastEventAt);
       }),
+      requestHistory: {
+        retentionMs: this.retentionMs,
+        maxSamples: this.maxRequestSamples,
+        samples: this.requestSamples.map(({ sample }) => sample),
+      },
     };
+  }
+
+  clear(): void {
+    this.sessions.clear();
+    this.sessionReceivedAt.clear();
+    this.processedEventIds.clear();
+    this.eventIdOrder.length = 0;
+    this.requestSamples.length = 0;
   }
 
   private assertContinuation(
@@ -149,6 +213,8 @@ export class InstrumentationSessionStore {
       .sort((left, right) => Date.parse(left.lastEventAt) - Date.parse(right.lastEventAt))[0];
     if (!ended) throw new Error('Too many active sessions');
     this.sessions.delete(ended.sessionId);
+    this.sessionReceivedAt.delete(ended.sessionId);
+    this.removeRequestSamplesForSession(ended.sessionId);
   }
 
   private remember(eventId: string, sessionId: string): void {
@@ -157,5 +223,26 @@ export class InstrumentationSessionStore {
     if (this.eventIdOrder.length <= MAX_EVENT_IDS) return;
     const oldest = this.eventIdOrder.shift();
     if (oldest) this.processedEventIds.delete(oldest);
+  }
+
+  private prune(nowMs: number): void {
+    const cutoff = nowMs - this.retentionMs;
+    while ((this.requestSamples[0]?.receivedAtMs ?? nowMs) < cutoff) this.requestSamples.shift();
+    if (this.requestSamples.length > this.maxRequestSamples)
+      this.requestSamples.splice(0, this.requestSamples.length - this.maxRequestSamples);
+    for (const session of this.sessions.values()) {
+      if (session.active || (this.sessionReceivedAt.get(session.sessionId) ?? nowMs) >= cutoff)
+        continue;
+      this.sessions.delete(session.sessionId);
+      this.sessionReceivedAt.delete(session.sessionId);
+      this.removeRequestSamplesForSession(session.sessionId);
+    }
+  }
+
+  private removeRequestSamplesForSession(sessionId: string): void {
+    for (let index = this.requestSamples.length - 1; index >= 0; index--) {
+      if (this.requestSamples[index]?.sample.sessionId === sessionId)
+        this.requestSamples.splice(index, 1);
+    }
   }
 }

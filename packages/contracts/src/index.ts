@@ -120,8 +120,28 @@ export interface InstrumentedSession {
   readonly timeToFirstTokenMs: number | null;
   readonly lastEventAt: string;
 }
+export interface InstrumentedRequestSample {
+  readonly sampleId: string;
+  readonly sampledAt: string;
+  readonly sessionId: string;
+  readonly runtimeId: RuntimeId;
+  readonly modelId: string;
+  readonly epoch: number;
+  readonly contextUsedTokens: number | null;
+  readonly contextCapacityTokens: number | null;
+  readonly contextUsedPercent: number | null;
+  readonly readTokensPerSecond: number | null;
+  readonly writeTokensPerSecond: number | null;
+  readonly timeToFirstTokenMs: number | null;
+}
+export interface InstrumentationRequestHistory {
+  readonly retentionMs: number;
+  readonly maxSamples: number;
+  readonly samples: readonly InstrumentedRequestSample[];
+}
 export interface InstrumentationSnapshot {
   readonly sessions: readonly InstrumentedSession[];
+  readonly requestHistory: InstrumentationRequestHistory;
 }
 export interface InstrumentationBridgeStatus {
   readonly enabled: boolean;

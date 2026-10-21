@@ -14,7 +14,8 @@
   `context.compacted`, `session.ended`) over an authenticated loopback bridge. Implemented without
   credentials or inference content.
 - Accurate latest-session context, warning/overflow state, measured prefill/decode speed and
-  first-token latency are implemented. A bounded per-request timeseries remains pending.
+  first-token latency are implemented. Per-request context, prefill/decode speed and first-token
+  latency now have a volatile one-hour timeseries with a hard sample bound and multi-session view.
 
 ## 0.3 — deeper OS/runtime integrations
 
