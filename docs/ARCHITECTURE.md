@@ -8,6 +8,7 @@ React compact/expanded UI <- typed preload <- Electron main (composition + sampl
                                       |         |-> Contracts (runtime & host ports)
                                       |-> Ollama / LM Studio adapters (runtime infrastructure)
                                       |-> Host metrics adapter (OS infrastructure)
+                                      |-> Opt-in loopback instrumentation adapter
 ```
 
 Runtime providers report capabilities, not pretend feature parity. `RuntimePort` supports `probe`,
@@ -37,3 +38,9 @@ traffic.
 only. Its candidate schema is described in `docs/DATA_MODEL.md`; it is not wired into the current UI.
 
 **Adapter extension**: built-in, statically registered adapters first. Future signed/community adapters need capability contracts, threat model and opt-in permissions; never execute arbitrary third-party code from a discovered directory.
+
+**Client instrumentation**: the HTTP adapter is inactive at startup. A user action creates a fresh
+256-bit bearer token and binds an ephemeral port on `127.0.0.1`; disable or quit closes the server
+and discards the token. The adapter limits bodies and request rates, rejects unknown fields and
+passes only validated v1 numeric events to the in-memory application session store. It has no
+runtime-control, filesystem, product or Agent OS permissions.

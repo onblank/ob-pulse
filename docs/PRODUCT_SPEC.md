@@ -62,6 +62,7 @@ A background/tray process is not a promise of monitoring when the **application 
 - No remote account, onBlank telemetry, cloud sync or access to Central/Gateway.
 - No prompts, completions or tool arguments in sample data.
 - Never bind monitoring bridge to a public IP or unspecified interface.
+- Client instrumentation stays disabled at launch and requires an ephemeral bearer token per activation.
 
 ### Release
 

@@ -1,4 +1,10 @@
-import type { DashboardSnapshot, MetricHistoryWindow, RuntimeId } from '@obpulse/contracts';
+import type {
+  DashboardSnapshot,
+  InstrumentationBridgeStatus,
+  InstrumentationSnapshot,
+  MetricHistoryWindow,
+  RuntimeId,
+} from '@obpulse/contracts';
 export {};
 declare global {
   interface Window {
@@ -17,6 +23,9 @@ declare global {
       hide(): Promise<void>;
       setWindowMode(mode: 'compact' | 'expanded'): Promise<'compact' | 'expanded'>;
       getWindowMode(): Promise<'compact' | 'expanded'>;
+      instrumentationStatus(): Promise<InstrumentationBridgeStatus>;
+      instrumentationSessions(): Promise<InstrumentationSnapshot>;
+      setInstrumentationEnabled(enabled: boolean): Promise<InstrumentationBridgeStatus>;
     };
   }
 }

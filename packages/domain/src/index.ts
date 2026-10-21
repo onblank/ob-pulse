@@ -6,6 +6,8 @@ export interface ContextSession {
   readonly active: boolean;
 }
 
+export type ContextAlert = 'unavailable' | 'normal' | 'warning' | 'overflow';
+
 /** A missing or zero-duration report is unknown, not zero tokens/second. */
 export function tokensPerSecond(
   count: number | null | undefined,
@@ -63,4 +65,22 @@ export function compactContext(
 }
 export function endContextSession(previous: ContextSession): ContextSession {
   return { ...previous, active: false };
+}
+
+export function contextAlert(
+  usedTokens: number | null | undefined,
+  capacityTokens: number | null | undefined,
+): ContextAlert {
+  if (
+    usedTokens == null ||
+    capacityTokens == null ||
+    !Number.isFinite(usedTokens) ||
+    !Number.isFinite(capacityTokens) ||
+    usedTokens < 0 ||
+    capacityTokens <= 0
+  )
+    return 'unavailable';
+  if (usedTokens >= capacityTokens) return 'overflow';
+  if (usedTokens / capacityTokens >= 0.9) return 'warning';
+  return 'normal';
 }
