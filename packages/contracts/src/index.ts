@@ -52,6 +52,20 @@ export interface DashboardSnapshot {
   readonly host: HostSample;
   readonly latestBenchmark: BenchmarkRecord | null;
 }
+export interface MetricHistorySample {
+  readonly sampledAt: string;
+  readonly runtimeId: RuntimeId;
+  readonly modelId: string | null;
+  readonly hostMemoryUsedPercent: number;
+  readonly gpuResidentBytes: number | null;
+  readonly outputTokensPerSecond: number | null;
+  readonly outputTokensSource: 'benchmark' | null;
+}
+export interface MetricHistoryWindow {
+  readonly retentionMs: number;
+  readonly sampleIntervalMs: number;
+  readonly samples: readonly MetricHistorySample[];
+}
 export interface RuntimePort {
   readonly id: RuntimeId;
   readonly displayName: string;

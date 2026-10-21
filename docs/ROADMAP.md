@@ -4,10 +4,12 @@
 
 - Runtime contracts, Ollama adapter, read-only LM Studio detection, host metrics, tray widget,
   manually started Ollama server control and explicit speed test.
+- Tray-only, compact gadget and expanded dashboard surfaces with a volatile one-hour numeric history.
 
 ## 0.2 — trustworthy history and instrumentation
 
-- SQLite local history + retention/off switch + import/export of metrics only.
+- Evaluate opt-in SQLite history only if users need persistence beyond the current one-hour in-memory
+  window; require retention/off controls and metrics-only import/export.
 - Typed opt-in Agent OS/Hermes client instrumentation (`session_started`, `request_completed`,
   `context_compacted`, `session_ended`). Never intercept credentials or content.
 - Accurate session-specific context, overflow alert, per-request timeseries and first-token latency.

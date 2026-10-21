@@ -2,16 +2,80 @@ import type {
   BenchmarkRecord,
   DashboardSnapshot,
   HostMetricsPort,
+  MetricHistorySample,
+  MetricHistoryWindow,
   RuntimeId,
   RuntimePort,
   RuntimeSnapshot,
 } from '@obpulse/contracts';
+
+export const HISTORY_RETENTION_MS = 60 * 60 * 1000;
+export const HISTORY_SAMPLE_INTERVAL_MS = 3000;
+const HISTORY_MAX_SAMPLES = Math.ceil(HISTORY_RETENTION_MS / HISTORY_SAMPLE_INTERVAL_MS) + 1;
+
+export class InMemoryMetricHistory {
+  private readonly samples: MetricHistorySample[] = [];
+  private lastBenchmarkAt: string | null = null;
+
+  constructor(
+    private readonly retentionMs = HISTORY_RETENTION_MS,
+    private readonly sampleIntervalMs = HISTORY_SAMPLE_INTERVAL_MS,
+    private readonly maxSamples = HISTORY_MAX_SAMPLES,
+  ) {}
+
+  capture(snapshot: DashboardSnapshot): MetricHistorySample {
+    const loaded = snapshot.runtime.loaded;
+    const residentValues = loaded
+      .map((model) => model.gpuResidentBytes)
+      .filter((value): value is number => value != null);
+    const benchmark = snapshot.latestBenchmark;
+    const isNewBenchmark = benchmark != null && benchmark.at !== this.lastBenchmarkAt;
+    if (isNewBenchmark) this.lastBenchmarkAt = benchmark.at;
+    const sample: MetricHistorySample = {
+      sampledAt: snapshot.host.sampledAt,
+      runtimeId: snapshot.selectedRuntime,
+      modelId: loaded[0]?.id ?? null,
+      hostMemoryUsedPercent: snapshot.host.memoryUsedPercent,
+      gpuResidentBytes:
+        residentValues.length > 0
+          ? residentValues.reduce((total, value) => total + value, 0)
+          : null,
+      outputTokensPerSecond: isNewBenchmark ? (benchmark.writeTokensPerSecond ?? null) : null,
+      outputTokensSource: isNewBenchmark ? 'benchmark' : null,
+    };
+    this.samples.push(sample);
+    this.prune(Date.parse(sample.sampledAt));
+    return sample;
+  }
+
+  window(nowMs = Date.now()): MetricHistoryWindow {
+    this.prune(nowMs);
+    return {
+      retentionMs: this.retentionMs,
+      sampleIntervalMs: this.sampleIntervalMs,
+      samples: [...this.samples],
+    };
+  }
+
+  private prune(nowMs: number): void {
+    const cutoff = nowMs - this.retentionMs;
+    while (this.samples.length > 0) {
+      const first = this.samples[0];
+      if (!first || Date.parse(first.sampledAt) >= cutoff) break;
+      this.samples.shift();
+    }
+    if (this.samples.length > this.maxSamples)
+      this.samples.splice(0, this.samples.length - this.maxSamples);
+  }
+}
+
 export class MonitorService {
   private selected: RuntimeId = 'ollama';
   private lastBenchmark: BenchmarkRecord | null = null;
   constructor(
     private readonly providers: ReadonlyMap<RuntimeId, RuntimePort>,
     private readonly host: HostMetricsPort,
+    private readonly metricHistory = new InMemoryMetricHistory(),
   ) {}
   runtimes(): Array<{ id: RuntimeId; name: string }> {
     return Array.from(this.providers.values()).map((p) => ({ id: p.id, name: p.displayName }));
@@ -55,6 +119,12 @@ export class MonitorService {
         observedAt: new Date().toISOString(),
       },
     };
+  }
+  async captureHistory(): Promise<MetricHistorySample> {
+    return this.metricHistory.capture(await this.snapshot());
+  }
+  history(nowMs = Date.now()): MetricHistoryWindow {
+    return this.metricHistory.window(nowMs);
   }
   async start(): Promise<void> {
     await this.provider.startServer();

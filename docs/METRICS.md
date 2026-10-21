@@ -14,7 +14,11 @@
 | GPU max capacity                | OS-specific reliable hardware API                              | physical GPU          | planned/unsupported                                  |
 
 **Units**: tps = token count × 1e9 / nanoseconds; zero/null/negative duration yields `null`.
-**Sampling**: host and runtime snapshots every 3 seconds while widget open; no sampling when app quits.
+**Sampling**: host and runtime snapshots every 3 seconds while the application process is alive,
+including when its window is hidden in the tray. No sampling occurs after the application quits.
+The in-memory window retains at most the latest hour and has no restart persistence. Host RAM is a
+continuous series; loaded-model GPU-resident bytes are provider-reported residency, not GPU load;
+decode/write tps is a sparse point recorded once per explicit benchmark.
 **Staleness**: mark disconnected when provider request fails. Never keep last live figure without stale marker.
 **Context reset**: new conversation/session (unique session ID) starts at 0 by _explicitly observed_ event.
 Observed compaction advances to a new epoch with known summary/prefix tokens if provided;
