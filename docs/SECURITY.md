@@ -7,6 +7,9 @@
 - The optional instrumentation listener is disabled by default, binds only to `127.0.0.1` on an
   ephemeral port and requires a fresh 256-bit bearer token. It enforces a strict v1 numeric schema,
   16 KiB bodies, a rolling request limit and bounded replay suppression. Disable/quit closes it.
+- Instrumentation session state and numeric request samples exist only while the bridge is enabled;
+  disabling it clears them. The request history is additionally capped at one hour and 7,200
+  samples and is never persisted.
 - Renderer clipboard access is not generic: narrow IPC may copy only the active bridge endpoint or
   token after an explicit user click.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
