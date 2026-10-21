@@ -40,3 +40,17 @@ desarrollo debe compilar, probar y publicar instaladores de Windows/macOS/Linux.
 - **Context used**: aparece `—` hasta conectar un cliente con ID de sesión y medición real.
 - **READ/WRITE**: por ahora solo pruebas solicitadas explícitamente, no las conversaciones de otras apps.
 - `—` significa desconocido o no disponible, nunca valor cero.
+
+## Instrumentación opcional de una sesión
+
+1. Amplía la ventana y busca **Session context**. El puente está desactivado al iniciar OB-Pulse.
+2. Pulsa **Enable bridge** solo si vas a conectar un cliente local aprobado.
+3. Usa los botones **Copy** para entregar manualmente al cliente el endpoint `127.0.0.1` y el token
+   temporal que muestra la app.
+4. Cuando el cliente emita eventos v1 verás contexto usado/capacidad, época de compactación,
+   velocidad de lectura/escritura y latencia al primer token cuando esos valores hayan sido medidos.
+5. Pulsa **Disable bridge** al terminar. El puerto se cierra y el token deja de ser válido.
+
+El puente no intercepta tráfico ni conversaciones. Rechaza campos libres o desconocidos y nunca
+acepta prompts, respuestas, argumentos de herramientas o credenciales. Los datos de sesión viven
+solo en memoria hasta cerrar OB-Pulse.

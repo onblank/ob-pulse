@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage, screen } from 'electron';
+import { app, BrowserWindow, Menu, Tray, clipboard, ipcMain, nativeImage, screen } from 'electron';
 import type { Rectangle } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,6 +6,7 @@ import { HISTORY_SAMPLE_INTERVAL_MS, MonitorService } from '@obpulse/application
 import type { RuntimeId, RuntimePort } from '@obpulse/contracts';
 import { RUNTIME_IDS } from '@obpulse/contracts';
 import { NodeHostMetrics } from '@obpulse/host-metrics';
+import { LoopbackInstrumentationBridge } from '@obpulse/instrumentation-http';
 import { OllamaRuntime } from '@obpulse/runtime-ollama';
 import { LMStudioRuntime } from '@obpulse/runtime-lmstudio';
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -14,6 +15,9 @@ const providers: RuntimePort[] = [ollama, new LMStudioRuntime()];
 const service = new MonitorService(
   new Map(providers.map((provider) => [provider.id, provider])),
   new NodeHostMetrics(),
+);
+const instrumentationBridge = new LoopbackInstrumentationBridge((event) =>
+  service.ingestInstrumentation(event),
 );
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -46,6 +50,15 @@ function validRuntime(value: unknown): RuntimeId {
 }
 function validWindowMode(value: unknown): 'compact' | 'expanded' {
   if (value !== 'compact' && value !== 'expanded') throw new Error('Unsupported window mode');
+  return value;
+}
+function validEnabled(value: unknown): boolean {
+  if (typeof value !== 'boolean') throw new Error('Enabled state must be boolean');
+  return value;
+}
+function validInstrumentationValue(value: unknown): 'endpoint' | 'token' {
+  if (value !== 'endpoint' && value !== 'token')
+    throw new Error('Unsupported instrumentation value');
   return value;
 }
 function applyWindowMode(mode: 'compact' | 'expanded'): void {
@@ -123,6 +136,18 @@ function registerIPC() {
     return windowMode;
   });
   ipcMain.handle('pulse:get-window-mode', () => windowMode);
+  ipcMain.handle('pulse:instrumentation-status', () => instrumentationBridge.status());
+  ipcMain.handle('pulse:instrumentation-sessions', () => service.instrumentationSnapshot());
+  ipcMain.handle('pulse:set-instrumentation-enabled', async (_event, enabled: unknown) =>
+    validEnabled(enabled) ? instrumentationBridge.enable() : instrumentationBridge.disable(),
+  );
+  ipcMain.handle('pulse:copy-instrumentation-value', (_event, requestedValue: unknown) => {
+    const value = validInstrumentationValue(requestedValue);
+    const status = instrumentationBridge.status();
+    const text = value === 'endpoint' ? status.endpoint : status.authToken;
+    if (!status.enabled || !text) throw new Error('Instrumentation bridge is disabled');
+    clipboard.writeText(text);
+  });
 }
 function show(trayBounds?: Rectangle) {
   if (!mainWindow) return;
@@ -219,6 +244,7 @@ app
 app.on('before-quit', () => {
   allowExit = true;
   if (sampler) clearInterval(sampler);
+  instrumentationBridge.close();
   ollama.stopManagedImmediately();
 });
 app.on('activate', () => {

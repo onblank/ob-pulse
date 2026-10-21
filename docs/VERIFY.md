@@ -1,17 +1,17 @@
-# Verification report — generated scaffold
+# Verification report
 
-Executed locally during initial artifact generation:
+Current local verification as of 2026-10-21:
 
-- All 16 `.ts`/`.tsx` source files parsed with the globally available TypeScript compiler (`createSourceFile`) with zero syntax diagnostics.
-- JSON, YAML and SVG files parsed successfully; 64×64 PNG tray asset verified.
-- Archival inventory and SHA-256 checksums are generated alongside the source archive.
+- `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
+- `pnpm check` passes formatting, ESLint, TypeScript checks for all eight packages, 17 tests and
+  the Electron main/preload/renderer production builds.
+- Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
+  schema/content rejection, request limiting, replay/session semantics, context compaction,
+  throughput calculations and warning/overflow state.
+- The macOS development app launches at 360×430 and changes to the 900×680 expanded surface.
 
-Not executed:
+Still required before an official release:
 
-- `pnpm install` and full `pnpm check`: npm registry is not reachable from the artifact environment.
-- Electron runtime launch, Ollama integration with a live locally installed runtime, native packaging,
-  installer signing/notarization and OS-specific tray behavior.
-
-Before an official release, run `corepack prepare pnpm@12.6.0 --activate`,
-`pnpm install`, commit lockfile, `pnpm check` and the three native package workflows on real
-runners. Then perform manual smoke and negative permission tests.
+- Manual end-to-end client instrumentation smoke testing through the packaged desktop UI.
+- Native packaging/install/upgrade/quit/tray tests on Windows, macOS and Linux.
+- Signing/notarization, official brand review and installer checksum verification.

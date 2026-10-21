@@ -66,6 +66,68 @@ export interface MetricHistoryWindow {
   readonly sampleIntervalMs: number;
   readonly samples: readonly MetricHistorySample[];
 }
+export interface InstrumentationEnvelopeBase {
+  readonly version: '1.0.0';
+  readonly event_id: string;
+  readonly origin: string;
+  readonly at: string;
+  readonly runtime_id: RuntimeId;
+  readonly model_id: string;
+  readonly session_id: string;
+}
+export interface SessionStartedEvent extends InstrumentationEnvelopeBase {
+  readonly type: 'session.started';
+  readonly data: {
+    readonly context_capacity_tokens: number | null;
+  };
+}
+export interface RequestCompletedEvent extends InstrumentationEnvelopeBase {
+  readonly type: 'request.completed';
+  readonly data: {
+    readonly prompt_tokens: number | null;
+    readonly completion_tokens: number | null;
+    readonly prompt_eval_duration_ns: number | null;
+    readonly completion_eval_duration_ns: number | null;
+    readonly context_used_tokens: number | null;
+    readonly time_to_first_token_ms: number | null;
+  };
+}
+export interface ContextCompactedEvent extends InstrumentationEnvelopeBase {
+  readonly type: 'context.compacted';
+  readonly data: {
+    readonly summary_context_tokens: number | null;
+  };
+}
+export interface SessionEndedEvent extends InstrumentationEnvelopeBase {
+  readonly type: 'session.ended';
+  readonly data: Record<string, never>;
+}
+export type InstrumentationEvent =
+  SessionStartedEvent | RequestCompletedEvent | ContextCompactedEvent | SessionEndedEvent;
+export interface InstrumentedSession {
+  readonly sessionId: string;
+  readonly origin: string;
+  readonly runtimeId: RuntimeId;
+  readonly modelId: string;
+  readonly active: boolean;
+  readonly epoch: number;
+  readonly contextUsedTokens: number | null;
+  readonly contextCapacityTokens: number | null;
+  readonly contextUsedPercent: number | null;
+  readonly contextAlert: 'unavailable' | 'normal' | 'warning' | 'overflow';
+  readonly readTokensPerSecond: number | null;
+  readonly writeTokensPerSecond: number | null;
+  readonly timeToFirstTokenMs: number | null;
+  readonly lastEventAt: string;
+}
+export interface InstrumentationSnapshot {
+  readonly sessions: readonly InstrumentedSession[];
+}
+export interface InstrumentationBridgeStatus {
+  readonly enabled: boolean;
+  readonly endpoint: string | null;
+  readonly authToken: string | null;
+}
 export interface RuntimePort {
   readonly id: RuntimeId;
   readonly displayName: string;

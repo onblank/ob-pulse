@@ -10,9 +10,11 @@
 
 - Evaluate opt-in SQLite history only if users need persistence beyond the current one-hour in-memory
   window; require retention/off controls and metrics-only import/export.
-- Typed opt-in Agent OS/Hermes client instrumentation (`session_started`, `request_completed`,
-  `context_compacted`, `session_ended`). Never intercept credentials or content.
-- Accurate session-specific context, overflow alert, per-request timeseries and first-token latency.
+- Typed opt-in client instrumentation (`session.started`, `request.completed`,
+  `context.compacted`, `session.ended`) over an authenticated loopback bridge. Implemented without
+  credentials or inference content.
+- Accurate latest-session context, warning/overflow state, measured prefill/decode speed and
+  first-token latency are implemented. A bounded per-request timeseries remains pending.
 
 ## 0.3 — deeper OS/runtime integrations
 

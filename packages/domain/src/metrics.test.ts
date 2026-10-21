@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   beginContextSession,
   compactContext,
+  contextAlert,
   observeContextUsed,
   percent,
   tokensPerSecond,
@@ -29,5 +30,11 @@ describe('context provenance', () => {
   it('invalid durations or percentages do not masquerade as observations', () => {
     expect(percent(null, 300)).toBeNull();
     expect(percent(50, 0)).toBeNull();
+  });
+  it('warns only from measured session context', () => {
+    expect(contextAlert(null, 8192)).toBe('unavailable');
+    expect(contextAlert(7000, 8192)).toBe('normal');
+    expect(contextAlert(7500, 8192)).toBe('warning');
+    expect(contextAlert(8192, 8192)).toBe('overflow');
   });
 });

@@ -202,6 +202,9 @@ importers:
       '@obpulse/host-metrics':
         specifier: workspace:*
         version: link:../../packages/host-metrics
+      '@obpulse/instrumentation-http':
+        specifier: workspace:*
+        version: link:../../packages/instrumentation-http
       '@obpulse/runtime-lmstudio':
         specifier: workspace:*
         version: link:../../packages/runtime-lmstudio
@@ -239,6 +242,9 @@ importers:
       '@obpulse/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@obpulse/domain':
+        specifier: workspace:*
+        version: link:../domain
 
   packages/contracts: {}
 
@@ -252,6 +258,12 @@ importers:
       '@obpulse/domain':
         specifier: workspace:*
         version: link:../domain
+
+  packages/instrumentation-http:
+    dependencies:
+      '@obpulse/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
   packages/runtime-lmstudio:
     dependencies:

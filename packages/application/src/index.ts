@@ -2,12 +2,17 @@ import type {
   BenchmarkRecord,
   DashboardSnapshot,
   HostMetricsPort,
+  InstrumentationEvent,
+  InstrumentationSnapshot,
   MetricHistorySample,
   MetricHistoryWindow,
   RuntimeId,
   RuntimePort,
   RuntimeSnapshot,
 } from '@obpulse/contracts';
+import { InstrumentationSessionStore } from './instrumentation';
+
+export { InstrumentationSessionStore } from './instrumentation';
 
 export const HISTORY_RETENTION_MS = 60 * 60 * 1000;
 export const HISTORY_SAMPLE_INTERVAL_MS = 3000;
@@ -76,6 +81,7 @@ export class MonitorService {
     private readonly providers: ReadonlyMap<RuntimeId, RuntimePort>,
     private readonly host: HostMetricsPort,
     private readonly metricHistory = new InMemoryMetricHistory(),
+    private readonly instrumentation = new InstrumentationSessionStore(),
   ) {}
   runtimes(): Array<{ id: RuntimeId; name: string }> {
     return Array.from(this.providers.values()).map((p) => ({ id: p.id, name: p.displayName }));
@@ -125,6 +131,12 @@ export class MonitorService {
   }
   history(nowMs = Date.now()): MetricHistoryWindow {
     return this.metricHistory.window(nowMs);
+  }
+  ingestInstrumentation(event: InstrumentationEvent): void {
+    this.instrumentation.ingest(event);
+  }
+  instrumentationSnapshot(): InstrumentationSnapshot {
+    return this.instrumentation.snapshot();
   }
   async start(): Promise<void> {
     await this.provider.startServer();
