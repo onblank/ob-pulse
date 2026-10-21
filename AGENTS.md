@@ -25,7 +25,7 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
 ## Authoritative principles
 
 1. Local-first and no required account, remote service, cloud backend, telemetry, tracking SDK or update ping.
-2. Network: **only user-approved loopback runtime endpoints** by default; never expose listeners on LAN/public interfaces. An opt-in local telemetry bridge is a future, separately reviewed feature.
+2. Network: **only user-approved loopback runtime endpoints** by default; never expose listeners on LAN/public interfaces. The local instrumentation bridge stays disabled until explicit opt-in, binds only to `127.0.0.1`, authenticates with an ephemeral bearer token and accepts only the reviewed content-free event schema.
 3. Never record prompts, completions, tool arguments, API secrets or context contents. Persist only minimized numeric/resource telemetry if users opt in.
 4. Never claim metrics to be more precise than the adapter can prove. `null` means unobserved/not supported; `0` means measured zero.
 5. Model context is scoped to a **client session**, not to loaded model/host. A reset needs an observed client session boundary or explicit user command; compaction has explicit semantics.
@@ -61,9 +61,11 @@ Do not start, kill, load or benchmark anything automatically at app boot.
 
 ## Truth-in-delivery
 
-This is a scaffold. Do not claim model-specific CPU/GPU telemetry, passive external-client token streams,
-automatic compaction detection, database history, updater or signed installers have shipped unless implemented
-and tested. The app can control **Ollama it started itself**; for already-running Ollama it attaches in observation mode.
+This is an early implementation. Do not claim model-specific CPU/GPU telemetry, passive external-client token
+streams, database history, updater or signed installers have shipped unless implemented and tested. Explicitly
+authenticated clients may report content-free session/request/compaction events only while the user-enabled
+loopback bridge is active. The app can control **Ollama it started itself**; for already-running Ollama it
+attaches in observation mode.
 
 ## Workflow
 

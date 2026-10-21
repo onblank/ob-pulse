@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type {
   DashboardSnapshot,
+  InstrumentationBridgeStatus,
+  InstrumentationSnapshot,
+  InstrumentedSession,
   MetricHistorySample,
   MetricHistoryWindow,
   ModelRecord,
@@ -10,6 +13,13 @@ import logo from './assets/brand/ob-pulse-logo.svg';
 import onblankLogo from './assets/brand/powered-by-onblank.svg';
 
 type WindowMode = 'compact' | 'expanded';
+
+const DISABLED_BRIDGE: InstrumentationBridgeStatus = {
+  enabled: false,
+  endpoint: null,
+  authToken: null,
+};
+const EMPTY_INSTRUMENTATION: InstrumentationSnapshot = { sessions: [] };
 
 const fmt = (value: number | null, places = 1) => (value == null ? '—' : value.toFixed(places));
 const gib = (value: number | null) =>
@@ -289,6 +299,134 @@ function ModelCard({
   );
 }
 
+function SessionReadout({ session }: { session: InstrumentedSession }) {
+  const contextValue =
+    session.contextUsedTokens == null
+      ? '—'
+      : `${session.contextUsedTokens.toLocaleString()} / ${session.contextCapacityTokens?.toLocaleString() ?? '—'}`;
+  const progress = Math.min(100, Math.max(0, session.contextUsedPercent ?? 0));
+  return (
+    <div className={`session-readout ${session.contextAlert}`}>
+      <div className="session-heading">
+        <div>
+          <span className="eyebrow">LATEST CLIENT SESSION</span>
+          <strong>{session.modelId}</strong>
+        </div>
+        <span className={session.active ? 'session-state active' : 'session-state'}>
+          {session.active ? 'ACTIVE' : 'ENDED'}
+        </span>
+      </div>
+      <div className="context-copy">
+        <span>Context · epoch {session.epoch}</span>
+        <strong>{contextValue} tok</strong>
+      </div>
+      <div
+        className="context-track"
+        aria-label={`Context usage ${pct(session.contextUsedPercent)}`}
+      >
+        <span style={{ width: `${progress}%` }} />
+      </div>
+      <div className="session-metrics">
+        <div>
+          <span>Prefill</span>
+          <strong>{fmt(session.readTokensPerSecond)} tok/s</strong>
+        </div>
+        <div>
+          <span>Decode</span>
+          <strong>{fmt(session.writeTokensPerSecond)} tok/s</strong>
+        </div>
+        <div>
+          <span>First token</span>
+          <strong>{fmt(session.timeToFirstTokenMs)} ms</strong>
+        </div>
+      </div>
+      <small>
+        {session.origin} · {session.runtimeId} · {session.sessionId}
+      </small>
+    </div>
+  );
+}
+
+function InstrumentationPanel({
+  bridge,
+  instrumentation,
+  busy,
+  onToggle,
+}: {
+  bridge: InstrumentationBridgeStatus;
+  instrumentation: InstrumentationSnapshot;
+  busy: boolean;
+  onToggle: () => void;
+}) {
+  const [revealToken, setRevealToken] = useState(false);
+  useEffect(() => setRevealToken(false), [bridge.authToken]);
+  const session = instrumentation.sessions[0] ?? null;
+  return (
+    <section className="instrumentation-card">
+      <div className="instrumentation-heading">
+        <div>
+          <span className="eyebrow">OPT-IN CLIENT INSTRUMENTATION</span>
+          <h2>Session context</h2>
+        </div>
+        <button
+          className={bridge.enabled ? 'bridge-toggle enabled' : 'bridge-toggle'}
+          disabled={busy}
+          onClick={onToggle}
+        >
+          {bridge.enabled ? 'Disable bridge' : 'Enable bridge'}
+        </button>
+      </div>
+      {!bridge.enabled ? (
+        <p>
+          Disabled by default. Enable only when connecting an approved local client. OB-Pulse
+          accepts numeric events, never prompts, completions or tool arguments.
+        </p>
+      ) : (
+        <div className="instrumentation-grid">
+          <div className="bridge-access">
+            <span className="bridge-live">LOCAL BRIDGE ACTIVE</span>
+            <label>
+              Endpoint
+              <span className="access-row">
+                <code>{bridge.endpoint}</code>
+                <button
+                  className="quiet"
+                  onClick={() => void window.obpulse.copyInstrumentationValue('endpoint')}
+                >
+                  Copy
+                </button>
+              </span>
+            </label>
+            <label>
+              Ephemeral bearer token
+              <span className="token-row">
+                <code>{revealToken ? bridge.authToken : '••••••••••••••••••••••••'}</code>
+                <button className="quiet" onClick={() => setRevealToken((value) => !value)}>
+                  {revealToken ? 'Hide' : 'Reveal'}
+                </button>
+                <button
+                  className="quiet"
+                  onClick={() => void window.obpulse.copyInstrumentationValue('token')}
+                >
+                  Copy
+                </button>
+              </span>
+            </label>
+            <small>Rotates whenever the bridge is enabled or OB-Pulse restarts.</small>
+          </div>
+          {session ? (
+            <SessionReadout session={session} />
+          ) : (
+            <div className="empty instrumentation-empty">
+              Waiting for an authenticated <code>session.started</code> event.
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [history, setHistory] = useState<MetricHistoryWindow | null>(null);
@@ -298,16 +436,23 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [top, setTop] = useState(false);
+  const [bridge, setBridge] = useState<InstrumentationBridgeStatus>(DISABLED_BRIDGE);
+  const [instrumentation, setInstrumentation] =
+    useState<InstrumentationSnapshot>(EMPTY_INSTRUMENTATION);
 
   const refresh = async () => {
     try {
-      const [current, currentHistory] = await Promise.all([
+      const [current, currentHistory, bridgeStatus, instrumentationSnapshot] = await Promise.all([
         window.obpulse.snapshot(),
         window.obpulse.history(),
+        window.obpulse.instrumentationStatus(),
+        window.obpulse.instrumentationSessions(),
       ]);
       setSnapshot(current);
       setHistory(currentHistory);
       setRuntime(current.selectedRuntime);
+      setBridge(bridgeStatus);
+      setInstrumentation(instrumentationSnapshot);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : String(refreshError));
     }
@@ -404,6 +549,15 @@ export default function App() {
               </div>
               <PowerControl snapshot={snapshot} busy={busy} onToggle={togglePower} />
             </section>
+
+            <InstrumentationPanel
+              bridge={bridge}
+              instrumentation={instrumentation}
+              busy={busy}
+              onToggle={() =>
+                void action(() => window.obpulse.setInstrumentationEnabled(!bridge.enabled))
+              }
+            />
 
             <div className="expanded-grid">
               <div className="expanded-primary">

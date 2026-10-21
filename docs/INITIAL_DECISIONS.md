@@ -14,6 +14,7 @@ No clarification blocked this scaffold. Decisions recorded for owner approval be
 | D-008 | Official installers via GitHub Releases after native QA/signing                    | planned                                         |
 | D-009 | Local history SQLite opt-in, no prompt contents                                    | planned                                         |
 | D-010 | Provider adapters built-in/static, plugin ABI after threat model                   | planned                                         |
+| D-011 | Instrumentation bridge opt-in, loopback-only, ephemeral bearer auth, strict v1     | implemented and tested                          |
 
 **External requirement**: global onBlank workspace instructions `../AGENTS.md` are referenced by
 all repositories but are not represented by a root repository in the GitHub list. Owner must attach

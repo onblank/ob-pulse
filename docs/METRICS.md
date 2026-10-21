@@ -1,17 +1,18 @@
 # Metrics accuracy contract
 
-| Datum                           | Source                                                         | Scope                 | Availability                                         |
-| ------------------------------- | -------------------------------------------------------------- | --------------------- | ---------------------------------------------------- |
-| Host RAM bytes/percent          | `os.totalmem()` + `os.freemem()`                               | entire device         | initial scaffold                                     |
-| Host CPU percent                | deltas of `os.cpus()` ticks                                    | entire device         | initial scaffold                                     |
-| Loaded model file size          | Ollama `GET /api/ps` `size`                                    | loaded model          | initial scaffold                                     |
-| Loaded model GPU-resident bytes | Ollama `size_vram`                                             | reported residency    | initial scaffold, not true instantaneous utilization |
-| Model context _capacity_        | Ollama `context_length`                                        | loaded model          | initial scaffold                                     |
-| Context **used** / percentage   | client integration with explicit session ID                    | client session        | planned; `null` until observed                       |
-| Prefill/read tokens/sec         | `prompt_eval_count` / `prompt_eval_duration` in final response | instrumented request  | benchmark only in scaffold                           |
-| Decode/write tokens/sec         | `eval_count` / `eval_duration` in final response               | instrumented request  | benchmark only in scaffold                           |
-| Model CPU and GPU utilization   | runtime/OS-specific process instrumentation                    | model/runtime process | planned/unsupported                                  |
-| GPU max capacity                | OS-specific reliable hardware API                              | physical GPU          | planned/unsupported                                  |
+| Datum                           | Source                                              | Scope                 | Availability                                         |
+| ------------------------------- | --------------------------------------------------- | --------------------- | ---------------------------------------------------- |
+| Host RAM bytes/percent          | `os.totalmem()` + `os.freemem()`                    | entire device         | initial scaffold                                     |
+| Host CPU percent                | deltas of `os.cpus()` ticks                         | entire device         | initial scaffold                                     |
+| Loaded model file size          | Ollama `GET /api/ps` `size`                         | loaded model          | initial scaffold                                     |
+| Loaded model GPU-resident bytes | Ollama `size_vram`                                  | reported residency    | initial scaffold, not true instantaneous utilization |
+| Model context _capacity_        | Ollama `context_length`                             | loaded model          | initial scaffold                                     |
+| Context **used** / percentage   | authenticated client event with explicit session ID | client session        | opt-in bridge; `null` until observed                 |
+| Prefill/read tokens/sec         | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
+| Decode/write tokens/sec         | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
+| First-token latency             | authenticated client-reported numeric timing        | instrumented request  | opt-in client event                                  |
+| Model CPU and GPU utilization   | runtime/OS-specific process instrumentation         | model/runtime process | planned/unsupported                                  |
+| GPU max capacity                | OS-specific reliable hardware API                   | physical GPU          | planned/unsupported                                  |
 
 **Units**: tps = token count × 1e9 / nanoseconds; zero/null/negative duration yields `null`.
 **Sampling**: host and runtime snapshots every 3 seconds while the application process is alive,
@@ -28,6 +29,6 @@ necessarily a new context session; never reset merely because it was reopened.
 **Benchmark**: only user-initiated, runs a tiny synthetic prompt with selected model; never mixed with
 third-party live traffic; labels must say "Test" / "Benchmark".
 
-For future passive observation, implement explicit client plugins for Agent OS/Hermes/IDE clients,
-or an opt-in loopback reverse proxy with per-request events and session IDs; do not assume third-party
-requests automatically traverse OB-Pulse.
+The opt-in bridge accepts explicit client events with session IDs. It is not a reverse proxy and
+does not observe third-party traffic automatically; a client must deliberately implement the
+versioned contract and receive the ephemeral token from the user.

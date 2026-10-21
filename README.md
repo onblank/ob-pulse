@@ -11,13 +11,14 @@
 - LM Studio local server detection and loaded-model listing (**read-only experimental adapter**).
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
 - A rolling one-hour chart kept only in process memory for host RAM, provider-reported GPU residency and explicit benchmark output speed.
+- An optional authenticated loopback bridge for strict, content-free client session events, with measured context use, prefill/decode speed and first-token latency.
 - A user-invoked Ollama sample request with real prompt-eval and generation tokens/sec metrics, **clearly labeled as a benchmark**, not a live stream from unrelated clients.
 - A typed, provider-agnostic contract plus domain tests for token throughput/context semantics.
 
 ## Not yet shipped
 
-- Passive token-speed capture from third-party apps (requires an opt-in proxy/plugin or runtime-specific event feed).
-- Real session-context utilization from arbitrary clients and automatic compaction detection.
+- Passive token-speed capture from arbitrary third-party apps; clients must explicitly implement and authenticate against the instrumentation contract.
+- Automatic session/context discovery from clients that do not emit the instrumentation contract.
 - Per-model CPU/GPU utilization on every OS, persistent/long-term chart history and external model installs.
 - LM Studio start/stop/load/unload, llama.cpp/MLX adapters, signing/notarization, production native installers, automated distribution.
 
