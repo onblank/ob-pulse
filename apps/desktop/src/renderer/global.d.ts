@@ -4,6 +4,7 @@ import type {
   InstrumentationSnapshot,
   MetricHistoryWindow,
   RuntimeId,
+  WidgetPreferences,
 } from '@obpulse/contracts';
 export {};
 declare global {
@@ -23,6 +24,8 @@ declare global {
       hide(): Promise<void>;
       setWindowMode(mode: 'compact' | 'expanded'): Promise<'compact' | 'expanded'>;
       getWindowMode(): Promise<'compact' | 'expanded'>;
+      widgetPreferences(): Promise<WidgetPreferences>;
+      setWidgetPreferences(preferences: WidgetPreferences): Promise<WidgetPreferences>;
       instrumentationStatus(): Promise<InstrumentationBridgeStatus>;
       instrumentationSessions(): Promise<InstrumentationSnapshot>;
       setInstrumentationEnabled(enabled: boolean): Promise<InstrumentationBridgeStatus>;

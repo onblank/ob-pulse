@@ -14,6 +14,8 @@
   neither logged nor retained, and only numeric provider stats enter the in-memory dashboard.
 - Renderer clipboard access is not generic: narrow IPC may copy only the active bridge endpoint or
   token after an explicit user click.
+- Widget settings cross narrow typed IPC, are validated again in Electron main and are written
+  atomically to a machine-local preferences file. Opacity accepts only safe presets from 75–100%.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
 - Server stop applies only to a tracked child PID that OB-Pulse itself created during this process lifetime.
 - Loading/unloading models is a user-initiated action and must not delete local model files.

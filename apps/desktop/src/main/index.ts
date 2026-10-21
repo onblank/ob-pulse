@@ -3,12 +3,18 @@ import type { Rectangle } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HISTORY_SAMPLE_INTERVAL_MS, MonitorService } from '@obpulse/application';
-import type { RuntimeId, RuntimePort } from '@obpulse/contracts';
+import type { RuntimeId, RuntimePort, WidgetPreferences } from '@obpulse/contracts';
 import { RUNTIME_IDS } from '@obpulse/contracts';
 import { NodeHostMetrics } from '@obpulse/host-metrics';
 import { LoopbackInstrumentationBridge } from '@obpulse/instrumentation-http';
 import { OllamaRuntime } from '@obpulse/runtime-ollama';
 import { LMStudioRuntime } from '@obpulse/runtime-lmstudio';
+import {
+  DEFAULT_WIDGET_PREFERENCES,
+  calculateWidgetPosition,
+  loadWidgetPreferences,
+  saveWidgetPreferences,
+} from './preferences.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ollama = new OllamaRuntime();
 const providers: RuntimePort[] = [ollama, new LMStudioRuntime()];
@@ -24,6 +30,8 @@ let tray: Tray | null = null;
 let allowExit = false;
 let alwaysOnTop = false;
 let windowMode: 'compact' | 'expanded' = 'compact';
+let widgetPreferences: WidgetPreferences = DEFAULT_WIDGET_PREFERENCES;
+let widgetPreferencesPath: string | null = null;
 let sampler: NodeJS.Timeout | null = null;
 let sampleInFlight = false;
 const WINDOW_SIZES = {
@@ -76,24 +84,31 @@ function positionWindow(trayBounds?: Rectangle): void {
   const size = mainWindow.getSize();
   const width = size[0] ?? WINDOW_SIZES[windowMode].width;
   const height = size[1] ?? WINDOW_SIZES[windowMode].height;
-  const display = trayBounds
-    ? screen.getDisplayNearestPoint({ x: trayBounds.x, y: trayBounds.y })
+  const effectiveTrayBounds =
+    widgetPreferences.position === 'tray' ? (trayBounds ?? tray?.getBounds()) : undefined;
+  const display = effectiveTrayBounds
+    ? screen.getDisplayNearestPoint({ x: effectiveTrayBounds.x, y: effectiveTrayBounds.y })
     : screen.getDisplayMatching(mainWindow.getBounds());
-  const area = display.workArea;
-  const preferredX = trayBounds
-    ? trayBounds.x + trayBounds.width - width
-    : area.x + area.width - width - 16;
-  const trayIsBelowCenter = trayBounds ? trayBounds.y > area.y + area.height / 2 : false;
-  const preferredY = trayBounds
-    ? trayIsBelowCenter
-      ? trayBounds.y - height - 8
-      : trayBounds.y + trayBounds.height + 8
-    : area.y + 16;
-  mainWindow.setPosition(
-    Math.max(area.x, Math.min(preferredX, area.x + area.width - width)),
-    Math.max(area.y, Math.min(preferredY, area.y + area.height - height)),
-    false,
+  const next = calculateWidgetPosition(
+    widgetPreferences.position,
+    { width, height },
+    display.workArea,
+    effectiveTrayBounds,
   );
+  try {
+    mainWindow.setPosition(next.x, next.y, false);
+  } catch (error) {
+    console.warn('OB-Pulse could not position the widget on this display server', error);
+  }
+}
+function applyWidgetPreferences(): void {
+  if (!mainWindow) return;
+  try {
+    mainWindow.setOpacity(widgetPreferences.opacity);
+  } catch (error) {
+    console.warn('OB-Pulse could not apply widget opacity on this display server', error);
+  }
+  positionWindow();
 }
 async function captureHistory(): Promise<void> {
   if (sampleInFlight) return;
@@ -136,6 +151,13 @@ function registerIPC() {
     return windowMode;
   });
   ipcMain.handle('pulse:get-window-mode', () => windowMode);
+  ipcMain.handle('pulse:widget-preferences', () => widgetPreferences);
+  ipcMain.handle('pulse:set-widget-preferences', async (_event, value: unknown) => {
+    if (!widgetPreferencesPath) throw new Error('Widget preferences are not ready');
+    widgetPreferences = await saveWidgetPreferences(widgetPreferencesPath, value);
+    applyWidgetPreferences();
+    return widgetPreferences;
+  });
   ipcMain.handle('pulse:instrumentation-status', () => instrumentationBridge.status());
   ipcMain.handle('pulse:instrumentation-sessions', () => {
     if (!instrumentationBridge.status().enabled) service.clearInstrumentation();
@@ -179,6 +201,13 @@ function refreshMenu() {
           alwaysOnTop = !alwaysOnTop;
           mainWindow?.setAlwaysOnTop(alwaysOnTop);
           refreshMenu();
+        },
+      },
+      {
+        label: 'Widget settings…',
+        click: () => {
+          applyWindowMode('expanded');
+          show();
         },
       },
       { type: 'separator' },
@@ -229,10 +258,13 @@ function createWindow() {
   else void mainWindow.loadFile(path.resolve(here, '../renderer/index.html'));
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (event) => event.preventDefault());
+  applyWidgetPreferences();
 }
 app
   .whenReady()
-  .then(() => {
+  .then(async () => {
+    widgetPreferencesPath = path.join(app.getPath('userData'), 'widget-preferences.json');
+    widgetPreferences = await loadWidgetPreferences(widgetPreferencesPath);
     registerIPC();
     createWindow();
     if (process.platform === 'darwin') app.dock?.hide();
