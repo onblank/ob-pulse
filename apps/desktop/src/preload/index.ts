@@ -18,5 +18,7 @@ const api = {
   instrumentationSessions: () => ipcRenderer.invoke('pulse:instrumentation-sessions'),
   setInstrumentationEnabled: (enabled: boolean) =>
     ipcRenderer.invoke('pulse:set-instrumentation-enabled', enabled),
+  copyInstrumentationValue: (value: 'endpoint' | 'token') =>
+    ipcRenderer.invoke('pulse:copy-instrumentation-value', value),
 };
 contextBridge.exposeInMainWorld('obpulse', Object.freeze(api));

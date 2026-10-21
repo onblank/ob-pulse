@@ -45,7 +45,8 @@ desarrollo debe compilar, probar y publicar instaladores de Windows/macOS/Linux.
 
 1. Amplía la ventana y busca **Session context**. El puente está desactivado al iniciar OB-Pulse.
 2. Pulsa **Enable bridge** solo si vas a conectar un cliente local aprobado.
-3. Entrega manualmente al cliente el endpoint `127.0.0.1` y el token temporal que muestra la app.
+3. Usa los botones **Copy** para entregar manualmente al cliente el endpoint `127.0.0.1` y el token
+   temporal que muestra la app.
 4. Cuando el cliente emita eventos v1 verás contexto usado/capacidad, época de compactación,
    velocidad de lectura/escritura y latencia al primer token cuando esos valores hayan sido medidos.
 5. Pulsa **Disable bridge** al terminar. El puerto se cierra y el token deja de ser válido.

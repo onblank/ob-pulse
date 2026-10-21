@@ -387,7 +387,15 @@ function InstrumentationPanel({
             <span className="bridge-live">LOCAL BRIDGE ACTIVE</span>
             <label>
               Endpoint
-              <code>{bridge.endpoint}</code>
+              <span className="access-row">
+                <code>{bridge.endpoint}</code>
+                <button
+                  className="quiet"
+                  onClick={() => void window.obpulse.copyInstrumentationValue('endpoint')}
+                >
+                  Copy
+                </button>
+              </span>
             </label>
             <label>
               Ephemeral bearer token
@@ -395,6 +403,12 @@ function InstrumentationPanel({
                 <code>{revealToken ? bridge.authToken : '••••••••••••••••••••••••'}</code>
                 <button className="quiet" onClick={() => setRevealToken((value) => !value)}>
                   {revealToken ? 'Hide' : 'Reveal'}
+                </button>
+                <button
+                  className="quiet"
+                  onClick={() => void window.obpulse.copyInstrumentationValue('token')}
+                >
+                  Copy
                 </button>
               </span>
             </label>

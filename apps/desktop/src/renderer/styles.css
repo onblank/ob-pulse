@@ -526,14 +526,23 @@ select option {
   user-select: text;
 }
 
+.access-row,
 .token-row {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
 }
 
+.access-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.token-row {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.access-row button.quiet,
 .token-row button.quiet {
   padding-block: 4px;
 }

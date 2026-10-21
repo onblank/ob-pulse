@@ -26,6 +26,7 @@ declare global {
       instrumentationStatus(): Promise<InstrumentationBridgeStatus>;
       instrumentationSessions(): Promise<InstrumentationSnapshot>;
       setInstrumentationEnabled(enabled: boolean): Promise<InstrumentationBridgeStatus>;
+      copyInstrumentationValue(value: 'endpoint' | 'token'): Promise<void>;
     };
   }
 }
