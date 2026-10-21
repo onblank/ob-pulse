@@ -8,7 +8,8 @@
 
 - Electron tray application with tray-only, compact gadget and expanded dashboard surfaces, an always-on-top toggle and hide-to-tray behavior.
 - Ollama detection, list installed/loaded models, **app-managed** Ollama start/stop, and explicit model load/unload.
-- LM Studio local server detection and loaded-model listing (**read-only experimental adapter**).
+- LM Studio v1 local server detection, installed/loaded-model listing and explicit model
+  load/unload through its native loopback API. Server lifecycle remains externally managed.
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
 - A rolling one-hour chart kept only in process memory for host RAM, provider-reported GPU residency and explicit benchmark output speed.
 - An optional authenticated loopback bridge for strict, content-free client session events, with measured context use, prefill/decode speed and first-token latency.
@@ -20,7 +21,8 @@
 - Passive token-speed capture from arbitrary third-party apps; clients must explicitly implement and authenticate against the instrumentation contract.
 - Automatic session/context discovery from clients that do not emit the instrumentation contract.
 - Per-model CPU/GPU utilization on every OS, persistent/long-term chart history and external model installs.
-- LM Studio start/stop/load/unload, llama.cpp/MLX adapters, signing/notarization, production native installers, automated distribution.
+- LM Studio server start/stop and authenticated-server configuration, llama.cpp/MLX adapters,
+  signing/notarization, production native installers and automated distribution.
 
 Unsupported values appear as `—`, **never** as fabricated zero.
 

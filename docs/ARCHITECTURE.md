@@ -18,6 +18,9 @@ Each adapter returns _unsupported_ for unimplemented operations; `capabilities` 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.
 When Ollama was started by LaunchAgent/Brew/another app, the button must not terminate it.
+LM Studio remains an external server in this iteration: OB-Pulse may call its native v1 model
+load/unload endpoints, but it neither invokes `lms` nor stops the service. A multi-instance model
+is not unloaded until the UI can identify the intended runtime instance explicitly.
 
 **Metric boundaries**:
 
