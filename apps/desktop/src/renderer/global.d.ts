@@ -24,6 +24,7 @@ declare global {
       hide(): Promise<void>;
       setWindowMode(mode: 'compact' | 'expanded'): Promise<'compact' | 'expanded'>;
       getWindowMode(): Promise<'compact' | 'expanded'>;
+      onWindowModeChanged(listener: (mode: 'compact' | 'expanded') => void): void;
       widgetPreferences(): Promise<WidgetPreferences>;
       setWidgetPreferences(preferences: WidgetPreferences): Promise<WidgetPreferences>;
       instrumentationStatus(): Promise<InstrumentationBridgeStatus>;

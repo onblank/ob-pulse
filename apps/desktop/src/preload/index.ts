@@ -14,6 +14,12 @@ const api = {
   hide: () => ipcRenderer.invoke('pulse:hide'),
   setWindowMode: (mode: 'compact' | 'expanded') => ipcRenderer.invoke('pulse:window-mode', mode),
   getWindowMode: () => ipcRenderer.invoke('pulse:get-window-mode'),
+  onWindowModeChanged: (listener: (mode: 'compact' | 'expanded') => void) => {
+    ipcRenderer.removeAllListeners('pulse:window-mode-changed');
+    ipcRenderer.on('pulse:window-mode-changed', (_event, mode: unknown) => {
+      if (mode === 'compact' || mode === 'expanded') listener(mode);
+    });
+  },
   widgetPreferences: () => ipcRenderer.invoke('pulse:widget-preferences'),
   setWidgetPreferences: (preferences: unknown) =>
     ipcRenderer.invoke('pulse:set-widget-preferences', preferences),

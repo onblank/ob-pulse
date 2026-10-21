@@ -618,6 +618,7 @@ export default function App() {
     void window.obpulse.runtimes().then(setRuntimes).catch(setError);
     void window.obpulse.isAlwaysOnTop().then(setTop);
     void window.obpulse.getWindowMode().then(setMode);
+    window.obpulse.onWindowModeChanged(setMode);
     void window.obpulse.widgetPreferences().then(setPreferences).catch(setError);
     const ticker = setInterval(() => void refresh(), 3000);
     return () => clearInterval(ticker);

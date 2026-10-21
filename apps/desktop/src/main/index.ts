@@ -78,6 +78,7 @@ function applyWindowMode(mode: 'compact' | 'expanded'): void {
   mainWindow.setSize(dimensions.width, dimensions.height, true);
   mainWindow.setSkipTaskbar(mode === 'compact');
   positionWindow();
+  mainWindow.webContents.send('pulse:window-mode-changed', mode);
 }
 function positionWindow(trayBounds?: Rectangle): void {
   if (!mainWindow) return;
