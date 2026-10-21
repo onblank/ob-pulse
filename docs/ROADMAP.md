@@ -21,6 +21,8 @@
 
 - LM Studio v1 model load/unload is implemented for unprotected loopback servers. LM Studio server
   lifecycle/authentication, llama.cpp/MLX adapters and managed service attach policy remain pending.
+- LM Studio has an explicit non-persistent native v1 benchmark for provider-reported decode speed,
+  token counts and first-token latency; prefill speed remains unavailable rather than estimated.
 - Runtime PID CPU/RAM, reliable GPU metrics per platform where supported, multi-device profiles.
 - Widget customization (corner/dock/opacity), tray menu and accessible high-contrast mode.
 

@@ -673,7 +673,9 @@ export default function App() {
                   <div>
                     <span>Last output test</span>
                     <strong>{fmt(snapshot?.latestBenchmark?.writeTokensPerSecond ?? null)}</strong>
-                    <small>tok/s · benchmark only</small>
+                    <small>
+                      tok/s · TTFT {fmt(snapshot?.latestBenchmark?.timeToFirstTokenMs ?? null)} ms
+                    </small>
                   </div>
                 </section>
               </div>

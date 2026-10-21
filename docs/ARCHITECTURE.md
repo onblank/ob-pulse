@@ -27,6 +27,9 @@ is not unloaded until the UI can identify the intended runtime instance explicit
 - Host total CPU / host RAM are not the selected model CPU / RAM.
 - Ollama `/api/ps` reports loaded models, `size`, `size_vram`, `context_length`; it does not report live requests/sessions.
 - A per-request final response reports prompt/response token counts and evaluation durations; these may calculate tps **only for that request**.
+- LM Studio's native v1 benchmark reports decode tokens/sec and first-token latency directly. Its
+  response output is discarded, `store:false` prevents chat persistence, and absent prefill timing
+  remains unavailable.
 - No claim that the most recent model equals the model currently receiving tokens.
 - Context utilisation is client-session-based; configured window is an upper bound, not the effective remaining user-token budget (system/tool overhead matters).
 

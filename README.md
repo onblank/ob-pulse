@@ -13,7 +13,9 @@
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
 - A rolling one-hour chart kept only in process memory for host RAM, provider-reported GPU residency and explicit benchmark output speed.
 - An optional authenticated loopback bridge for strict, content-free client session events, with measured context use, prefill/decode speed and first-token latency.
-- A user-invoked Ollama sample request with real prompt-eval and generation tokens/sec metrics, **clearly labeled as a benchmark**, not a live stream from unrelated clients.
+- User-invoked Ollama and LM Studio sample requests with provider-reported token metrics, **clearly
+  labeled as benchmarks**, not a live stream from unrelated clients. LM Studio additionally reports
+  first-token latency; its synthetic response is discarded immediately.
 - A typed, provider-agnostic contract plus domain tests for token throughput/context semantics.
 
 ## Not yet shipped
