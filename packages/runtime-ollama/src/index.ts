@@ -181,6 +181,7 @@ export class OllamaRuntime implements RuntimePort {
         finiteNonnegative(payload.prompt_eval_duration),
       ),
       writeTokensPerSecond: tokensPerSecond(outputTokens, finiteNonnegative(payload.eval_duration)),
+      timeToFirstTokenMs: null,
     };
   }
 }

@@ -10,6 +10,8 @@
 - Instrumentation session state and numeric request samples exist only while the bridge is enabled;
   disabling it clears them. The request history is additionally capped at one hour and 7,200
   samples and is never persisted.
+- Explicit LM Studio benchmarks use a fixed synthetic prompt with `store:false`; response content is
+  neither logged nor retained, and only numeric provider stats enter the in-memory dashboard.
 - Renderer clipboard access is not generic: narrow IPC may copy only the active bridge endpoint or
   token after an explicit user click.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.

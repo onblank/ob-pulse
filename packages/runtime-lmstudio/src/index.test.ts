@@ -57,7 +57,11 @@ describe('LM Studio v1 runtime', () => {
         contextCapacityTokens: null,
       },
     ]);
-    expect(runtime.capabilities).toMatchObject({ loadModel: true, unloadModel: true });
+    expect(runtime.capabilities).toMatchObject({
+      loadModel: true,
+      unloadModel: true,
+      benchmark: true,
+    });
   });
 
   it('loads a selected model through the native v1 endpoint', async () => {
@@ -116,5 +120,42 @@ describe('LM Studio v1 runtime', () => {
     const runtime = new LMStudioRuntime(vi.fn());
     await expect(runtime.startServer()).rejects.toThrow('started outside OB-Pulse');
     await expect(runtime.stopServer()).rejects.toThrow('does not own');
+  });
+
+  it('runs a non-persistent benchmark and keeps only provider-reported metrics', async () => {
+    const fetcher = vi.fn<FetchStub>(async () =>
+      json({
+        model_instance_id: 'gemma-primary',
+        output: [{ type: 'message', content: 'discarded immediately' }],
+        stats: {
+          input_tokens: 18,
+          total_output_tokens: 24,
+          reasoning_output_tokens: 0,
+          tokens_per_second: 32.5,
+          time_to_first_token_seconds: 0.125,
+        },
+      }),
+    );
+    const runtime = new LMStudioRuntime(fetcher);
+
+    await expect(runtime.benchmark('google/gemma-4-26b-a4b')).resolves.toMatchObject({
+      source: 'benchmark',
+      modelId: 'google/gemma-4-26b-a4b',
+      promptTokens: 18,
+      outputTokens: 24,
+      readTokensPerSecond: null,
+      writeTokensPerSecond: 32.5,
+      timeToFirstTokenMs: 125,
+    });
+    const init = fetcher.mock.calls[0]?.[1];
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      model: 'google/gemma-4-26b-a4b',
+      input: 'Write a short greeting in one sentence.',
+      temperature: 0,
+      max_output_tokens: 48,
+      stream: false,
+      store: false,
+    });
   });
 });

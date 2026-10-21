@@ -47,6 +47,7 @@ const benchmark: BenchmarkRecord = {
   outputTokens: 6,
   readTokensPerSecond: 42,
   writeTokensPerSecond: 16,
+  timeToFirstTokenMs: 80,
 };
 function stubRuntime(id: 'ollama' | 'lmstudio', state: ServerState): RuntimePort {
   return {
