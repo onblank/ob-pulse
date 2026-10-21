@@ -137,10 +137,16 @@ function registerIPC() {
   });
   ipcMain.handle('pulse:get-window-mode', () => windowMode);
   ipcMain.handle('pulse:instrumentation-status', () => instrumentationBridge.status());
-  ipcMain.handle('pulse:instrumentation-sessions', () => service.instrumentationSnapshot());
-  ipcMain.handle('pulse:set-instrumentation-enabled', async (_event, enabled: unknown) =>
-    validEnabled(enabled) ? instrumentationBridge.enable() : instrumentationBridge.disable(),
-  );
+  ipcMain.handle('pulse:instrumentation-sessions', () => {
+    if (!instrumentationBridge.status().enabled) service.clearInstrumentation();
+    return service.instrumentationSnapshot();
+  });
+  ipcMain.handle('pulse:set-instrumentation-enabled', async (_event, enabled: unknown) => {
+    if (validEnabled(enabled)) return instrumentationBridge.enable();
+    const status = await instrumentationBridge.disable();
+    service.clearInstrumentation();
+    return status;
+  });
   ipcMain.handle('pulse:copy-instrumentation-value', (_event, requestedValue: unknown) => {
     const value = validInstrumentationValue(requestedValue);
     const status = instrumentationBridge.status();

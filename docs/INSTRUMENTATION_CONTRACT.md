@@ -52,7 +52,9 @@ is not part of v1 because reset semantics must not be guessed.
 - Prompt text, completion text, tool arguments, secrets, personal identifiers and provider credentials
   are **never fields in the event schema** and must not be retained in debug logs.
 - Unknown fields should be rejected, or explicitly versioned; never persist arbitrary event JSON.
-- Retention disabled by default; if enabled, bounded and user-deletable history.
+- Retention is disabled while the bridge is off. Enabling the bridge keeps numeric request samples
+  in process memory for at most one hour (and at most 7,200 samples); disabling the bridge, quitting
+  or restarting clears sessions and history. Nothing is written to disk.
 
 The current adapter enforces a 16 KiB request-body limit and 120 requests per rolling minute. It
 rejects unknown envelope/data fields, non-v1 events, malformed measurements, unsupported runtimes,

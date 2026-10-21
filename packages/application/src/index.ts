@@ -138,6 +138,9 @@ export class MonitorService {
   instrumentationSnapshot(): InstrumentationSnapshot {
     return this.instrumentation.snapshot();
   }
+  clearInstrumentation(): void {
+    this.instrumentation.clear();
+  }
   async start(): Promise<void> {
     await this.provider.startServer();
   }
