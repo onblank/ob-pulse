@@ -1,76 +1,286 @@
-import { useEffect, useState } from 'react';
-import type { DashboardSnapshot, ModelRecord, RuntimeId } from '@obpulse/contracts';
+import { useEffect, useMemo, useState } from 'react';
+import type {
+  DashboardSnapshot,
+  MetricHistorySample,
+  MetricHistoryWindow,
+  ModelRecord,
+  RuntimeId,
+} from '@obpulse/contracts';
 import logo from './assets/brand/ob-pulse-logo.svg';
 import onblankLogo from './assets/brand/powered-by-onblank.svg';
+
+type WindowMode = 'compact' | 'expanded';
+
 const fmt = (value: number | null, places = 1) => (value == null ? '—' : value.toFixed(places));
-const gib = (n: number | null) => (n == null ? '—' : `${(n / 1024 ** 3).toFixed(2)} GiB`);
-const pct = (n: number | null) => (n == null ? '—' : `${n.toFixed(1)}%`);
-function Meter({ name, value, info }: { name: string; value: number | null; info: string }) {
+const gib = (value: number | null) =>
+  value == null ? '—' : `${(value / 1024 ** 3).toFixed(2)} GiB`;
+const pct = (value: number | null) => (value == null ? '—' : `${value.toFixed(1)}%`);
+const lastKnown = (values: readonly (number | null)[]) => {
+  for (let index = values.length - 1; index >= 0; index--) {
+    const value = values[index];
+    if (value != null) return value;
+  }
+  return null;
+};
+
+function Sparkline({ values, color }: { values: readonly (number | null)[]; color: string }) {
+  const width = 280;
+  const height = 48;
+  const finite = values.filter((value): value is number => value != null && Number.isFinite(value));
+  const maximum = Math.max(1, ...finite);
+  const points = values.map((value, index) => ({
+    value,
+    x: values.length <= 1 ? width : (index / (values.length - 1)) * width,
+    y: value == null ? null : height - Math.min(1, Math.max(0, value / maximum)) * (height - 6) - 3,
+  }));
+  const segments: Array<Array<{ x: number; y: number }>> = [];
+  points.forEach((point, index) => {
+    if (point.y == null) return;
+    if (index === 0 || points[index - 1]?.y == null) segments.push([]);
+    segments.at(-1)?.push({ x: point.x, y: point.y });
+  });
   return (
-    <div className="meter">
-      <div className="meter-heading">
-        <span>{name}</span>
-        <strong>{pct(value)}</strong>
+    <svg className="sparkline" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+      <line x1="0" y1={height - 1} x2={width} y2={height - 1} className="sparkline-base" />
+      {segments.map((segment, index) => (
+        <polyline
+          key={`${segment[0]?.x ?? 0}-${index}`}
+          points={segment.map((point) => `${point.x},${point.y}`).join(' ')}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+        />
+      ))}
+      {points.map((point, index) =>
+        point.y == null ? null : (
+          <circle key={index} cx={point.x} cy={point.y} r="1.8" fill={color} />
+        ),
+      )}
+    </svg>
+  );
+}
+
+function MetricChart({
+  label,
+  value,
+  unit,
+  values,
+  color,
+  unavailable,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  values: readonly (number | null)[];
+  color: string;
+  unavailable?: string;
+}) {
+  return (
+    <div className="history-row">
+      <div className="history-label">
+        <span>{label}</span>
+        <strong>
+          {value} <small>{unit}</small>
+        </strong>
       </div>
-      <div className="meter-track">
-        <div className="meter-value" style={{ width: `${value ?? 0}%` }} />
-      </div>
-      <small>{info}</small>
+      <Sparkline values={values} color={color} />
+      {values.every((entry) => entry == null) && unavailable && (
+        <span className="history-unavailable">{unavailable}</span>
+      )}
     </div>
   );
 }
-function Model({
-  model,
-  enabled,
-  loaded,
-  onAction,
-  onTest,
-  busy,
+
+function HistoryPanel({
+  history,
+  runtime,
+  snapshot,
 }: {
-  model: ModelRecord;
-  enabled: boolean;
-  loaded: boolean;
+  history: MetricHistoryWindow | null;
+  runtime: RuntimeId;
+  snapshot: DashboardSnapshot | null;
+}) {
+  const samples = history?.samples ?? [];
+  const runtimeValues = (pick: (sample: MetricHistorySample) => number | null) =>
+    samples.map((sample) => (sample.runtimeId === runtime ? pick(sample) : null));
+  const ram = samples.map((sample) => sample.hostMemoryUsedPercent);
+  const vram = runtimeValues((sample) => sample.gpuResidentBytes);
+  const output = runtimeValues((sample) => sample.outputTokensPerSecond);
+  const loadedVram = snapshot?.runtime.loaded
+    .map((model) => model.gpuResidentBytes)
+    .filter((value): value is number => value != null);
+  const currentVram = loadedVram?.length
+    ? loadedVram.reduce((total, value) => total + value, 0)
+    : lastKnown(vram);
+  return (
+    <section className="history-card" aria-label="Last hour metrics">
+      <div className="history-heading">
+        <div>
+          <span className="eyebrow">ROLLING HISTORY</span>
+          <h2>Last hour</h2>
+        </div>
+        <span className="live-pill">IN MEMORY</span>
+      </div>
+      <MetricChart
+        label="Host RAM"
+        value={pct(snapshot?.host.memoryUsedPercent ?? lastKnown(ram))}
+        unit=""
+        values={ram}
+        color="#7f8cff"
+      />
+      <MetricChart
+        label="VRAM resident"
+        value={gib(currentVram ?? null)}
+        unit=""
+        values={vram}
+        color="#69e6bd"
+        unavailable="Runtime does not report resident VRAM"
+      />
+      <MetricChart
+        label="Output speed"
+        value={fmt(snapshot?.latestBenchmark?.writeTokensPerSecond ?? lastKnown(output))}
+        unit="tok/s"
+        values={output}
+        color="#f4ba72"
+        unavailable="Benchmark events appear as measured points"
+      />
+      <div className="history-axis">
+        <span>−60 min</span>
+        <span>now</span>
+      </div>
+    </section>
+  );
+}
+
+function PowerControl({
+  snapshot,
+  busy,
+  onToggle,
+}: {
+  snapshot: DashboardSnapshot | null;
   busy: boolean;
-  onAction: () => Promise<void>;
-  onTest: () => Promise<void>;
+  onToggle: () => void;
+}) {
+  const runtime = snapshot?.runtime;
+  const state = runtime?.state ?? 'stopped';
+  const running = state !== 'stopped';
+  const canStart = state === 'stopped' && !!runtime?.capabilities.startServer;
+  const canStop = state === 'managed-running' && !!runtime?.capabilities.stopServer;
+  const external = state === 'external-running';
+  const enabled = !busy && (canStart || canStop);
+  const stateLabel = external
+    ? 'Managed externally'
+    : state === 'managed-running'
+      ? 'Managed by OB-Pulse'
+      : canStart
+        ? 'Ready to start'
+        : 'Observation only';
+  return (
+    <div className="power-control">
+      <button
+        className={`power-button ${running ? 'running' : ''} ${external ? 'external' : ''}`}
+        disabled={!enabled}
+        onClick={onToggle}
+        aria-label={canStop ? `Stop ${runtime?.displayName}` : `Start ${runtime?.displayName}`}
+        title={
+          external ? 'This runtime was started outside OB-Pulse and cannot be stopped here' : ''
+        }
+      >
+        <span className="power-symbol">⏻</span>
+      </button>
+      <div className="power-copy">
+        <strong>{runtime?.displayName ?? 'Local runtime'}</strong>
+        <span className={running ? 'state online' : 'state'}>{stateLabel}</span>
+      </div>
+    </div>
+  );
+}
+
+function WindowHeader({
+  mode,
+  top,
+  onMode,
+  onTop,
+}: {
+  mode: WindowMode;
+  top: boolean;
+  onMode: () => void;
+  onTop: () => void;
 }) {
   return (
-    <article className="model">
-      <div className="model-header">
-        <div className={`pulse-dot ${loaded ? 'online' : ''}`} />
-        <div className="model-details">
-          <strong title={model.id}>{model.displayName}</strong>
-          <span>
-            {loaded ? 'Loaded' : 'Downloaded'} · {gib(model.sizeBytes)}
-          </span>
-        </div>
+    <header className="header">
+      <div className="identity">
+        <img className="product-logo" src={logo} alt="OB-Pulse" />
+        <span>LOCAL AI MONITOR</span>
       </div>
-      <div className="model-metrics">
-        <span>
-          GPU-resident bytes <b>{loaded ? gib(model.gpuResidentBytes) : '—'}</b>
-        </span>
-        <span>
-          Context capacity{' '}
-          <b>
+      <div className="window-buttons">
+        <button className={top ? 'icon active' : 'icon'} title="Keep on top" onClick={onTop}>
+          ⌁
+        </button>
+        <button className="icon" title={mode === 'compact' ? 'Expand' : 'Compact'} onClick={onMode}>
+          {mode === 'compact' ? '↗' : '↙'}
+        </button>
+        <button className="icon" title="Hide to tray" onClick={() => void window.obpulse.hide()}>
+          —
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function ModelCard({
+  model,
+  loaded,
+  busy,
+  enabled,
+  canBenchmark,
+  onAction,
+  onBenchmark,
+}: {
+  model: ModelRecord;
+  loaded: boolean;
+  busy: boolean;
+  enabled: boolean;
+  canBenchmark: boolean;
+  onAction: () => void;
+  onBenchmark: () => void;
+}) {
+  return (
+    <article className="model-card">
+      <div className="model-heading">
+        <span className={`pulse-dot ${loaded ? 'online' : ''}`} />
+        <strong>{model.displayName}</strong>
+        <small>{loaded ? 'Loaded' : 'Installed'}</small>
+      </div>
+      <dl>
+        <div>
+          <dt>Weights</dt>
+          <dd>{gib(model.sizeBytes)}</dd>
+        </div>
+        <div>
+          <dt>VRAM resident</dt>
+          <dd>{loaded ? gib(model.gpuResidentBytes) : '—'}</dd>
+        </div>
+        <div>
+          <dt>Context capacity</dt>
+          <dd>
             {loaded && model.contextCapacityTokens != null
               ? `${model.contextCapacityTokens.toLocaleString()} tok`
               : '—'}
-          </b>
-        </span>
-        <span>
-          Context used <b>—</b>
-        </span>
-      </div>
+          </dd>
+        </div>
+      </dl>
       <div className="model-actions">
         <button
           className={loaded ? 'quiet' : 'primary'}
           disabled={!enabled || busy}
-          onClick={() => void onAction()}
+          onClick={onAction}
         >
           {loaded ? 'Unload' : 'Load model'}
         </button>
         {loaded && (
-          <button className="quiet" disabled={busy} onClick={() => void onTest()}>
+          <button className="quiet" disabled={busy || !canBenchmark} onClick={onBenchmark}>
             Test speed
           </button>
         )}
@@ -78,231 +288,197 @@ function Model({
     </article>
   );
 }
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
+  const [history, setHistory] = useState<MetricHistoryWindow | null>(null);
   const [runtime, setRuntime] = useState<RuntimeId>('ollama');
-  const [availableRuntimes, setAvailableRuntimes] = useState<
-    Array<{ id: RuntimeId; name: string }>
-  >([]);
+  const [runtimes, setRuntimes] = useState<Array<{ id: RuntimeId; name: string }>>([]);
+  const [mode, setMode] = useState<WindowMode>('compact');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [top, setTop] = useState(false);
+
   const refresh = async () => {
     try {
-      const current = await window.obpulse.snapshot();
+      const [current, currentHistory] = await Promise.all([
+        window.obpulse.snapshot(),
+        window.obpulse.history(),
+      ]);
       setSnapshot(current);
-    } catch (e) {
-      setError(String(e));
+      setHistory(currentHistory);
+      setRuntime(current.selectedRuntime);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : String(refreshError));
     }
   };
+
   useEffect(() => {
     void refresh();
-    void window.obpulse
-      .runtimes()
-      .then(setAvailableRuntimes)
-      .catch((e) => setError(String(e)));
+    void window.obpulse.runtimes().then(setRuntimes).catch(setError);
     void window.obpulse.isAlwaysOnTop().then(setTop);
+    void window.obpulse.getWindowMode().then(setMode);
     const ticker = setInterval(() => void refresh(), 3000);
     return () => clearInterval(ticker);
   }, []);
-  const action = async (fn: () => Promise<unknown>) => {
+
+  const action = async (operation: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
     try {
-      await fn();
+      await operation();
       await refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : String(actionError));
     } finally {
       setBusy(false);
     }
   };
-  const onRuntime = (id: RuntimeId) => {
+
+  const changeRuntime = (id: RuntimeId) => {
     setRuntime(id);
     setSnapshot(null);
     void action(() => window.obpulse.selectRuntime(id));
   };
+  const toggleMode = () => {
+    const next = mode === 'compact' ? 'expanded' : 'compact';
+    void window.obpulse.setWindowMode(next).then(setMode).catch(setError);
+  };
   const info = snapshot?.runtime;
-  const host = snapshot?.host;
-  const running = info && info.state !== 'stopped';
-  const models = info?.installed ?? [];
-  const loadedNames = new Set(info?.loaded.map((m) => m.id) ?? []);
-  const currentLoaded = info?.loaded[0] ?? null;
+  const running = info != null && info.state !== 'stopped';
+  const loadedIds = useMemo(() => new Set(info?.loaded.map((model) => model.id) ?? []), [info]);
+  const loaded = info?.loaded ?? [];
+  const compactModel = loaded[0] ?? null;
+  const togglePower = () => {
+    if (info?.state === 'managed-running') void action(() => window.obpulse.stop());
+    else if (info?.state === 'stopped') void action(() => window.obpulse.start());
+  };
+
   return (
-    <div className="app">
-      <header className="header">
-        <div className="identity">
-          <img className="product-logo" src={logo} alt="OB-Pulse logo placeholder" />
-          <span>LOCAL AI MONITOR</span>
-        </div>
-        <div className="window-buttons">
-          <button
-            className={top ? 'icon active' : 'icon'}
-            title={top ? 'Unpin widget' : 'Keep on top'}
-            onClick={() => void window.obpulse.toggleAlwaysOnTop().then(setTop)}
-          >
-            ⌁
-          </button>
-          <button className="icon" title="Hide to tray" onClick={() => void window.obpulse.hide()}>
-            —
-          </button>
-        </div>
-      </header>
+    <div className={`app ${mode}`}>
+      <WindowHeader
+        mode={mode}
+        top={top}
+        onMode={toggleMode}
+        onTop={() => void window.obpulse.toggleAlwaysOnTop().then(setTop)}
+      />
       <main>
-        <section className="runtime-bar">
-          <div>
-            <div className="eyebrow">RUNTIME</div>
-            <select
-              aria-label="Active runtime"
-              value={runtime}
-              disabled={busy}
-              onChange={(e) => onRuntime(e.target.value as RuntimeId)}
-            >
-              {(availableRuntimes.length
-                ? availableRuntimes
-                : [{ id: 'ollama' as RuntimeId, name: 'Ollama' }]
-              ).map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {entry.name}
-                </option>
-              ))}
-            </select>
+        {error && <div className="message error">{error}</div>}
+        {info?.error && <div className="message">Runtime read error: {info.error}</div>}
+
+        {mode === 'compact' ? (
+          <div className="compact-content">
+            <PowerControl snapshot={snapshot} busy={busy} onToggle={togglePower} />
+            <section className="loaded-model">
+              <span className={`pulse-dot ${compactModel ? 'online' : ''}`} />
+              <div>
+                <span className="eyebrow">LOADED MODEL</span>
+                <strong>
+                  {compactModel?.displayName ?? (running ? 'No model loaded' : 'Runtime offline')}
+                </strong>
+                {loaded.length > 1 && <small>+{loaded.length - 1} additional loaded</small>}
+              </div>
+            </section>
+            <HistoryPanel history={history} runtime={runtime} snapshot={snapshot} />
           </div>
-          <div className="server-controls">
-            <span className={running ? 'status online' : 'status'}>
-              {running ? 'CONNECTED' : 'OFFLINE'}
-            </span>
-            {info?.capabilities.startServer && !running && (
-              <button
-                className="primary compact"
-                disabled={busy}
-                onClick={() => void action(() => window.obpulse.start())}
-              >
-                Start
-              </button>
-            )}
-            {info?.state === 'managed-running' && info.capabilities.stopServer && (
-              <button
-                className="danger compact"
-                disabled={busy}
-                onClick={() => void action(() => window.obpulse.stop())}
-              >
-                Stop
-              </button>
-            )}
-            {info?.state === 'external-running' && (
-              <small title="This server was started outside OB-Pulse and cannot be stopped safely here">
-                External service
-              </small>
-            )}
-          </div>
-        </section>
-        {error && (
-          <div role="alert" className="message error">
-            {error}
+        ) : (
+          <div className="expanded-content">
+            <section className="expanded-toolbar">
+              <div>
+                <span className="eyebrow">RUNTIME</span>
+                <select
+                  aria-label="Active runtime"
+                  value={runtime}
+                  disabled={busy}
+                  onChange={(event) => changeRuntime(event.target.value as RuntimeId)}
+                >
+                  {(runtimes.length
+                    ? runtimes
+                    : [{ id: 'ollama' as RuntimeId, name: 'Ollama' }]
+                  ).map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {entry.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <PowerControl snapshot={snapshot} busy={busy} onToggle={togglePower} />
+            </section>
+
+            <div className="expanded-grid">
+              <div className="expanded-primary">
+                <HistoryPanel history={history} runtime={runtime} snapshot={snapshot} />
+                <section className="resource-grid">
+                  <div>
+                    <span>Host CPU</span>
+                    <strong>{pct(snapshot?.host.cpuUtilizationPercent ?? null)}</strong>
+                    <small>{snapshot?.host.cpuLogicalCores ?? '—'} logical cores</small>
+                  </div>
+                  <div>
+                    <span>Host RAM</span>
+                    <strong>{pct(snapshot?.host.memoryUsedPercent ?? null)}</strong>
+                    <small>
+                      {gib(snapshot?.host.memoryUsedBytes ?? null)} /{' '}
+                      {gib(snapshot?.host.memoryTotalBytes ?? null)}
+                    </small>
+                  </div>
+                  <div>
+                    <span>Last output test</span>
+                    <strong>{fmt(snapshot?.latestBenchmark?.writeTokensPerSecond ?? null)}</strong>
+                    <small>tok/s · benchmark only</small>
+                  </div>
+                </section>
+              </div>
+
+              <section className="models-panel">
+                <div className="section-title">
+                  <div>
+                    <span className="eyebrow">MODELS</span>
+                    <h2>{info?.loaded.length ?? 0} loaded</h2>
+                  </div>
+                  <span>{info?.installed.length ?? 0} installed</span>
+                </div>
+                {!running ? (
+                  <div className="empty">Start the runtime to inspect installed models.</div>
+                ) : info?.installed.length ? (
+                  <div className="models">
+                    {info.installed.map((model) => {
+                      const isLoaded = loadedIds.has(model.id);
+                      const presentedModel =
+                        loaded.find((loadedModel) => loadedModel.id === model.id) ?? model;
+                      return (
+                        <ModelCard
+                          key={model.id}
+                          model={presentedModel}
+                          loaded={isLoaded}
+                          busy={busy}
+                          enabled={
+                            isLoaded ? info.capabilities.unloadModel : info.capabilities.loadModel
+                          }
+                          canBenchmark={info.capabilities.benchmark}
+                          onAction={() =>
+                            void action(() =>
+                              isLoaded
+                                ? window.obpulse.unload(model.id)
+                                : window.obpulse.load(model.id),
+                            )
+                          }
+                          onBenchmark={() => void action(() => window.obpulse.benchmark(model.id))}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="empty">No installed models reported by this runtime.</div>
+                )}
+              </section>
+            </div>
           </div>
         )}
-        {info?.error && (
-          <div role="status" className="message">
-            Runtime read error: {info.error}
-          </div>
-        )}
-        <section className="section">
-          <div className="section-title">
-            <h2>Machine resources</h2>
-            <span>HOST</span>
-          </div>
-          <div className="meter-stack">
-            <Meter
-              name="CPU"
-              value={host?.cpuUtilizationPercent ?? null}
-              info={
-                host
-                  ? `${host.cpuUtilizationPercent == null ? '—' : ((host.cpuUtilizationPercent * host.cpuLogicalCores) / 100).toFixed(2)} / ${host.cpuLogicalCores} busy-core equivalents · entire machine`
-                  : 'Gathering...'
-              }
-            />
-            <Meter
-              name="Memory"
-              value={host?.memoryUsedPercent ?? null}
-              info={
-                host
-                  ? `${gib(host.memoryUsedBytes)} / ${gib(host.memoryTotalBytes)} · entire machine`
-                  : 'Gathering...'
-              }
-            />
-          </div>
-        </section>
-        <section className="section">
-          <div className="section-title">
-            <h2>Models</h2>
-            <span>{info?.loaded.length ?? 0} LOADED</span>
-          </div>
-          {!running ? (
-            <div className="empty">
-              Runtime is offline. Start Ollama or start your local server to see models.
-            </div>
-          ) : models.length === 0 ? (
-            <div className="empty">No installed models reported by this runtime.</div>
-          ) : (
-            <div className="models">
-              {models.map((model) => (
-                <Model
-                  key={model.id}
-                  model={model}
-                  loaded={loadedNames.has(model.id)}
-                  enabled={
-                    loadedNames.has(model.id)
-                      ? !!info?.capabilities.unloadModel
-                      : !!info?.capabilities.loadModel
-                  }
-                  busy={busy}
-                  onAction={() =>
-                    action(() =>
-                      loadedNames.has(model.id)
-                        ? window.obpulse.unload(model.id)
-                        : window.obpulse.load(model.id),
-                    )
-                  }
-                  onTest={() => action(() => window.obpulse.benchmark(model.id))}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-        <section className="section">
-          <div className="section-title">
-            <h2>Throughput</h2>
-            <span>LAST TEST ONLY</span>
-          </div>
-          <div className="throughput">
-            <div>
-              <span>READ · PREFILL</span>
-              <strong>{fmt(snapshot?.latestBenchmark?.readTokensPerSecond ?? null)}</strong>
-              <small>tok/s</small>
-            </div>
-            <div>
-              <span>WRITE · DECODE</span>
-              <strong>{fmt(snapshot?.latestBenchmark?.writeTokensPerSecond ?? null)}</strong>
-              <small>tok/s</small>
-            </div>
-          </div>
-          <p className="note">
-            Live speeds from other apps require an opt-in client integration. No activity is
-            inferred from polling.
-          </p>
-          {currentLoaded && (
-            <p className="note">
-              First loaded model: {currentLoaded.displayName} · reported GPU-resident
-              {` ${gib(currentLoaded.gpuResidentBytes)}`}. GPU capacity and utilization: <b>—</b>{' '}
-              until a supported OS probe is available.
-            </p>
-          )}
-        </section>
       </main>
       <footer>
-        <span>Local-first · No telemetry</span>
-        <img src={onblankLogo} alt="Powered by onBlank placeholder" />
+        <span>Local-first · Last hour only · No telemetry</span>
+        <img src={onblankLogo} alt="Powered by onBlank" />
       </footer>
     </div>
   );

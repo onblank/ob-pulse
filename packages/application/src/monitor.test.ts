@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { MonitorService } from './index';
+import { InMemoryMetricHistory, MonitorService } from './index';
 import type {
   BenchmarkRecord,
   Capabilities,
+  DashboardSnapshot,
   HostMetricsPort,
   HostSample,
   ModelRecord,
@@ -92,5 +93,56 @@ describe('runtime monitoring', () => {
       host,
     );
     expect(service.runtimes()).toEqual([{ id: 'ollama', name: 'ollama' }]);
+  });
+});
+
+function dashboardAt(
+  sampledAt: string,
+  latestBenchmark: BenchmarkRecord | null = null,
+): DashboardSnapshot {
+  return {
+    selectedRuntime: 'ollama',
+    host: { ...hostSample, sampledAt },
+    latestBenchmark,
+    runtime: {
+      id: 'ollama',
+      displayName: 'Ollama',
+      state: 'managed-running',
+      capabilities,
+      installed: [model],
+      loaded: [{ ...model, gpuResidentBytes: 12 }],
+      error: null,
+      observedAt: sampledAt,
+    },
+  };
+}
+
+describe('one-hour in-memory metric history', () => {
+  it('evicts expired and excess samples without persistence', () => {
+    const history = new InMemoryMetricHistory(60_000, 3000, 2);
+    history.capture(dashboardAt('2026-10-14T00:00:00.000Z'));
+    history.capture(dashboardAt('2026-10-14T00:00:30.000Z'));
+    history.capture(dashboardAt('2026-10-14T00:01:01.000Z'));
+    const samples = history.window(Date.parse('2026-10-14T00:01:01.000Z')).samples;
+    expect(samples.map((sample) => sample.sampledAt)).toEqual([
+      '2026-10-14T00:00:30.000Z',
+      '2026-10-14T00:01:01.000Z',
+    ]);
+  });
+
+  it('records benchmark throughput once and preserves unavailable gaps', () => {
+    const history = new InMemoryMetricHistory();
+    history.capture(dashboardAt('2026-10-14T00:00:00.000Z', benchmark));
+    history.capture(dashboardAt('2026-10-14T00:00:03.000Z', benchmark));
+    const samples = history.window(Date.parse('2026-10-14T00:00:03.000Z')).samples;
+    expect(samples[0]).toMatchObject({
+      gpuResidentBytes: 12,
+      outputTokensPerSecond: 16,
+      outputTokensSource: 'benchmark',
+    });
+    expect(samples[1]).toMatchObject({
+      outputTokensPerSecond: null,
+      outputTokensSource: null,
+    });
   });
 });
