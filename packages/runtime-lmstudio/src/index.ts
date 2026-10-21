@@ -16,7 +16,7 @@ const CAPABILITIES: Capabilities = {
   stopServer: false,
   loadModel: true,
   unloadModel: true,
-  benchmark: false,
+  benchmark: true,
 };
 
 type RecordObject = Record<string, unknown>;
@@ -150,7 +150,34 @@ export class LMStudioRuntime implements RuntimePort {
   }
 
   async benchmark(modelId: string): Promise<BenchmarkRecord> {
-    void modelId;
-    throw new Error('LM Studio benchmark is not implemented');
+    validModelId(modelId);
+    const response = await this.request('/api/v1/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: modelId,
+        input: 'Write a short greeting in one sentence.',
+        temperature: 0,
+        max_output_tokens: 48,
+        stream: false,
+        store: false,
+      }),
+    });
+    if (!obj(response) || !obj(response.stats))
+      throw new Error('Malformed LM Studio benchmark response');
+    const promptTokens = number(response.stats.input_tokens);
+    const outputTokens = number(response.stats.total_output_tokens);
+    const writeTokensPerSecond = number(response.stats.tokens_per_second);
+    const firstTokenSeconds = number(response.stats.time_to_first_token_seconds);
+    return {
+      source: 'benchmark',
+      modelId,
+      at: new Date().toISOString(),
+      promptTokens,
+      outputTokens,
+      readTokensPerSecond: null,
+      writeTokensPerSecond,
+      timeToFirstTokenMs: firstTokenSeconds == null ? null : firstTokenSeconds * 1000,
+    };
   }
 }

@@ -26,6 +26,7 @@ export interface BenchmarkRecord {
   readonly outputTokens: number | null;
   readonly readTokensPerSecond: number | null;
   readonly writeTokensPerSecond: number | null;
+  readonly timeToFirstTokenMs: number | null;
 }
 export interface HostSample {
   readonly sampledAt: string;

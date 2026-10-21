@@ -10,7 +10,7 @@
 | Context **used** / percentage   | authenticated client event with explicit session ID | client session        | opt-in bridge; `null` until observed                 |
 | Prefill/read tokens/sec         | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
 | Decode/write tokens/sec         | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
-| First-token latency             | authenticated client-reported numeric timing        | instrumented request  | opt-in client event                                  |
+| First-token latency             | client event or LM Studio v1 benchmark stats        | request/benchmark     | opt-in event or explicit LM Studio test              |
 | Model CPU and GPU utilization   | runtime/OS-specific process instrumentation         | model/runtime process | planned/unsupported                                  |
 | GPU max capacity                | OS-specific reliable hardware API                   | physical GPU          | planned/unsupported                                  |
 
@@ -27,7 +27,9 @@ otherwise used becomes `null` until the next instrumented request. App window op
 necessarily a new context session; never reset merely because it was reopened.
 **Missing information**: `null` -> em dash, not `0`. Percentages require meaningful nonzero denominator.
 **Benchmark**: only user-initiated, runs a tiny synthetic prompt with selected model; never mixed with
-third-party live traffic; labels must say "Test" / "Benchmark".
+third-party live traffic; labels must say "Test" / "Benchmark". LM Studio requests set `store:false`,
+discard the generated response and retain only numeric stats. Its v1 response provides decode speed
+and first-token latency but not prefill speed, which remains `null`.
 
 The opt-in bridge accepts explicit client events with session IDs. It is not a reverse proxy and
 does not observe third-party traffic automatically; a client must deliberately implement the
