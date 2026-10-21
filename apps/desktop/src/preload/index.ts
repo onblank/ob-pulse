@@ -14,6 +14,9 @@ const api = {
   hide: () => ipcRenderer.invoke('pulse:hide'),
   setWindowMode: (mode: 'compact' | 'expanded') => ipcRenderer.invoke('pulse:window-mode', mode),
   getWindowMode: () => ipcRenderer.invoke('pulse:get-window-mode'),
+  widgetPreferences: () => ipcRenderer.invoke('pulse:widget-preferences'),
+  setWidgetPreferences: (preferences: unknown) =>
+    ipcRenderer.invoke('pulse:set-widget-preferences', preferences),
   instrumentationStatus: () => ipcRenderer.invoke('pulse:instrumentation-status'),
   instrumentationSessions: () => ipcRenderer.invoke('pulse:instrumentation-sessions'),
   setInstrumentationEnabled: (enabled: boolean) =>

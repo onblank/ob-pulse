@@ -9,6 +9,8 @@ import type {
   MetricHistoryWindow,
   ModelRecord,
   RuntimeId,
+  WidgetPosition,
+  WidgetPreferences,
 } from '@obpulse/contracts';
 import logo from './assets/brand/ob-pulse-logo.svg';
 import onblankLogo from './assets/brand/powered-by-onblank.svg';
@@ -521,6 +523,64 @@ function InstrumentationPanel({
   );
 }
 
+function WidgetSettings({
+  preferences,
+  busy,
+  onChange,
+}: {
+  preferences: WidgetPreferences | null;
+  busy: boolean;
+  onChange: (next: WidgetPreferences) => void;
+}) {
+  if (!preferences) return null;
+  return (
+    <section className="widget-settings" aria-labelledby="widget-settings-title">
+      <div>
+        <span className="eyebrow">WIDGET</span>
+        <h2 id="widget-settings-title">Appearance & position</h2>
+      </div>
+      <label>
+        <span>Position</span>
+        <select
+          value={preferences.position}
+          disabled={busy}
+          onChange={(event) =>
+            onChange({ ...preferences, position: event.target.value as WidgetPosition })
+          }
+        >
+          <option value="tray">Next to tray</option>
+          <option value="top-left">Top left</option>
+          <option value="top-right">Top right</option>
+          <option value="bottom-left">Bottom left</option>
+          <option value="bottom-right">Bottom right</option>
+        </select>
+      </label>
+      <label>
+        <span>Opacity</span>
+        <select
+          value={preferences.opacity}
+          disabled={busy}
+          onChange={(event) => onChange({ ...preferences, opacity: Number(event.target.value) })}
+        >
+          <option value="1">100%</option>
+          <option value="0.95">95%</option>
+          <option value="0.85">85%</option>
+          <option value="0.75">75%</option>
+        </select>
+      </label>
+      <label className="contrast-setting">
+        <input
+          type="checkbox"
+          checked={preferences.highContrast}
+          disabled={busy}
+          onChange={(event) => onChange({ ...preferences, highContrast: event.target.checked })}
+        />
+        <span>High contrast</span>
+      </label>
+    </section>
+  );
+}
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [history, setHistory] = useState<MetricHistoryWindow | null>(null);
@@ -533,6 +593,7 @@ export default function App() {
   const [bridge, setBridge] = useState<InstrumentationBridgeStatus>(DISABLED_BRIDGE);
   const [instrumentation, setInstrumentation] =
     useState<InstrumentationSnapshot>(EMPTY_INSTRUMENTATION);
+  const [preferences, setPreferences] = useState<WidgetPreferences | null>(null);
 
   const refresh = async () => {
     try {
@@ -557,6 +618,7 @@ export default function App() {
     void window.obpulse.runtimes().then(setRuntimes).catch(setError);
     void window.obpulse.isAlwaysOnTop().then(setTop);
     void window.obpulse.getWindowMode().then(setMode);
+    void window.obpulse.widgetPreferences().then(setPreferences).catch(setError);
     const ticker = setInterval(() => void refresh(), 3000);
     return () => clearInterval(ticker);
   }, []);
@@ -592,9 +654,22 @@ export default function App() {
     if (info?.state === 'managed-running') void action(() => window.obpulse.stop());
     else if (info?.state === 'stopped') void action(() => window.obpulse.start());
   };
+  const updatePreferences = async (next: WidgetPreferences) => {
+    setBusy(true);
+    setError(null);
+    try {
+      setPreferences(await window.obpulse.setWidgetPreferences(next));
+    } catch (preferencesError) {
+      setError(
+        preferencesError instanceof Error ? preferencesError.message : String(preferencesError),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
-    <div className={`app ${mode}`}>
+    <div className={`app ${mode}${preferences?.highContrast ? ' high-contrast' : ''}`}>
       <WindowHeader
         mode={mode}
         top={top}
@@ -643,6 +718,12 @@ export default function App() {
               </div>
               <PowerControl snapshot={snapshot} busy={busy} onToggle={togglePower} />
             </section>
+
+            <WidgetSettings
+              preferences={preferences}
+              busy={busy}
+              onChange={(next) => void updatePreferences(next)}
+            />
 
             <InstrumentationPanel
               bridge={bridge}

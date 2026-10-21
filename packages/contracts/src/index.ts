@@ -1,6 +1,12 @@
 export type RuntimeId = 'ollama' | 'lmstudio';
 export type ServerState = 'stopped' | 'external-running' | 'managed-running';
 export type DataSource = 'host' | 'runtime' | 'benchmark' | 'client-plugin' | 'local-proxy';
+export type WidgetPosition = 'tray' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+export interface WidgetPreferences {
+  readonly position: WidgetPosition;
+  readonly opacity: number;
+  readonly highContrast: boolean;
+}
 export interface Capabilities {
   readonly listInstalled: boolean;
   readonly listLoaded: boolean;

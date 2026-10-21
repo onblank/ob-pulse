@@ -39,6 +39,14 @@ window is hidden in the tray. Samples older than one hour are evicted and nothin
 quit or restart. Benchmark throughput is stored as a sparse event, not repeated as if it were live
 traffic.
 
+**Widget preferences**: Electron main validates and atomically stores a small
+`widget-preferences.json` file under Electron's machine-local `userData` directory. The renderer can
+read or replace only the typed position, opacity and high-contrast values through narrow IPC. The
+opacity presets stop at 75% so a saved preference cannot make the frameless window effectively
+invisible. These preferences contain no runtime observations and do not alter the one-hour volatile
+history boundary. Tray-relative and corner placement is clamped to the selected display's work area;
+placement is best-effort where the OS compositor prohibits programmatic positioning.
+
 **Persistence (planned, optional)**: if durable history is later justified, local SQLite in
 `packages/db-sqlite` must use explicit numbered migrations, opt-in retention and numeric telemetry
 only. Its candidate schema is described in `docs/DATA_MODEL.md`; it is not wired into the current UI.
