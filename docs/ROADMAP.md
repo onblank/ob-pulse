@@ -19,7 +19,8 @@
 
 ## 0.3 — deeper OS/runtime integrations
 
-- LM Studio v1 management; llama.cpp/MLX adapters; managed service state and attach policy.
+- LM Studio v1 model load/unload is implemented for unprotected loopback servers. LM Studio server
+  lifecycle/authentication, llama.cpp/MLX adapters and managed service attach policy remain pending.
 - Runtime PID CPU/RAM, reliable GPU metrics per platform where supported, multi-device profiles.
 - Widget customization (corner/dock/opacity), tray menu and accessible high-contrast mode.
 
