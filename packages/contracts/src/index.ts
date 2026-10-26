@@ -7,6 +7,14 @@ export interface WidgetPreferences {
   readonly opacity: number;
   readonly highContrast: boolean;
 }
+export interface RuntimePreferences {
+  readonly enabledRuntimeIds: readonly RuntimeId[];
+}
+export interface RuntimeCatalogEntry {
+  readonly id: RuntimeId;
+  readonly name: string;
+  readonly enabled: boolean;
+}
 export interface Capabilities {
   readonly listInstalled: boolean;
   readonly listLoaded: boolean;

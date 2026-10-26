@@ -1,6 +1,12 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { WidgetPosition, WidgetPreferences } from '@obpulse/contracts';
+import type {
+  RuntimeId,
+  RuntimePreferences,
+  WidgetPosition,
+  WidgetPreferences,
+} from '@obpulse/contracts';
+import { RUNTIME_IDS } from '@obpulse/contracts';
 
 export const WIDGET_POSITIONS = [
   'tray',
@@ -16,6 +22,10 @@ export const DEFAULT_WIDGET_PREFERENCES: WidgetPreferences = {
   position: 'tray',
   opacity: 1,
   highContrast: false,
+};
+
+export const DEFAULT_RUNTIME_PREFERENCES: RuntimePreferences = {
+  enabledRuntimeIds: [...RUNTIME_IDS],
 };
 
 interface Bounds {
@@ -79,19 +89,37 @@ export function parseWidgetPreferences(value: unknown): WidgetPreferences {
   };
 }
 
-export async function loadWidgetPreferences(filePath: string): Promise<WidgetPreferences> {
+export function parseRuntimePreferences(value: unknown): RuntimePreferences {
+  if (!isRecord(value) || !Array.isArray(value.enabledRuntimeIds)) {
+    throw new Error('Runtime preferences must include enabled runtime identifiers');
+  }
+  const ids = value.enabledRuntimeIds;
+  if (ids.length === 0) throw new Error('At least one runtime must remain enabled');
+  if (ids.some((id) => typeof id !== 'string' || !RUNTIME_IDS.includes(id as RuntimeId))) {
+    throw new Error('Unsupported runtime');
+  }
+  if (new Set(ids).size !== ids.length) throw new Error('Runtime identifiers must be unique');
+  return { enabledRuntimeIds: ids as RuntimeId[] };
+}
+
+async function loadPreferences<T>(
+  filePath: string,
+  parse: (value: unknown) => T,
+  fallback: () => T,
+): Promise<T> {
   try {
-    return parseWidgetPreferences(JSON.parse(await readFile(filePath, 'utf8')));
+    return parse(JSON.parse(await readFile(filePath, 'utf8')));
   } catch {
-    return { ...DEFAULT_WIDGET_PREFERENCES };
+    return fallback();
   }
 }
 
-export async function saveWidgetPreferences(
+async function savePreferences<T>(
   filePath: string,
   value: unknown,
-): Promise<WidgetPreferences> {
-  const preferences = parseWidgetPreferences(value);
+  parse: (value: unknown) => T,
+): Promise<T> {
+  const preferences = parse(value);
   await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 });
   const temporaryPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
   await writeFile(temporaryPath, `${JSON.stringify(preferences, null, 2)}\n`, {
@@ -100,4 +128,30 @@ export async function saveWidgetPreferences(
   });
   await rename(temporaryPath, filePath);
   return preferences;
+}
+
+export async function loadWidgetPreferences(filePath: string): Promise<WidgetPreferences> {
+  return loadPreferences(filePath, parseWidgetPreferences, () => ({
+    ...DEFAULT_WIDGET_PREFERENCES,
+  }));
+}
+
+export async function saveWidgetPreferences(
+  filePath: string,
+  value: unknown,
+): Promise<WidgetPreferences> {
+  return savePreferences(filePath, value, parseWidgetPreferences);
+}
+
+export async function loadRuntimePreferences(filePath: string): Promise<RuntimePreferences> {
+  return loadPreferences(filePath, parseRuntimePreferences, () => ({
+    enabledRuntimeIds: [...DEFAULT_RUNTIME_PREFERENCES.enabledRuntimeIds],
+  }));
+}
+
+export async function saveRuntimePreferences(
+  filePath: string,
+  value: unknown,
+): Promise<RuntimePreferences> {
+  return savePreferences(filePath, value, parseRuntimePreferences);
 }

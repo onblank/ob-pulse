@@ -18,3 +18,7 @@ Export CSV/JSON only on explicit user action. Deleting history should be irrever
 Widget position, opacity and high-contrast preferences are not telemetry and do not justify this
 database. They live in a validated machine-local JSON file under Electron `userData`; corrupt or
 unsupported values fall back to safe defaults.
+
+Enabled built-in runtime identifiers follow the same boundary in a separate validated preferences
+file. They contain no endpoints, credentials, process identifiers or observations, and an empty or
+invalid file falls back to all built-in adapters.

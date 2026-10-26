@@ -3,7 +3,12 @@ import type { Rectangle } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HISTORY_SAMPLE_INTERVAL_MS, MonitorService } from '@obpulse/application';
-import type { RuntimeId, RuntimePort, WidgetPreferences } from '@obpulse/contracts';
+import type {
+  RuntimeId,
+  RuntimePort,
+  RuntimePreferences,
+  WidgetPreferences,
+} from '@obpulse/contracts';
 import { RUNTIME_IDS } from '@obpulse/contracts';
 import { NodeHostMetrics } from '@obpulse/host-metrics';
 import { LoopbackInstrumentationBridge } from '@obpulse/instrumentation-http';
@@ -12,7 +17,9 @@ import { LMStudioRuntime } from '@obpulse/runtime-lmstudio';
 import {
   DEFAULT_WIDGET_PREFERENCES,
   calculateWidgetPosition,
+  loadRuntimePreferences,
   loadWidgetPreferences,
+  saveRuntimePreferences,
   saveWidgetPreferences,
 } from './preferences.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -32,6 +39,8 @@ let alwaysOnTop = false;
 let windowMode: 'compact' | 'expanded' = 'compact';
 let widgetPreferences: WidgetPreferences = DEFAULT_WIDGET_PREFERENCES;
 let widgetPreferencesPath: string | null = null;
+let runtimePreferences: RuntimePreferences = { enabledRuntimeIds: [...RUNTIME_IDS] };
+let runtimePreferencesPath: string | null = null;
 let sampler: NodeJS.Timeout | null = null;
 let sampleInFlight = false;
 const WINDOW_SIZES = {
@@ -131,6 +140,15 @@ function registerIPC() {
   ipcMain.handle('pulse:snapshot', () => service.snapshot());
   ipcMain.handle('pulse:history', () => service.history());
   ipcMain.handle('pulse:runtimes', () => service.runtimes());
+  ipcMain.handle('pulse:runtime-catalog', () => service.runtimeCatalog());
+  ipcMain.handle('pulse:runtime-preferences', () => runtimePreferences);
+  ipcMain.handle('pulse:set-runtime-preferences', async (_event, value: unknown) => {
+    if (!runtimePreferencesPath) throw new Error('Runtime preferences are not ready');
+    const saved = await saveRuntimePreferences(runtimePreferencesPath, value);
+    service.setEnabledRuntimes(saved.enabledRuntimeIds);
+    runtimePreferences = saved;
+    return runtimePreferences;
+  });
   ipcMain.handle('pulse:select-runtime', (_event, id: unknown) =>
     service.useRuntime(validRuntime(id)),
   );
@@ -265,7 +283,10 @@ app
   .whenReady()
   .then(async () => {
     widgetPreferencesPath = path.join(app.getPath('userData'), 'widget-preferences.json');
+    runtimePreferencesPath = path.join(app.getPath('userData'), 'runtime-preferences.json');
     widgetPreferences = await loadWidgetPreferences(widgetPreferencesPath);
+    runtimePreferences = await loadRuntimePreferences(runtimePreferencesPath);
+    service.setEnabledRuntimes(runtimePreferences.enabledRuntimeIds);
     registerIPC();
     createWindow();
     if (process.platform === 'darwin') app.dock?.hide();

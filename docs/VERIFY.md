@@ -1,9 +1,9 @@
 # Verification report
 
-Current local verification as of 2026-10-21:
+Current local verification as of 2026-10-26:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- `pnpm check` passes formatting, ESLint, TypeScript checks for all eight packages, 31 tests and
+- `pnpm check` passes formatting, ESLint, TypeScript checks for all eight packages, 35 tests and
   the Electron main/preload/renderer production builds.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
@@ -12,6 +12,8 @@ Current local verification as of 2026-10-21:
   refusal, external server ownership and a non-persistent benchmark that keeps only numeric stats.
 - Widget preference tests cover strict value validation, safe corrupt/missing-file fallback,
   atomic persistence and work-area-clamped tray/corner placement.
+- Runtime preference and application tests cover non-empty/unique registered adapter validation,
+  filtered discovery, disabled-selection rejection and deterministic selection fallback.
 - The macOS development app launches at 360×430 and changes to the 900×680 expanded surface.
 
 Still required before an official release:

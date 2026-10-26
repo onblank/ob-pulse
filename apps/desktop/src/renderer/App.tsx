@@ -8,7 +8,9 @@ import type {
   MetricHistorySample,
   MetricHistoryWindow,
   ModelRecord,
+  RuntimeCatalogEntry,
   RuntimeId,
+  RuntimePreferences,
   WidgetPosition,
   WidgetPreferences,
 } from '@obpulse/contracts';
@@ -581,11 +583,63 @@ function WidgetSettings({
   );
 }
 
+function RuntimeSettings({
+  catalog,
+  preferences,
+  busy,
+  onChange,
+}: {
+  catalog: readonly RuntimeCatalogEntry[];
+  preferences: RuntimePreferences | null;
+  busy: boolean;
+  onChange: (next: RuntimePreferences) => void;
+}) {
+  if (!preferences || !catalog.length) return null;
+  const enabled = new Set(preferences.enabledRuntimeIds);
+  const toggle = (id: RuntimeId, checked: boolean) => {
+    const next = catalog
+      .filter((entry) => (entry.id === id ? checked : enabled.has(entry.id)))
+      .map((entry) => entry.id);
+    onChange({ enabledRuntimeIds: next });
+  };
+  return (
+    <section className="runtime-settings" aria-labelledby="runtime-settings-title">
+      <div className="runtime-settings-copy">
+        <span className="eyebrow">BUILT-IN ADAPTERS</span>
+        <h2 id="runtime-settings-title">Runtime visibility</h2>
+        <p>Disabling an adapter never stops its service or removes model files.</p>
+      </div>
+      <div className="runtime-options">
+        {catalog.map((entry) => {
+          const checked = enabled.has(entry.id);
+          const lastEnabled = checked && enabled.size === 1;
+          return (
+            <label key={entry.id}>
+              <input
+                type="checkbox"
+                checked={checked}
+                disabled={busy || lastEnabled}
+                onChange={(event) => toggle(entry.id, event.target.checked)}
+              />
+              <span>
+                <strong>{entry.name}</strong>
+                <small>{checked ? 'Available in OB-Pulse' : 'Disabled'}</small>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [history, setHistory] = useState<MetricHistoryWindow | null>(null);
   const [runtime, setRuntime] = useState<RuntimeId>('ollama');
   const [runtimes, setRuntimes] = useState<Array<{ id: RuntimeId; name: string }>>([]);
+  const [runtimeCatalog, setRuntimeCatalog] = useState<RuntimeCatalogEntry[]>([]);
+  const [runtimePreferences, setRuntimePreferences] = useState<RuntimePreferences | null>(null);
   const [mode, setMode] = useState<WindowMode>('compact');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -616,6 +670,8 @@ export default function App() {
   useEffect(() => {
     void refresh();
     void window.obpulse.runtimes().then(setRuntimes).catch(setError);
+    void window.obpulse.runtimeCatalog().then(setRuntimeCatalog).catch(setError);
+    void window.obpulse.runtimePreferences().then(setRuntimePreferences).catch(setError);
     void window.obpulse.isAlwaysOnTop().then(setTop);
     void window.obpulse.getWindowMode().then(setMode);
     window.obpulse.onWindowModeChanged(setMode);
@@ -660,6 +716,29 @@ export default function App() {
     setError(null);
     try {
       setPreferences(await window.obpulse.setWidgetPreferences(next));
+    } catch (preferencesError) {
+      setError(
+        preferencesError instanceof Error ? preferencesError.message : String(preferencesError),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const updateRuntimePreferences = async (next: RuntimePreferences) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const saved = await window.obpulse.setRuntimePreferences(next);
+      const [current, available, catalog] = await Promise.all([
+        window.obpulse.snapshot(),
+        window.obpulse.runtimes(),
+        window.obpulse.runtimeCatalog(),
+      ]);
+      setRuntimePreferences(saved);
+      setSnapshot(current);
+      setRuntime(current.selectedRuntime);
+      setRuntimes(available);
+      setRuntimeCatalog(catalog);
     } catch (preferencesError) {
       setError(
         preferencesError instanceof Error ? preferencesError.message : String(preferencesError),
@@ -724,6 +803,13 @@ export default function App() {
               preferences={preferences}
               busy={busy}
               onChange={(next) => void updatePreferences(next)}
+            />
+
+            <RuntimeSettings
+              catalog={runtimeCatalog}
+              preferences={runtimePreferences}
+              busy={busy}
+              onChange={(next) => void updateRuntimePreferences(next)}
             />
 
             <InstrumentationPanel
