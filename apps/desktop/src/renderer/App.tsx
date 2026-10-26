@@ -845,6 +845,24 @@ export default function App() {
                       tok/s · TTFT {fmt(snapshot?.latestBenchmark?.timeToFirstTokenMs ?? null)} ms
                     </small>
                   </div>
+                  <div>
+                    <span>Owned process CPU</span>
+                    <strong>
+                      {pct(snapshot?.runtime.ownedProcess?.cpuUtilizationPercent ?? null)}
+                    </strong>
+                    <small>
+                      {snapshot?.runtime.ownedProcess
+                        ? `PID ${snapshot.runtime.ownedProcess.pid} · core-equivalent`
+                        : 'Managed runtime only'}
+                    </small>
+                  </div>
+                  <div>
+                    <span>Owned process RAM</span>
+                    <strong>
+                      {gib(snapshot?.runtime.ownedProcess?.memoryResidentBytes ?? null)}
+                    </strong>
+                    <small>Resident memory · not model-specific</small>
+                  </div>
                 </section>
               </div>
 

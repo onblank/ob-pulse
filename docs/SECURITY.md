@@ -20,6 +20,9 @@
   permit disabling every adapter. Changing visibility cannot start, stop or delete runtime assets.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
 - Server stop applies only to a tracked child PID that OB-Pulse itself created during this process lifetime.
+- Process metrics use only that tracked direct child PID, only while its adapter reports
+  `managed-running`. The macOS/Linux probe executes fixed `/bin/ps` arguments without a shell and
+  never discovers or attaches to processes by name, port or service. PIDs and samples are not persisted.
 - Loading/unloading models is a user-initiated action and must not delete local model files.
 - No model pull/remove UI until a separate approval/security design and progress feedback exist.
 - Keep metrics/content separation: never store user prompts, generated answers, tool arguments, full context,

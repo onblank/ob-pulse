@@ -22,3 +22,7 @@ unsupported values fall back to safe defaults.
 Enabled built-in runtime identifiers follow the same boundary in a separate validated preferences
 file. They contain no endpoints, credentials, process identifiers or observations, and an empty or
 invalid file falls back to all built-in adapters.
+
+Current owned-process CPU/RAM samples are volatile UI observations and are not persisted. A future
+history schema must not infer process ownership from a saved PID because operating systems reuse
+identifiers after process exit.

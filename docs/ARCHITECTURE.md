@@ -8,12 +8,14 @@ React compact/expanded UI <- typed preload <- Electron main (composition + sampl
                                       |         |-> Contracts (runtime & host ports)
                                       |-> Ollama / LM Studio adapters (runtime infrastructure)
                                       |-> Host metrics adapter (OS infrastructure)
+                                      |-> Owned-process metrics adapter (OS infrastructure)
                                       |-> Opt-in loopback instrumentation adapter
 ```
 
-Runtime providers report capabilities, not pretend feature parity. `RuntimePort` supports `probe`,
-`listInstalled`, `listLoaded`, `startServer`, `stopServer`, `loadModel`, `unloadModel`, `benchmark`.
-Each adapter returns _unsupported_ for unimplemented operations; `capabilities` drives disabled UI.
+Runtime providers report capabilities, not pretend feature parity. `RuntimePort` supports
+`ownedProcessId`, `state`, `listInstalled`, `listLoaded`, `startServer`, `stopServer`, `loadModel`,
+`unloadModel` and `benchmark`. Each adapter returns _unsupported_ for unimplemented operations;
+`capabilities` drives disabled UI.
 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.
@@ -25,6 +27,11 @@ is not unloaded until the UI can identify the intended runtime instance explicit
 **Metric boundaries**:
 
 - Host total CPU / host RAM are not the selected model CPU / RAM.
+- Process CPU/RAM is sampled only from the direct child PID retained by an adapter for a service
+  that OB-Pulse started. It excludes descendants and is not model-specific. CPU is the `/bin/ps`
+  core-equivalent percentage and may exceed 100% for multithreaded work; RAM is resident bytes.
+- External Ollama, LM Studio, Windows and a failed/unsupported process probe report process metrics
+  as unavailable. OB-Pulse never discovers a process by name, port or service.
 - Ollama `/api/ps` reports loaded models, `size`, `size_vram`, `context_length`; it does not report live requests/sessions.
 - A per-request final response reports prompt/response token counts and evaluation durations; these may calculate tps **only for that request**.
 - LM Studio's native v1 benchmark reports decode tokens/sec and first-token latency directly. Its
@@ -38,6 +45,13 @@ captures a snapshot every three seconds while the application process is alive, 
 window is hidden in the tray. Samples older than one hour are evicted and nothing is restored after
 quit or restart. Benchmark throughput is stored as a sparse event, not repeated as if it were live
 traffic.
+
+**Owned-process sampling**: `@obpulse/process-metrics` is separate from host-wide metrics. On macOS
+and Linux it invokes the fixed `/bin/ps` executable with fixed flags and the validated positive PID
+provided by `RuntimePort.ownedProcessId()`, never through a shell. `MonitorService` requests a sample
+only while the selected runtime reports `managed-running`. The current sample is neither added to
+the one-hour history nor persisted. Windows returns unavailable until a separately reviewed native
+probe exists.
 
 **Widget preferences**: Electron main validates and atomically stores a small
 `widget-preferences.json` file under Electron's machine-local `userData` directory. The renderer can

@@ -15,6 +15,9 @@
 - LM Studio v1 local server detection, installed/loaded-model listing and explicit model
   load/unload through its native loopback API. Server lifecycle remains externally managed.
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
+- Current CPU and resident-memory readings for the direct Ollama server process only when OB-Pulse
+  started and still owns it on macOS or Linux. External services, descendants and model-specific
+  attribution remain unavailable.
 - A rolling one-hour chart kept only in process memory for host RAM, provider-reported GPU residency and explicit benchmark output speed.
 - An optional authenticated loopback bridge for strict, content-free client session events, with measured context use, prefill/decode speed and first-token latency.
 - User-invoked Ollama and LM Studio sample requests with provider-reported token metrics, **clearly
