@@ -95,6 +95,38 @@ describe('runtime monitoring', () => {
     );
     expect(service.runtimes()).toEqual([{ id: 'ollama', name: 'ollama' }]);
   });
+  it('keeps at least one runtime enabled and rejects unknown adapters', () => {
+    const service = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', stubRuntime('ollama', 'stopped')],
+        ['lmstudio', stubRuntime('lmstudio', 'stopped')],
+      ]),
+      host,
+    );
+    expect(() => service.setEnabledRuntimes([])).toThrow(
+      'At least one runtime must remain enabled',
+    );
+    expect(() => service.setEnabledRuntimes(['ollama', 'unknown' as RuntimeId])).toThrow(
+      'Unknown runtime',
+    );
+  });
+  it('switches away from a disabled selection and exposes only enabled runtimes', async () => {
+    const service = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', stubRuntime('ollama', 'stopped')],
+        ['lmstudio', stubRuntime('lmstudio', 'external-running')],
+      ]),
+      host,
+    );
+    service.setEnabledRuntimes(['lmstudio']);
+    expect(service.runtimes()).toEqual([{ id: 'lmstudio', name: 'lmstudio' }]);
+    expect(service.runtimeCatalog()).toEqual([
+      { id: 'ollama', name: 'ollama', enabled: false },
+      { id: 'lmstudio', name: 'lmstudio', enabled: true },
+    ]);
+    expect((await service.snapshot()).selectedRuntime).toBe('lmstudio');
+    expect(() => service.useRuntime('ollama')).toThrow('Runtime is disabled');
+  });
 });
 
 function dashboardAt(

@@ -6,7 +6,10 @@ import {
   DEFAULT_WIDGET_PREFERENCES,
   calculateWidgetPosition,
   loadWidgetPreferences,
+  loadRuntimePreferences,
+  parseRuntimePreferences,
   parseWidgetPreferences,
+  saveRuntimePreferences,
   saveWidgetPreferences,
 } from './preferences.js';
 
@@ -59,5 +62,35 @@ describe('widget preferences', () => {
     expect(
       calculateWidgetPosition('tray', size, area, { x: 1260, y: 820, width: 30, height: 30 }),
     ).toEqual({ x: 930, y: 382 });
+  });
+});
+
+describe('runtime preferences', () => {
+  it('accepts a unique non-empty subset of registered runtimes', () => {
+    expect(parseRuntimePreferences({ enabledRuntimeIds: ['lmstudio'] })).toEqual({
+      enabledRuntimeIds: ['lmstudio'],
+    });
+    expect(() => parseRuntimePreferences({ enabledRuntimeIds: [] })).toThrow(
+      'At least one runtime must remain enabled',
+    );
+    expect(() => parseRuntimePreferences({ enabledRuntimeIds: ['ollama', 'ollama'] })).toThrow(
+      'Runtime identifiers must be unique',
+    );
+    expect(() => parseRuntimePreferences({ enabledRuntimeIds: ['remote'] })).toThrow(
+      'Unsupported runtime',
+    );
+  });
+
+  it('falls back to all built-in runtimes and persists a validated subset', async () => {
+    const filePath = await temporaryFile();
+    await expect(loadRuntimePreferences(filePath)).resolves.toEqual({
+      enabledRuntimeIds: ['ollama', 'lmstudio'],
+    });
+    await expect(
+      saveRuntimePreferences(filePath, { enabledRuntimeIds: ['ollama'] }),
+    ).resolves.toEqual({ enabledRuntimeIds: ['ollama'] });
+    await expect(loadRuntimePreferences(filePath)).resolves.toEqual({
+      enabledRuntimeIds: ['ollama'],
+    });
   });
 });

@@ -23,14 +23,16 @@ residency and benchmark output-speed charts. The expanded dashboard adds runtime
 the detailed host and benchmark readings. Its widget settings persist a tray/corner position, one
 of four deliberately bounded opacity levels and an accessible high-contrast mode. Window placement
 is best-effort on display servers such as Wayland that reserve placement decisions for the
-compositor.
+compositor. Runtime settings can hide or re-enable each built-in adapter while preserving at least
+one active choice; hiding an adapter never stops its service or deletes model files.
 A background/tray process is not a promise of monitoring when the **application quits**.
 
 ## Core acceptance tests for v1
 
 ### Runtime control
 
-- Add/disable a built-in runtime from a settings list; versioned capability and permissions metadata.
+- Enable/disable a built-in runtime from a settings list while keeping at least one active adapter.
+  Versioned capability and permissions metadata remains pending.
 - Show `unavailable`, `external-running` or `managed-running` distinctly.
 - Start a supported _managed_ runtime on demand with no shell injection.
 - Stop only an OB-Pulse-owned process, with confirmation if inference is running.
@@ -62,6 +64,8 @@ A background/tray process is not a promise of monitoring when the **application 
 - A rolling one-hour numeric history lives in process memory and disappears on quit/restart.
 - Widget appearance preferences are machine-local, contain no telemetry and are independent from
   the volatile metric history.
+- Enabled runtime identifiers are machine-local preferences; they contain no endpoint, credential
+  or runtime observation data.
 - Opt-in client request history uses the same volatile boundary, has a 7,200-sample hard cap and is
   cleared immediately when its loopback bridge is disabled.
 - Any future SQLite sample history is opt-in, bounded by retention and contains no inference content.

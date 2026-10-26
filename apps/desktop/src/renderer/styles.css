@@ -471,6 +471,68 @@ select option {
   accent-color: var(--lime);
 }
 
+.runtime-settings {
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(300px, 1.4fr);
+  align-items: center;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #1e2a3c;
+}
+
+.runtime-settings h2 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.runtime-settings p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.runtime-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.runtime-options label {
+  min-width: 0;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #42516a;
+  border-radius: 9px;
+  background: #182536;
+}
+
+.runtime-options input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--lime);
+}
+
+.runtime-options span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.runtime-options strong {
+  font-size: 10px;
+}
+
+.runtime-options small {
+  color: var(--muted);
+  font-size: 7px;
+}
+
 .instrumentation-card {
   padding: 13px 16px;
   border: 1px solid var(--line);
@@ -1019,6 +1081,8 @@ input:focus-visible {
     .history-card,
     .expanded-toolbar,
     .widget-settings,
+    .runtime-settings,
+    .runtime-options label,
     .instrumentation-card,
     .bridge-access,
     .session-readout,
@@ -1047,6 +1111,11 @@ input:focus-visible {
   }
 
   .widget-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .runtime-settings,
+  .runtime-options {
     grid-template-columns: 1fr;
   }
 }
