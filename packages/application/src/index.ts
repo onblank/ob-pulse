@@ -7,6 +7,7 @@ import type {
   MetricHistorySample,
   MetricHistoryWindow,
   RuntimeId,
+  RuntimeCatalogEntry,
   RuntimePort,
   RuntimeSnapshot,
 } from '@obpulse/contracts';
@@ -75,19 +76,49 @@ export class InMemoryMetricHistory {
 }
 
 export class MonitorService {
-  private selected: RuntimeId = 'ollama';
+  private selected: RuntimeId;
+  private enabledRuntimeIds: ReadonlySet<RuntimeId>;
   private lastBenchmark: BenchmarkRecord | null = null;
   constructor(
     private readonly providers: ReadonlyMap<RuntimeId, RuntimePort>,
     private readonly host: HostMetricsPort,
     private readonly metricHistory = new InMemoryMetricHistory(),
     private readonly instrumentation = new InstrumentationSessionStore(),
-  ) {}
+  ) {
+    this.enabledRuntimeIds = new Set(providers.keys());
+    const initialRuntime = providers.has('ollama') ? 'ollama' : providers.keys().next().value;
+    if (!initialRuntime) throw new Error('At least one runtime provider is required');
+    this.selected = initialRuntime;
+  }
   runtimes(): Array<{ id: RuntimeId; name: string }> {
-    return Array.from(this.providers.values()).map((p) => ({ id: p.id, name: p.displayName }));
+    return Array.from(this.providers.values())
+      .filter((provider) => this.enabledRuntimeIds.has(provider.id))
+      .map((provider) => ({ id: provider.id, name: provider.displayName }));
+  }
+  runtimeCatalog(): RuntimeCatalogEntry[] {
+    return Array.from(this.providers.values()).map((provider) => ({
+      id: provider.id,
+      name: provider.displayName,
+      enabled: this.enabledRuntimeIds.has(provider.id),
+    }));
+  }
+  setEnabledRuntimes(ids: readonly RuntimeId[]): void {
+    if (ids.length === 0) throw new Error('At least one runtime must remain enabled');
+    if (new Set(ids).size !== ids.length) throw new Error('Runtime identifiers must be unique');
+    for (const id of ids) {
+      if (!this.providers.has(id)) throw new Error('Unknown runtime');
+    }
+    this.enabledRuntimeIds = new Set(ids);
+    if (!this.enabledRuntimeIds.has(this.selected)) {
+      const next = ids[0];
+      if (!next) throw new Error('At least one runtime must remain enabled');
+      this.selected = next;
+      this.lastBenchmark = null;
+    }
   }
   useRuntime(id: RuntimeId): void {
     if (!this.providers.has(id)) throw new Error('Unknown runtime');
+    if (!this.enabledRuntimeIds.has(id)) throw new Error('Runtime is disabled');
     this.selected = id;
     this.lastBenchmark = null;
   }

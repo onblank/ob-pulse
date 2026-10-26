@@ -3,7 +3,9 @@ import type {
   InstrumentationBridgeStatus,
   InstrumentationSnapshot,
   MetricHistoryWindow,
+  RuntimeCatalogEntry,
   RuntimeId,
+  RuntimePreferences,
   WidgetPreferences,
 } from '@obpulse/contracts';
 export {};
@@ -13,6 +15,9 @@ declare global {
       snapshot(): Promise<DashboardSnapshot>;
       history(): Promise<MetricHistoryWindow>;
       runtimes(): Promise<Array<{ id: RuntimeId; name: string }>>;
+      runtimeCatalog(): Promise<RuntimeCatalogEntry[]>;
+      runtimePreferences(): Promise<RuntimePreferences>;
+      setRuntimePreferences(preferences: RuntimePreferences): Promise<RuntimePreferences>;
       selectRuntime(id: RuntimeId): Promise<void>;
       start(): Promise<void>;
       stop(): Promise<void>;

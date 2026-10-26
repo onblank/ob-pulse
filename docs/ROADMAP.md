@@ -19,6 +19,9 @@
 
 ## 0.3 — deeper OS/runtime integrations
 
+- Built-in runtime visibility settings are implemented with validated local persistence, a
+  mandatory active adapter and safe selection fallback. Disabling an adapter does not stop its
+  service or remove models.
 - LM Studio v1 model load/unload is implemented for unprotected loopback servers. LM Studio server
   lifecycle/authentication, llama.cpp/MLX adapters and managed service attach policy remain pending.
 - LM Studio has an explicit non-persistent native v1 benchmark for provider-reported decode speed,

@@ -16,6 +16,8 @@
   token after an explicit user click.
 - Widget settings cross narrow typed IPC, are validated again in Electron main and are written
   atomically to a machine-local preferences file. Opacity accepts only safe presets from 75–100%.
+- Runtime visibility settings accept only registered built-in IDs, reject duplicates and never
+  permit disabling every adapter. Changing visibility cannot start, stop or delete runtime assets.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
 - Server stop applies only to a tracked child PID that OB-Pulse itself created during this process lifetime.
 - Loading/unloading models is a user-initiated action and must not delete local model files.

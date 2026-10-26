@@ -3,6 +3,10 @@ const api = {
   snapshot: () => ipcRenderer.invoke('pulse:snapshot'),
   history: () => ipcRenderer.invoke('pulse:history'),
   runtimes: () => ipcRenderer.invoke('pulse:runtimes'),
+  runtimeCatalog: () => ipcRenderer.invoke('pulse:runtime-catalog'),
+  runtimePreferences: () => ipcRenderer.invoke('pulse:runtime-preferences'),
+  setRuntimePreferences: (preferences: unknown) =>
+    ipcRenderer.invoke('pulse:set-runtime-preferences', preferences),
   selectRuntime: (id: string) => ipcRenderer.invoke('pulse:select-runtime', id),
   start: () => ipcRenderer.invoke('pulse:start'),
   stop: () => ipcRenderer.invoke('pulse:stop'),

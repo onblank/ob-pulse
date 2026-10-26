@@ -47,6 +47,13 @@ invisible. These preferences contain no runtime observations and do not alter th
 history boundary. Tray-relative and corner placement is clamped to the selected display's work area;
 placement is best-effort where the OS compositor prohibits programmatic positioning.
 
+**Runtime preferences**: Electron main validates and atomically stores enabled built-in runtime IDs
+in a separate `runtime-preferences.json` file under `userData`. `MonitorService` remains the policy
+boundary: it requires at least one registered runtime, rejects disabled selections and switches to
+the first enabled adapter if the current selection is disabled. The renderer receives only a typed
+catalog and narrow get/set methods. Disabling changes OB-Pulse visibility and control eligibility;
+it does not stop an external or app-managed service and never removes model weights.
+
 **Persistence (planned, optional)**: if durable history is later justified, local SQLite in
 `packages/db-sqlite` must use explicit numbered migrations, opt-in retention and numeric telemetry
 only. Its candidate schema is described in `docs/DATA_MODEL.md`; it is not wired into the current UI.
