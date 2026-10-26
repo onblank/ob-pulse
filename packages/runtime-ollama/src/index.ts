@@ -80,6 +80,12 @@ export class OllamaRuntime implements RuntimePort {
   readonly displayName = 'Ollama';
   readonly capabilities = CAPABILITIES;
   private child: ChildProcess | null = null;
+  ownedProcessId(): number | null {
+    const child = this.child;
+    return child && child.exitCode === null && !child.killed && child.pid != null
+      ? child.pid
+      : null;
+  }
   private async probe(): Promise<boolean> {
     try {
       await request('/api/version');

@@ -205,6 +205,9 @@ importers:
       '@obpulse/instrumentation-http':
         specifier: workspace:*
         version: link:../../packages/instrumentation-http
+      '@obpulse/process-metrics':
+        specifier: workspace:*
+        version: link:../../packages/process-metrics
       '@obpulse/runtime-lmstudio':
         specifier: workspace:*
         version: link:../../packages/runtime-lmstudio
@@ -260,6 +263,12 @@ importers:
         version: link:../domain
 
   packages/instrumentation-http:
+    dependencies:
+      '@obpulse/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
+  packages/process-metrics:
     dependencies:
       '@obpulse/contracts':
         specifier: workspace:*
