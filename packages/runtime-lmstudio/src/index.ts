@@ -60,6 +60,10 @@ export class LMStudioRuntime implements RuntimePort {
 
   constructor(private readonly fetcher: Fetcher = fetch) {}
 
+  ownedProcessId(): number | null {
+    return null;
+  }
+
   private async request(path: string, init?: RequestInit): Promise<unknown> {
     const response = await this.fetcher(`${BASE}${path}`, {
       ...init,

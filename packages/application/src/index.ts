@@ -6,6 +6,8 @@ import type {
   InstrumentationSnapshot,
   MetricHistorySample,
   MetricHistoryWindow,
+  OwnedProcessSample,
+  ProcessMetricsPort,
   RuntimeId,
   RuntimeCatalogEntry,
   RuntimePort,
@@ -82,6 +84,7 @@ export class MonitorService {
   constructor(
     private readonly providers: ReadonlyMap<RuntimeId, RuntimePort>,
     private readonly host: HostMetricsPort,
+    private readonly processes: ProcessMetricsPort,
     private readonly metricHistory = new InMemoryMetricHistory(),
     private readonly instrumentation = new InstrumentationSessionStore(),
   ) {
@@ -132,11 +135,22 @@ export class MonitorService {
     let state: RuntimeSnapshot['state'] = 'stopped';
     let installed: RuntimeSnapshot['installed'] = [];
     let loaded: RuntimeSnapshot['loaded'] = [];
+    let ownedProcess: OwnedProcessSample | null = null;
     let error: string | null = null;
     try {
       state = await runtime.state();
       if (state !== 'stopped') {
         [installed, loaded] = await Promise.all([runtime.listInstalled(), runtime.listLoaded()]);
+      }
+      if (state === 'managed-running') {
+        const pid = runtime.ownedProcessId();
+        if (pid != null) {
+          try {
+            ownedProcess = await this.processes.sample(pid);
+          } catch {
+            ownedProcess = null;
+          }
+        }
       }
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
@@ -152,6 +166,7 @@ export class MonitorService {
         capabilities: runtime.capabilities,
         installed,
         loaded,
+        ownedProcess,
         error,
         observedAt: new Date().toISOString(),
       },

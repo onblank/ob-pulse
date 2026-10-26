@@ -7,6 +7,8 @@ import type {
   HostMetricsPort,
   HostSample,
   ModelRecord,
+  OwnedProcessSample,
+  ProcessMetricsPort,
   RuntimePort,
   RuntimeId,
   ServerState,
@@ -30,7 +32,17 @@ const hostSample: HostSample = {
   cpuLogicalCores: 8,
   source: 'host',
 };
+const processSample: OwnedProcessSample = {
+  pid: 4312,
+  sampledAt: '2026-10-14T00:00:00Z',
+  cpuUtilizationPercent: 12.5,
+  memoryResidentBytes: 128 * 1024 * 1024,
+  source: 'owned-process',
+};
 const host: HostMetricsPort = { sample: () => hostSample };
+const processes: ProcessMetricsPort = {
+  sample: async (pid) => (pid === processSample.pid ? processSample : null),
+};
 const model: ModelRecord = {
   id: 'test:small',
   displayName: 'test:small',
@@ -49,11 +61,16 @@ const benchmark: BenchmarkRecord = {
   writeTokensPerSecond: 16,
   timeToFirstTokenMs: 80,
 };
-function stubRuntime(id: 'ollama' | 'lmstudio', state: ServerState): RuntimePort {
+function stubRuntime(
+  id: 'ollama' | 'lmstudio',
+  state: ServerState,
+  ownedProcessId: number | null = null,
+): RuntimePort {
   return {
     id,
     displayName: id,
     capabilities,
+    ownedProcessId: () => ownedProcessId,
     state: async () => state,
     listInstalled: async () => [model],
     listLoaded: async () => [model],
@@ -70,19 +87,40 @@ describe('runtime monitoring', () => {
     const service = new MonitorService(
       new Map<RuntimeId, RuntimePort>([['ollama', stubRuntime('ollama', 'stopped')]]),
       host,
+      processes,
     );
     const snapshot = await service.snapshot();
     expect(snapshot.host.cpuUtilizationPercent).toBeNull();
     expect(snapshot.runtime.state).toBe('stopped');
     expect(snapshot.runtime.loaded).toHaveLength(0);
     expect(snapshot.latestBenchmark).toBeNull();
+    expect(snapshot.runtime.ownedProcess).toBeNull();
+  });
+  it('attributes process metrics only to a managed runtime with an owned PID', async () => {
+    const managed = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', stubRuntime('ollama', 'managed-running', processSample.pid)],
+      ]),
+      host,
+      processes,
+    );
+    expect((await managed.snapshot()).runtime.ownedProcess).toEqual(processSample);
+
+    const external = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', stubRuntime('ollama', 'external-running', processSample.pid)],
+      ]),
+      host,
+      processes,
+    );
+    expect((await external.snapshot()).runtime.ownedProcess).toBeNull();
   });
   it('clears last benchmark on runtime switch to avoid false attribution', async () => {
     const providers = new Map<RuntimeId, RuntimePort>([
       ['ollama', stubRuntime('ollama', 'external-running')],
       ['lmstudio', stubRuntime('lmstudio', 'external-running')],
     ]);
-    const service = new MonitorService(providers, host);
+    const service = new MonitorService(providers, host, processes);
     await service.benchmark(model.id);
     expect((await service.snapshot()).latestBenchmark?.readTokensPerSecond).toBe(42);
     service.useRuntime('lmstudio');
@@ -92,6 +130,7 @@ describe('runtime monitoring', () => {
     const service = new MonitorService(
       new Map<RuntimeId, RuntimePort>([['ollama', stubRuntime('ollama', 'stopped')]]),
       host,
+      processes,
     );
     expect(service.runtimes()).toEqual([{ id: 'ollama', name: 'ollama' }]);
   });
@@ -102,6 +141,7 @@ describe('runtime monitoring', () => {
         ['lmstudio', stubRuntime('lmstudio', 'stopped')],
       ]),
       host,
+      processes,
     );
     expect(() => service.setEnabledRuntimes([])).toThrow(
       'At least one runtime must remain enabled',
@@ -117,6 +157,7 @@ describe('runtime monitoring', () => {
         ['lmstudio', stubRuntime('lmstudio', 'external-running')],
       ]),
       host,
+      processes,
     );
     service.setEnabledRuntimes(['lmstudio']);
     expect(service.runtimes()).toEqual([{ id: 'lmstudio', name: 'lmstudio' }]);
@@ -145,6 +186,7 @@ function dashboardAt(
       installed: [model],
       loaded: [{ ...model, gpuResidentBytes: 12 }],
       error: null,
+      ownedProcess: processSample,
       observedAt: sampledAt,
     },
   };

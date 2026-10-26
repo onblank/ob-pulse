@@ -1,6 +1,7 @@
 export type RuntimeId = 'ollama' | 'lmstudio';
 export type ServerState = 'stopped' | 'external-running' | 'managed-running';
-export type DataSource = 'host' | 'runtime' | 'benchmark' | 'client-plugin' | 'local-proxy';
+export type DataSource =
+  'host' | 'owned-process' | 'runtime' | 'benchmark' | 'client-plugin' | 'local-proxy';
 export type WidgetPosition = 'tray' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 export interface WidgetPreferences {
   readonly position: WidgetPosition;
@@ -51,6 +52,13 @@ export interface HostSample {
   readonly cpuLogicalCores: number;
   readonly source: 'host';
 }
+export interface OwnedProcessSample {
+  readonly pid: number;
+  readonly sampledAt: string;
+  readonly cpuUtilizationPercent: number | null;
+  readonly memoryResidentBytes: number | null;
+  readonly source: 'owned-process';
+}
 export interface RuntimeSnapshot {
   readonly id: RuntimeId;
   readonly displayName: string;
@@ -58,6 +66,7 @@ export interface RuntimeSnapshot {
   readonly capabilities: Capabilities;
   readonly installed: ModelRecord[];
   readonly loaded: ModelRecord[];
+  readonly ownedProcess: OwnedProcessSample | null;
   readonly error: string | null;
   readonly observedAt: string;
 }
@@ -167,6 +176,7 @@ export interface RuntimePort {
   readonly id: RuntimeId;
   readonly displayName: string;
   readonly capabilities: Capabilities;
+  ownedProcessId(): number | null;
   state(): Promise<ServerState>;
   listInstalled(): Promise<ModelRecord[]>;
   listLoaded(): Promise<ModelRecord[]>;
@@ -178,5 +188,8 @@ export interface RuntimePort {
 }
 export interface HostMetricsPort {
   sample(): HostSample;
+}
+export interface ProcessMetricsPort {
+  sample(pid: number): Promise<OwnedProcessSample | null>;
 }
 export const RUNTIME_IDS = ['ollama', 'lmstudio'] as const;
