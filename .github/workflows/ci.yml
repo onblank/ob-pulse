@@ -26,3 +26,20 @@ jobs:
             pnpm install --no-frozen-lockfile
           fi
       - run: pnpm check
+  windows-owned-process:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Activate pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@12.6.0 --activate
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck process metrics
+        run: pnpm --filter @obpulse/process-metrics typecheck
+      - name: Probe owned PID on Windows
+        run: pnpm exec vitest run packages/process-metrics/src/index.test.ts

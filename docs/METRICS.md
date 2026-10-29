@@ -4,6 +4,8 @@
 | ------------------------------- | --------------------------------------------------- | --------------------- | ---------------------------------------------------- |
 | Host RAM bytes/percent          | `os.totalmem()` + `os.freemem()`                    | entire device         | initial scaffold                                     |
 | Host CPU percent                | deltas of `os.cpus()` ticks                         | entire device         | initial scaffold                                     |
+| Owned-process resident bytes    | `ps` RSS / .NET `Process.WorkingSet64`              | direct owned child    | managed Ollama on Windows/macOS/Linux                |
+| Owned-process CPU percent       | `ps` / cumulative .NET processor-time delta         | direct owned child    | managed Ollama; second sample on Windows             |
 | Loaded model file size          | Ollama `GET /api/ps` `size`                         | loaded model          | initial scaffold                                     |
 | Loaded model GPU-resident bytes | Ollama `size_vram`                                  | reported residency    | initial scaffold, not true instantaneous utilization |
 | Model context _capacity_        | Ollama `context_length`                             | loaded model          | initial scaffold                                     |
@@ -20,6 +22,10 @@ including when its window is hidden in the tray. No sampling occurs after the ap
 The in-memory window retains at most the latest hour and has no restart persistence. Host RAM is a
 continuous series; loaded-model GPU-resident bytes are provider-reported residency, not GPU load;
 decode/write tps is a sparse point recorded once per explicit benchmark.
+Owned-process CPU is core-equivalent and may exceed 100% when the direct child uses more than one
+logical processor. On Windows the first valid observation has no prior cumulative-CPU baseline, so
+CPU is `null` while resident memory is already available.
+
 **Staleness**: mark disconnected when provider request fails. Never keep last live figure without stale marker.
 **Context reset**: new conversation/session (unique session ID) starts at 0 by _explicitly observed_ event.
 Observed compaction advances to a new epoch with known summary/prefix tokens if provided;
