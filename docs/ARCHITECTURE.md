@@ -28,10 +28,10 @@ is not unloaded until the UI can identify the intended runtime instance explicit
 
 - Host total CPU / host RAM are not the selected model CPU / RAM.
 - Process CPU/RAM is sampled only from the direct child PID retained by an adapter for a service
-  that OB-Pulse started. It excludes descendants and is not model-specific. CPU is the `/bin/ps`
-  core-equivalent percentage and may exceed 100% for multithreaded work; RAM is resident bytes.
-- External Ollama, LM Studio, Windows and a failed/unsupported process probe report process metrics
-  as unavailable. OB-Pulse never discovers a process by name, port or service.
+  that OB-Pulse started. It excludes descendants and is not model-specific. CPU is core-equivalent
+  and may exceed 100% for multithreaded work; RAM is resident bytes.
+- External Ollama, LM Studio and a failed/unsupported process probe report process metrics as
+  unavailable. OB-Pulse never discovers a process by name, port or service.
 - Ollama `/api/ps` reports loaded models, `size`, `size_vram`, `context_length`; it does not report live requests/sessions.
 - A per-request final response reports prompt/response token counts and evaluation durations; these may calculate tps **only for that request**.
 - LM Studio's native v1 benchmark reports decode tokens/sec and first-token latency directly. Its
@@ -47,11 +47,14 @@ quit or restart. Benchmark throughput is stored as a sparse event, not repeated 
 traffic.
 
 **Owned-process sampling**: `@obpulse/process-metrics` is separate from host-wide metrics. On macOS
-and Linux it invokes the fixed `/bin/ps` executable with fixed flags and the validated positive PID
-provided by `RuntimePort.ownedProcessId()`, never through a shell. `MonitorService` requests a sample
-only while the selected runtime reports `managed-running`. The current sample is neither added to
-the one-hour history nor persisted. Windows returns unavailable until a separately reviewed native
-probe exists.
+and Linux it invokes fixed `/bin/ps` flags. On Windows it invokes the system Windows PowerShell
+executable without profiles or interaction and reads only .NET `Process` start time, cumulative
+processor time and `WorkingSet64`. Both paths receive only the validated positive PID provided by
+`RuntimePort.ownedProcessId()` and never use a shell or discover processes. Windows requires two
+valid observations before deriving CPU; its first sample still exposes resident RAM. PID plus start
+time guards the CPU baseline against PID reuse. `MonitorService` requests a sample only while the
+selected runtime reports `managed-running`. The current sample is neither added to the one-hour
+history nor persisted.
 
 **Widget preferences**: Electron main validates and atomically stores a small
 `widget-preferences.json` file under Electron's machine-local `userData` directory. The renderer can

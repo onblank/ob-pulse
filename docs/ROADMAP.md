@@ -26,9 +26,9 @@
   lifecycle/authentication, llama.cpp/MLX adapters and managed service attach policy remain pending.
 - LM Studio has an explicit non-persistent native v1 benchmark for provider-reported decode speed,
   token counts and first-token latency; prefill speed remains unavailable rather than estimated.
-- Direct-child CPU/RAM is implemented on macOS/Linux for an Ollama server started and owned by
-  OB-Pulse. Windows process probing, descendant aggregation, reliable GPU metrics and multi-device
-  profiles remain pending.
+- Direct-child CPU/RAM is implemented on Windows, macOS and Linux for an Ollama server started and
+  owned by OB-Pulse. Windows CPU becomes available after its second valid observation; descendant
+  aggregation, reliable GPU metrics and multi-device profiles remain pending.
 - Widget customization is implemented with tray/corner positioning, safe opacity presets,
   accessible high-contrast mode and a tray shortcut to settings. Programmatic positioning remains
   best-effort on Wayland, where the compositor may control placement.

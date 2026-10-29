@@ -21,8 +21,11 @@
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
 - Server stop applies only to a tracked child PID that OB-Pulse itself created during this process lifetime.
 - Process metrics use only that tracked direct child PID, only while its adapter reports
-  `managed-running`. The macOS/Linux probe executes fixed `/bin/ps` arguments without a shell and
-  never discovers or attaches to processes by name, port or service. PIDs and samples are not persisted.
+  `managed-running`. The macOS/Linux probe executes fixed `/bin/ps` arguments; the Windows probe
+  executes the system Windows PowerShell without profiles or interaction and reads only the process
+  identified by the validated numeric environment value. Neither path uses a shell, discovers by
+  name/port/service or persists PIDs/samples. Windows also verifies process start time before reusing
+  a cumulative CPU baseline.
 - Loading/unloading models is a user-initiated action and must not delete local model files.
 - No model pull/remove UI until a separate approval/security design and progress feedback exist.
 - Keep metrics/content separation: never store user prompts, generated answers, tool arguments, full context,

@@ -54,7 +54,8 @@ A background/tray process is not a promise of monitoring when the **application 
 - Host CPU and host RAM in absolute and percentage terms (RAM: used/total; CPU: utilization of logical host).
 - Process-specific CPU/RAM only where the OS probe can attribute the process; otherwise `—`.
 - The current implementation attributes only the direct Ollama server child started by OB-Pulse on
-  macOS/Linux. It must not imply descendant, loaded-model or external-service attribution.
+  Windows, macOS or Linux. Windows CPU requires two valid observations. It must not imply descendant,
+  loaded-model or external-service attribution.
 - GPU load/VRAM percentages only where a platform-specific probe provides a trustworthy numerator and denominator.
 - Report provider-resident model bytes separately from VRAM utilization.
 - Prefill/read and decode/write token/s from provider timing or opted-in client adapter;
