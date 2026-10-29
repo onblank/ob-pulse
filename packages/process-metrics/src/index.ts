@@ -6,6 +6,7 @@ import type { OwnedProcessSample, ProcessMetricsPort } from '@obpulse/contracts'
 
 const execFileAsync = promisify(execFile);
 const WINDOWS_TICKS_PER_MILLISECOND = 10_000;
+const WINDOWS_PROBE_TIMEOUT_MS = 5_000;
 const WINDOWS_PROCESS_SCRIPT = [
   "$ErrorActionPreference='Stop'",
   '$ownedProcessId=[int]$env:OBPULSE_OWNED_PID',
@@ -141,7 +142,7 @@ export class NodeProcessMetrics implements ProcessMetricsPort {
         ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_PROCESS_SCRIPT],
         {
           encoding: 'utf8',
-          timeout: 1500,
+          timeout: WINDOWS_PROBE_TIMEOUT_MS,
           maxBuffer: 4096,
           windowsHide: true,
           env: {
