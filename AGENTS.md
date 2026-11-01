@@ -36,6 +36,8 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
 10. UI remains in background/tray; no invasive floating overlays by default. Always-on-top is optional.
 11. Third-party runtime adapters are individually registered through an internal interface. No untrusted executable plugin loading by default.
 12. All branding assets are bundled locally; official logos need review prior to release.
+13. A user-approved loopback runtime credential may be persisted only through an OS-protected
+    credential backend, with no plaintext fallback, logs, renderer readback or remote-provider use.
 
 ## Clean Architecture
 
@@ -69,6 +71,9 @@ attaches in observation mode. A reachable LM Studio server can enter explicit, s
 control through the official `lms server` CLI; this never grants ownership of its GUI or daemon.
 LM Studio control may be explicitly released without stopping the server; after release Pulse must
 return to observer authority and must not stop that server on quit.
+LM Studio API-token support may accept a token through narrow IPC, but only Electron main may retain
+it, and only as OS-encrypted machine-local storage. The renderer may query configured/unavailable
+status but must never retrieve the token.
 
 ## Workflow
 

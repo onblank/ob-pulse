@@ -83,6 +83,15 @@ the first enabled adapter if the current selection is disabled. The renderer rec
 catalog and narrow get/set methods. Disabling changes OB-Pulse visibility and control eligibility;
 it does not stop an external or app-managed service and never removes model weights.
 
+**Runtime credentials**: LM Studio bearer authentication is write-only from the sandboxed renderer.
+Electron main validates the token, encrypts it with asynchronous Electron `safeStorage`, and writes
+only a versioned base64 ciphertext envelope with `0600` permissions under `userData`. macOS uses
+Keychain and Windows uses DPAPI. Linux persistence is refused when the reported backend is
+`basic_text` or `unknown`; there is no plaintext or preferences-file fallback. At startup the token
+is decrypted directly into the LM Studio adapter, and IPC exposes only configured/storage/error
+status plus replace/remove operations—never credential readback. Key rotation requests rewrite the
+ciphertext atomically.
+
 **Persistence (planned, optional)**: if durable history is later justified, local SQLite in
 `packages/db-sqlite` must use explicit numbered migrations, opt-in retention and numeric telemetry
 only. Its candidate schema is described in `docs/DATA_MODEL.md`; it is not wired into the current UI.

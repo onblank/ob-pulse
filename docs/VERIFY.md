@@ -3,7 +3,7 @@
 Current local verification as of 2026-11-01:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- `pnpm check` passes formatting, ESLint, TypeScript checks for all nine packages, 51 tests and
+- `pnpm check` passes formatting, ESLint, TypeScript checks for all nine packages, 58 tests and
   the Electron main/preload/renderer production builds.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
@@ -17,6 +17,9 @@ Current local verification as of 2026-11-01:
   atomic persistence and work-area-clamped tray/corner placement.
 - Runtime preference and application tests cover non-empty/unique registered adapter validation,
   filtered discovery, disabled-selection rejection and deterministic selection fallback.
+- Credential tests cover strict token validation, absent secure-storage refusal, encrypted-only
+  atomic persistence, malformed-envelope rejection, deletion and re-encryption after key rotation.
+  LM Studio adapter tests verify bearer headers and secret-free rejection errors.
 - Owned-process tests cover strict `ps` and Windows reading parsing, Windows CPU delta and PID-reuse
   semantics, a live self-PID probe on macOS/Linux, absent Ollama ownership and the application rule
   that only a managed runtime with an owned PID receives a process sample. A dedicated

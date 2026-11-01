@@ -17,6 +17,8 @@
   installed/loaded-model listing and model load/unload through its native API. Handover requires
   confirmation, does not claim GUI/daemon ownership and can be explicitly released without stopping
   the server; it is also released without stopping on Pulse exit.
+- Optional LM Studio bearer-token configuration stored only as OS-protected encrypted bytes. Pulse
+  never displays the saved token again and refuses persistence without an acceptable secure backend.
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
 - Current CPU and resident-memory readings for the direct Ollama server process only when OB-Pulse
   started and still owns it on Windows, macOS or Linux. Windows CPU needs two valid observations;
@@ -33,8 +35,8 @@
 - Passive token-speed capture from arbitrary third-party apps; clients must explicitly implement and authenticate against the instrumentation contract.
 - Automatic session/context discovery from clients that do not emit the instrumentation contract.
 - Per-model CPU/GPU utilization on every OS, persistent/long-term chart history and external model installs.
-- LM Studio authenticated-server configuration and GUI/daemon process ownership, llama.cpp/MLX
-  adapters, signing/notarization, production native installers and automated distribution.
+- LM Studio GUI/daemon process ownership, llama.cpp/MLX adapters, signing/notarization, production
+  native installers and automated distribution.
 
 Unsupported values appear as `—`, **never** as fabricated zero.
 

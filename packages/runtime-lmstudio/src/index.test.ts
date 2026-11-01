@@ -102,7 +102,7 @@ describe('LM Studio v1 runtime', () => {
   });
 
   it('reports downloaded and loaded models without inventing residency metrics', async () => {
-    const fetcher = vi.fn(async () => json(modelList));
+    const fetcher = vi.fn<FetchStub>(async () => json(modelList));
     const runtime = new LMStudioRuntime(fetcher);
 
     await expect(runtime.state()).resolves.toBe('external-running');
@@ -131,6 +131,28 @@ describe('LM Studio v1 runtime', () => {
       unloadModel: true,
       benchmark: true,
     });
+  });
+
+  it('adds a configured bearer token to every request without exposing it as state', async () => {
+    const fetcher = vi.fn<FetchStub>(async () => json(modelList));
+    const runtime = new LMStudioRuntime(fetcher);
+    runtime.setApiToken('lms-secret-token');
+
+    await runtime.listInstalled();
+
+    const headers = new Headers(fetcher.mock.calls[0]?.[1]?.headers);
+    expect(headers.get('authorization')).toBe('Bearer lms-secret-token');
+    expect(runtime.hasApiToken()).toBe(true);
+    runtime.setApiToken(null);
+    expect(runtime.hasApiToken()).toBe(false);
+  });
+
+  it('reports a rejected configured token without including the credential', async () => {
+    const runtime = new LMStudioRuntime(vi.fn<FetchStub>(async () => json({}, 401)));
+    runtime.setApiToken('lms-secret-token');
+
+    await expect(runtime.listInstalled()).rejects.toThrow('configured token was rejected');
+    await expect(runtime.listInstalled()).rejects.not.toThrow('lms-secret-token');
   });
 
   it('loads a selected model through the native v1 endpoint', async () => {

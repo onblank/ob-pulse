@@ -11,7 +11,9 @@ then stop that server through `lms server stop`; delegation must be released wit
 app exit. Invoke only the resolved `~/.lmstudio/bin/lms` executable with fixed arguments and no shell.
 An explicit release-control action must clear both session-managed and delegated authority without
 invoking the lifecycle CLI, leaving the reachable server external.
-Never infer delegation, use a generic process kill, invoke `daemon down`, close the LM Studio GUI, claim its process PID, assume authentication
-credentials or unload an ambiguous model instance.
+Bearer authentication may use only an explicitly supplied in-memory token. Add it to native v1
+requests, never expose/log it, and distinguish missing from rejected credentials without echoing the
+secret. Never infer delegation, use a generic process kill, invoke `daemon down`, close the LM Studio
+GUI, claim its process PID or unload an ambiguous model instance.
 
 The repository's privacy, ownership, process lifecycle, truthful-metrics and Clean Architecture policies remain authoritative.

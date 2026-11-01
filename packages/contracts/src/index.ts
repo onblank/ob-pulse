@@ -18,6 +18,13 @@ export interface RuntimeCatalogEntry {
   readonly name: string;
   readonly enabled: boolean;
 }
+export interface RuntimeCredentialStatus {
+  readonly runtimeId: 'lmstudio';
+  readonly secureStorageAvailable: boolean;
+  readonly configured: boolean;
+  readonly storedCredentialPresent: boolean;
+  readonly error: string | null;
+}
 export interface Capabilities {
   readonly listInstalled: boolean;
   readonly listLoaded: boolean;

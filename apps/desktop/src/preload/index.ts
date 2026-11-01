@@ -7,6 +7,9 @@ const api = {
   runtimePreferences: () => ipcRenderer.invoke('pulse:runtime-preferences'),
   setRuntimePreferences: (preferences: unknown) =>
     ipcRenderer.invoke('pulse:set-runtime-preferences', preferences),
+  lmStudioCredentialStatus: () => ipcRenderer.invoke('pulse:lmstudio-credential-status'),
+  setLMStudioApiToken: (token: string) => ipcRenderer.invoke('pulse:set-lmstudio-api-token', token),
+  clearLMStudioApiToken: () => ipcRenderer.invoke('pulse:clear-lmstudio-api-token'),
   selectRuntime: (id: string) => ipcRenderer.invoke('pulse:select-runtime', id),
   start: () => ipcRenderer.invoke('pulse:start'),
   stop: () => ipcRenderer.invoke('pulse:stop'),
