@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import type {
   BenchmarkRecord,
   Capabilities,
+  ControlAuthority,
   ModelRecord,
   RuntimePort,
   ServerState,
@@ -22,6 +23,7 @@ const CAPABILITIES: Capabilities = {
   listLoaded: true,
   startServer: true,
   stopServer: true,
+  takeControl: true,
   loadModel: true,
   unloadModel: true,
   benchmark: true,
@@ -145,6 +147,7 @@ export class LMStudioRuntime implements RuntimePort {
   readonly capabilities = CAPABILITIES;
 
   private ownsServer = false;
+  private delegatedControl = false;
 
   constructor(
     private readonly fetcher: Fetcher = fetch,
@@ -153,6 +156,12 @@ export class LMStudioRuntime implements RuntimePort {
 
   ownedProcessId(): number | null {
     return null;
+  }
+
+  controlAuthority(): ControlAuthority {
+    if (this.ownsServer) return 'session-managed';
+    if (this.delegatedControl) return 'delegated';
+    return 'observer';
   }
 
   private async request(path: string, init?: RequestInit): Promise<unknown> {
@@ -181,10 +190,12 @@ export class LMStudioRuntime implements RuntimePort {
   }
 
   async state(): Promise<ServerState> {
-    if (await this.probe()) return this.ownsServer ? 'managed-running' : 'external-running';
-    if (!this.ownsServer) return 'stopped';
+    if (await this.probe())
+      return this.ownsServer || this.delegatedControl ? 'managed-running' : 'external-running';
+    if (!this.ownsServer && !this.delegatedControl) return 'stopped';
     if (await this.lifecycle.serverRunning()) return 'managed-running';
     this.ownsServer = false;
+    this.delegatedControl = false;
     return 'stopped';
   }
 
@@ -218,6 +229,7 @@ export class LMStudioRuntime implements RuntimePort {
     try {
       await this.lifecycle.startServer();
       this.ownsServer = true;
+      this.delegatedControl = false;
       for (let attempt = 0; attempt < 40; attempt += 1) {
         if (await this.probe()) return;
         await new Promise((resolve) => setTimeout(resolve, 250));
@@ -232,21 +244,33 @@ export class LMStudioRuntime implements RuntimePort {
         }
       }
       this.ownsServer = false;
+      this.delegatedControl = false;
       throw error;
     }
   }
 
   async stopServer(): Promise<void> {
-    if (!this.ownsServer)
-      throw new Error('Cannot stop LM Studio: OB-Pulse does not own this server');
+    if (!this.ownsServer && !this.delegatedControl)
+      throw new Error('Cannot stop LM Studio: control has not been delegated to OB-Pulse');
     await this.lifecycle.stopServer();
     this.ownsServer = false;
+    this.delegatedControl = false;
+  }
+
+  async takeControl(): Promise<void> {
+    if (this.ownsServer || this.delegatedControl) return;
+    if (!(await this.probe()))
+      throw new Error('Cannot take control of LM Studio: its loopback server is not reachable');
+    this.delegatedControl = true;
   }
 
   async shutdownOwned(): Promise<void> {
-    if (!this.ownsServer) return;
-    await this.lifecycle.stopServer();
-    this.ownsServer = false;
+    if (this.ownsServer) {
+      await this.lifecycle.stopServer();
+      this.ownsServer = false;
+    }
+    // Delegated control is session-scoped; it does not imply shutdown-on-exit ownership.
+    this.delegatedControl = false;
   }
 
   async loadModel(modelId: string): Promise<void> {

@@ -4,6 +4,7 @@ import process from 'node:process';
 import type {
   BenchmarkRecord,
   Capabilities,
+  ControlAuthority,
   ModelRecord,
   RuntimePort,
   ServerState,
@@ -71,6 +72,7 @@ const CAPABILITIES: Capabilities = {
   listLoaded: true,
   startServer: true,
   stopServer: true,
+  takeControl: false,
   loadModel: true,
   unloadModel: true,
   benchmark: true,
@@ -85,6 +87,9 @@ export class OllamaRuntime implements RuntimePort {
     return child && child.exitCode === null && !child.killed && child.pid != null
       ? child.pid
       : null;
+  }
+  controlAuthority(): ControlAuthority {
+    return this.ownedProcessId() == null ? 'observer' : 'process-owned';
   }
   private async probe(): Promise<boolean> {
     try {
@@ -144,6 +149,9 @@ export class OllamaRuntime implements RuntimePort {
     const killed = child.kill();
     if (!killed) throw new Error('Could not signal owned Ollama process');
     this.child = null;
+  }
+  async takeControl(): Promise<void> {
+    throw new Error('Cannot take control of an external Ollama server safely');
   }
   async shutdownOwned(): Promise<void> {
     this.stopManagedImmediately();

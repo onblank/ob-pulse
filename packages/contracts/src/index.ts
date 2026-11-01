@@ -1,5 +1,7 @@
 export type RuntimeId = 'ollama' | 'lmstudio';
 export type ServerState = 'stopped' | 'external-running' | 'managed-running';
+export type ControlAuthority =
+  'observer' | 'session-managed' | 'delegated' | 'service-managed' | 'process-owned';
 export type DataSource =
   'host' | 'owned-process' | 'runtime' | 'benchmark' | 'client-plugin' | 'local-proxy';
 export type WidgetPosition = 'tray' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -21,6 +23,7 @@ export interface Capabilities {
   readonly listLoaded: boolean;
   readonly startServer: boolean;
   readonly stopServer: boolean;
+  readonly takeControl: boolean;
   readonly loadModel: boolean;
   readonly unloadModel: boolean;
   readonly benchmark: boolean;
@@ -63,6 +66,7 @@ export interface RuntimeSnapshot {
   readonly id: RuntimeId;
   readonly displayName: string;
   readonly state: ServerState;
+  readonly controlAuthority: ControlAuthority;
   readonly capabilities: Capabilities;
   readonly installed: ModelRecord[];
   readonly loaded: ModelRecord[];
@@ -176,12 +180,14 @@ export interface RuntimePort {
   readonly id: RuntimeId;
   readonly displayName: string;
   readonly capabilities: Capabilities;
+  controlAuthority(): ControlAuthority;
   ownedProcessId(): number | null;
   state(): Promise<ServerState>;
   listInstalled(): Promise<ModelRecord[]>;
   listLoaded(): Promise<ModelRecord[]>;
   startServer(): Promise<void>;
   stopServer(): Promise<void>;
+  takeControl(): Promise<void>;
   shutdownOwned(): Promise<void>;
   loadModel(modelId: string): Promise<void>;
   unloadModel(modelId: string): Promise<void>;

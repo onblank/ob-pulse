@@ -21,6 +21,7 @@ declare global {
       selectRuntime(id: RuntimeId): Promise<void>;
       start(): Promise<void>;
       stop(): Promise<void>;
+      takeControl(): Promise<void>;
       load(modelId: string): Promise<void>;
       unload(modelId: string): Promise<void>;
       benchmark(modelId: string): Promise<unknown>;

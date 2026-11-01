@@ -175,10 +175,12 @@ function PowerControl({
   snapshot,
   busy,
   onToggle,
+  onTakeControl,
 }: {
   snapshot: DashboardSnapshot | null;
   busy: boolean;
   onToggle: () => void;
+  onTakeControl: () => void;
 }) {
   const runtime = snapshot?.runtime;
   const state = runtime?.state ?? 'stopped';
@@ -186,11 +188,16 @@ function PowerControl({
   const canStart = state === 'stopped' && !!runtime?.capabilities.startServer;
   const canStop = state === 'managed-running' && !!runtime?.capabilities.stopServer;
   const external = state === 'external-running';
+  const canTakeControl = external && !!runtime?.capabilities.takeControl;
   const enabled = !busy && (canStart || canStop);
   const stateLabel = external
     ? 'Server managed externally'
     : state === 'managed-running'
-      ? 'Server managed by OB-Pulse'
+      ? runtime?.controlAuthority === 'delegated'
+        ? 'Control delegated to OB-Pulse'
+        : runtime?.controlAuthority === 'process-owned'
+          ? 'Process owned by OB-Pulse'
+          : 'Server started by OB-Pulse'
       : canStart
         ? 'Server ready to start'
         : 'Observation only';
@@ -205,7 +212,9 @@ function PowerControl({
         }
         title={
           external
-            ? 'This runtime server was started outside OB-Pulse and cannot be stopped here'
+            ? canTakeControl
+              ? 'Take explicit control before stopping this external server'
+              : 'This runtime server was started outside OB-Pulse and cannot be stopped here'
             : ''
         }
       >
@@ -214,6 +223,11 @@ function PowerControl({
       <div className="power-copy">
         <strong>{runtime?.displayName ?? 'Local runtime'}</strong>
         <span className={running ? 'state online' : 'state'}>{stateLabel}</span>
+        {canTakeControl && (
+          <button className="take-control" disabled={busy} onClick={onTakeControl}>
+            Take control
+          </button>
+        )}
       </div>
     </div>
   );
@@ -712,8 +726,25 @@ export default function App() {
   const loaded = info?.loaded ?? [];
   const compactModel = loaded[0] ?? null;
   const togglePower = () => {
-    if (info?.state === 'managed-running') void action(() => window.obpulse.stop());
-    else if (info?.state === 'stopped') void action(() => window.obpulse.start());
+    if (info?.state === 'managed-running') {
+      if (
+        info.controlAuthority === 'delegated' &&
+        !window.confirm(
+          'Stop the delegated LM Studio server? This may interrupt active requests in other applications.',
+        )
+      )
+        return;
+      void action(() => window.obpulse.stop());
+    } else if (info?.state === 'stopped') void action(() => window.obpulse.start());
+  };
+  const takeControl = () => {
+    if (
+      !window.confirm(
+        'Give OB-Pulse control of this LM Studio server for the current session? Stopping it later may interrupt active requests.',
+      )
+    )
+      return;
+    void action(() => window.obpulse.takeControl());
   };
   const updatePreferences = async (next: WidgetPreferences) => {
     setBusy(true);
@@ -766,7 +797,12 @@ export default function App() {
 
         {mode === 'compact' ? (
           <div className="compact-content">
-            <PowerControl snapshot={snapshot} busy={busy} onToggle={togglePower} />
+            <PowerControl
+              snapshot={snapshot}
+              busy={busy}
+              onToggle={togglePower}
+              onTakeControl={takeControl}
+            />
             <section className="loaded-model">
               <span className={`pulse-dot ${compactModel ? 'online' : ''}`} />
               <div>
@@ -800,7 +836,12 @@ export default function App() {
                   ))}
                 </select>
               </div>
-              <PowerControl snapshot={snapshot} busy={busy} onToggle={togglePower} />
+              <PowerControl
+                snapshot={snapshot}
+                busy={busy}
+                onToggle={togglePower}
+                onTakeControl={takeControl}
+              />
             </section>
 
             <WidgetSettings
