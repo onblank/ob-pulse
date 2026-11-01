@@ -20,7 +20,11 @@ The CLI may wake the LM Studio app, but Pulse neither closes that app nor invoke
 LM Studio process PID is attributed to Pulse. `lms` installation and removal remain external.
 LM Studio model load/unload uses only its native v1 loopback API. An unload is refused when a model
 has multiple loaded instances because the current UI selects the model key, not a specific instance.
-Servers requiring an API token are detected but cannot yet be configured in OB-Pulse.
+LM Studio bearer tokens can be configured through write-only IPC and are attached to every native
+v1 request. The saved token is OS-encrypted and never readable back through the UI; missing and
+rejected/under-permissioned credentials remain distinct errors. Tokens and permissions are created
+and managed in LM Studio, not by Pulse. See the official
+[LM Studio authentication guide](https://lmstudio.ai/docs/developer/core/authentication).
 Its manual benchmark calls native `/api/v1/chat` with `store:false`, discards output immediately and
 keeps only input/output counts, provider-reported decode speed and first-token latency. LM Studio v1
 does not report prefill speed in this response, so that value remains unavailable.

@@ -12,6 +12,9 @@ delegated control never triggers shutdown on app exit. Never claim benchmark rea
 always-on-top settings must never trap the user in an overlay.
 The user may explicitly release LM Studio server control without stopping it; the UI must confirm
 that action and immediately show observation-only state.
+Runtime credentials are Restricted. The renderer may submit an LM Studio token through one narrow
+write-only IPC method and query non-secret status; it must never retrieve, log or persist the token.
+Electron main must refuse persistence when OS-protected storage is unavailable or weak.
 
 Brand files in `src/renderer/assets/brand` are local placeholders and must be replaced with approved
 onBlank artwork before release. App packaging is prepared, not yet signed/tested on target OSes.

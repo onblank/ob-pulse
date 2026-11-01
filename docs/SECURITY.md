@@ -18,6 +18,11 @@
   atomically to a machine-local preferences file. Opacity accepts only safe presets from 75–100%.
 - Runtime visibility settings accept only registered built-in IDs, reject duplicates and never
   permit disabling every adapter. Changing visibility cannot start, stop or delete runtime assets.
+- LM Studio API tokens cross one write-only IPC method, are bounded/validated in Electron main and
+  are encrypted with asynchronous `safeStorage`. Disk contains only a versioned ciphertext envelope
+  written atomically with `0600` mode. The renderer can query only configured/storage/error status.
+  Pulse refuses Linux `basic_text`/`unknown` and any unavailable encryption backend; it has no
+  plaintext fallback. Removing a token deletes the encrypted envelope and clears adapter memory.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
 - Ollama server stop applies only to a tracked child PID that OB-Pulse itself created during this process lifetime.
 - LM Studio server start/stop uses the resolved `~/.lmstudio/bin/lms` executable, fixed arguments,
@@ -35,8 +40,9 @@
   a cumulative CPU baseline.
 - Loading/unloading models is a user-initiated action and must not delete local model files.
 - No model pull/remove UI until a separate approval/security design and progress feedback exist.
-- Keep metrics/content separation: never store user prompts, generated answers, tool arguments, full context,
-  provider credentials or HTTP request/response bodies.
+- Keep metrics/content separation: never store user prompts, generated answers, tool arguments, full
+  context, plaintext provider credentials or HTTP request/response bodies. The sole credential
+  exception is the user-approved OS-encrypted LM Studio loopback token described above.
 - A future proxy or broader external adapter still requires separate opt-in and threat modeling,
   especially for prompt redaction, credentials, other-process traffic and GDPR considerations.
 - Repository CI tokens and package signing certificates are GitHub secrets, never checked into source.

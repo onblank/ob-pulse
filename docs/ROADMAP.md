@@ -25,7 +25,8 @@
 - LM Studio v1 model load/unload, session-owned loopback server start/stop and explicit
   session-scoped handover of a reachable pre-existing server are implemented for unprotected
   servers. Session-managed or delegated control can be explicitly released while leaving the
-  server running. Authentication, GUI/daemon process ownership, Ollama external-server handover,
+  server running. OS-protected bearer-token configuration is implemented without plaintext fallback
+  or renderer readback. GUI/daemon process ownership, Ollama external-server handover,
   llama.cpp/MLX adapters and broader managed-service attach policy remain pending.
 - LM Studio has an explicit non-persistent native v1 benchmark for provider-reported decode speed,
   token counts and first-token latency; prefill speed remains unavailable rather than estimated.

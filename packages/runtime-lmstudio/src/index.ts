@@ -46,8 +46,17 @@ export interface LMStudioLifecycle {
 }
 
 class LMStudioHttpError extends Error {
-  constructor(readonly status: number) {
-    super(`LM Studio HTTP ${status}; protected servers require a configured token`);
+  constructor(
+    readonly status: number,
+    credentialConfigured: boolean,
+  ) {
+    super(
+      status === 401 || status === 403
+        ? credentialConfigured
+          ? `LM Studio HTTP ${status}; the configured token was rejected or lacks permission`
+          : `LM Studio HTTP ${status}; protected servers require a configured token`
+        : `LM Studio HTTP ${status}`,
+    );
   }
 }
 
@@ -149,6 +158,7 @@ export class LMStudioRuntime implements RuntimePort {
 
   private ownsServer = false;
   private delegatedControl = false;
+  private apiToken: string | null = null;
 
   constructor(
     private readonly fetcher: Fetcher = fetch,
@@ -165,12 +175,33 @@ export class LMStudioRuntime implements RuntimePort {
     return 'observer';
   }
 
+  setApiToken(value: string | null): void {
+    if (
+      value !== null &&
+      (value.length === 0 ||
+        value.length > 4096 ||
+        Array.from(value).some((character) => {
+          const code = character.charCodeAt(0);
+          return code <= 0x20 || code === 0x7f;
+        }))
+    )
+      throw new Error('Invalid LM Studio API token');
+    this.apiToken = value;
+  }
+
+  hasApiToken(): boolean {
+    return this.apiToken !== null;
+  }
+
   private async request(path: string, init?: RequestInit): Promise<unknown> {
+    const headers = new Headers(init?.headers);
+    if (this.apiToken) headers.set('authorization', `Bearer ${this.apiToken}`);
     const response = await this.fetcher(`${BASE}${path}`, {
       ...init,
+      headers,
       signal: AbortSignal.timeout(init?.method === 'POST' ? 120_000 : 2000),
     });
-    if (!response.ok) throw new LMStudioHttpError(response.status);
+    if (!response.ok) throw new LMStudioHttpError(response.status, this.apiToken !== null);
     return response.json() as Promise<unknown>;
   }
 

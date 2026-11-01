@@ -21,6 +21,18 @@ desarrollo debe compilar, probar y publicar instaladores de Windows/macOS/Linux.
 6. **Test speed** ejecuta una pequeña prueba real de lectura/prefill y escritura/decode.
 7. Cerrar la ventana oculta OB-Pulse en la bandeja; **Quit** termina la aplicación.
 
+## LM Studio y autenticación
+
+1. Crea el token y sus permisos desde **Developer → Server Settings → Manage Tokens** en LM Studio.
+2. En OB-Pulse abre el modo ampliado, selecciona **LM Studio** y pega el token en **API authentication**.
+3. Pulse lo cifra con Keychain, DPAPI o un almacén seguro compatible de Linux. Si no existe un
+   backend protegido, el botón permanece deshabilitado y el token no se guarda.
+4. El valor guardado no vuelve a mostrarse. Puedes reemplazarlo o eliminarlo explícitamente.
+5. Si el token es incorrecto o carece de permisos, Pulse muestra el rechazo sin incluir el secreto.
+
+No pegues tokens de proveedores remotos: este campo admite únicamente el token del servidor local
+LM Studio en `127.0.0.1:1234`.
+
 ## Bandeja, modo compacto y modo ampliado
 
 - Al ocultar o cerrar la ventana solo queda el icono de OB-Pulse en la bandeja del sistema. Pulsa el

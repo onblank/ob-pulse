@@ -4,6 +4,7 @@ import type {
   InstrumentationSnapshot,
   MetricHistoryWindow,
   RuntimeCatalogEntry,
+  RuntimeCredentialStatus,
   RuntimeId,
   RuntimePreferences,
   WidgetPreferences,
@@ -18,6 +19,9 @@ declare global {
       runtimeCatalog(): Promise<RuntimeCatalogEntry[]>;
       runtimePreferences(): Promise<RuntimePreferences>;
       setRuntimePreferences(preferences: RuntimePreferences): Promise<RuntimePreferences>;
+      lmStudioCredentialStatus(): Promise<RuntimeCredentialStatus>;
+      setLMStudioApiToken(token: string): Promise<RuntimeCredentialStatus>;
+      clearLMStudioApiToken(): Promise<RuntimeCredentialStatus>;
       selectRuntime(id: RuntimeId): Promise<void>;
       start(): Promise<void>;
       stop(): Promise<void>;

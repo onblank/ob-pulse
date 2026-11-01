@@ -1,10 +1,21 @@
-import { app, BrowserWindow, Menu, Tray, clipboard, ipcMain, nativeImage, screen } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  clipboard,
+  ipcMain,
+  nativeImage,
+  safeStorage,
+  screen,
+} from 'electron';
 import type { Rectangle } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HISTORY_SAMPLE_INTERVAL_MS, MonitorService } from '@obpulse/application';
 import type {
   RuntimeId,
+  RuntimeCredentialStatus,
   RuntimePort,
   RuntimePreferences,
   WidgetPreferences,
@@ -15,6 +26,7 @@ import { LoopbackInstrumentationBridge } from '@obpulse/instrumentation-http';
 import { NodeProcessMetrics } from '@obpulse/process-metrics';
 import { OllamaRuntime } from '@obpulse/runtime-ollama';
 import { LMStudioRuntime } from '@obpulse/runtime-lmstudio';
+import { EncryptedCredentialStore, validApiToken, type SecretCipher } from './credentials.js';
 import {
   DEFAULT_WIDGET_PREFERENCES,
   calculateWidgetPosition,
@@ -25,7 +37,8 @@ import {
 } from './preferences.js';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ollama = new OllamaRuntime();
-const providers: RuntimePort[] = [ollama, new LMStudioRuntime()];
+const lmstudio = new LMStudioRuntime();
+const providers: RuntimePort[] = [ollama, lmstudio];
 const service = new MonitorService(
   new Map(providers.map((provider) => [provider.id, provider])),
   new NodeHostMetrics(),
@@ -43,6 +56,8 @@ let widgetPreferences: WidgetPreferences = DEFAULT_WIDGET_PREFERENCES;
 let widgetPreferencesPath: string | null = null;
 let runtimePreferences: RuntimePreferences = { enabledRuntimeIds: [...RUNTIME_IDS] };
 let runtimePreferencesPath: string | null = null;
+let lmStudioCredentialStore: EncryptedCredentialStore | null = null;
+let lmStudioCredentialError: string | null = null;
 let sampler: NodeJS.Timeout | null = null;
 let sampleInFlight = false;
 let quitCleanupStarted = false;
@@ -81,6 +96,35 @@ function validInstrumentationValue(value: unknown): 'endpoint' | 'token' {
   if (value !== 'endpoint' && value !== 'token')
     throw new Error('Unsupported instrumentation value');
   return value;
+}
+const secretCipher: SecretCipher = {
+  available: async () => {
+    if (!(await safeStorage.isAsyncEncryptionAvailable())) return false;
+    if (process.platform !== 'linux') return true;
+    const backend = safeStorage.getSelectedStorageBackend();
+    return backend !== 'basic_text' && backend !== 'unknown';
+  },
+  encrypt: (value) => safeStorage.encryptStringAsync(value),
+  decrypt: (value) => safeStorage.decryptStringAsync(value),
+};
+async function lmStudioCredentialStatus(): Promise<RuntimeCredentialStatus> {
+  let secureStorageAvailable = false;
+  let storedCredentialPresent = false;
+  try {
+    [secureStorageAvailable, storedCredentialPresent] = await Promise.all([
+      lmStudioCredentialStore?.available() ?? false,
+      lmStudioCredentialStore?.exists() ?? false,
+    ]);
+  } catch {
+    lmStudioCredentialError = 'OS-protected credential storage could not be initialized';
+  }
+  return {
+    runtimeId: 'lmstudio',
+    secureStorageAvailable,
+    configured: lmstudio.hasApiToken(),
+    storedCredentialPresent,
+    error: lmStudioCredentialError,
+  };
 }
 function applyWindowMode(mode: 'compact' | 'expanded'): void {
   if (!mainWindow) return;
@@ -152,6 +196,22 @@ function registerIPC() {
     service.setEnabledRuntimes(saved.enabledRuntimeIds);
     runtimePreferences = saved;
     return runtimePreferences;
+  });
+  ipcMain.handle('pulse:lmstudio-credential-status', () => lmStudioCredentialStatus());
+  ipcMain.handle('pulse:set-lmstudio-api-token', async (_event, value: unknown) => {
+    if (!lmStudioCredentialStore) throw new Error('Credential storage is not ready');
+    const token = validApiToken(value);
+    await lmStudioCredentialStore.save(token);
+    lmstudio.setApiToken(token);
+    lmStudioCredentialError = null;
+    return lmStudioCredentialStatus();
+  });
+  ipcMain.handle('pulse:clear-lmstudio-api-token', async () => {
+    if (!lmStudioCredentialStore) throw new Error('Credential storage is not ready');
+    await lmStudioCredentialStore.clear();
+    lmstudio.setApiToken(null);
+    lmStudioCredentialError = null;
+    return lmStudioCredentialStatus();
   });
   ipcMain.handle('pulse:select-runtime', (_event, id: unknown) =>
     service.useRuntime(validRuntime(id)),
@@ -290,8 +350,18 @@ app
   .then(async () => {
     widgetPreferencesPath = path.join(app.getPath('userData'), 'widget-preferences.json');
     runtimePreferencesPath = path.join(app.getPath('userData'), 'runtime-preferences.json');
+    lmStudioCredentialStore = new EncryptedCredentialStore(
+      path.join(app.getPath('userData'), 'lmstudio-api-token.enc.json'),
+      secretCipher,
+    );
     widgetPreferences = await loadWidgetPreferences(widgetPreferencesPath);
     runtimePreferences = await loadRuntimePreferences(runtimePreferencesPath);
+    try {
+      lmstudio.setApiToken(await lmStudioCredentialStore.load());
+    } catch {
+      lmStudioCredentialError = 'Stored LM Studio credential could not be loaded';
+      lmstudio.setApiToken(null);
+    }
     service.setEnabledRuntimes(runtimePreferences.enabledRuntimeIds);
     registerIPC();
     createWindow();
