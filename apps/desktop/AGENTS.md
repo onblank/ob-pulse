@@ -15,6 +15,8 @@ that action and immediately show observation-only state.
 Runtime credentials are Restricted. The renderer may submit an LM Studio token through one narrow
 write-only IPC method and query non-secret status; it must never retrieve, log or persist the token.
 Electron main must refuse persistence when OS-protected storage is unavailable or weak.
+The expanded UI must present adapter capabilities separately from current control authority and use
+only the typed versioned manifest; it must not infer permissions from server reachability.
 
 Brand files in `src/renderer/assets/brand` are local placeholders and must be replaced with approved
 onBlank artwork before release. App packaging is prepared, not yet signed/tested on target OSes.

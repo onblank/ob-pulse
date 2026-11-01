@@ -443,6 +443,94 @@ select option {
   font-size: 27px;
 }
 
+.access-panel {
+  padding: 13px 16px;
+  display: grid;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #1e2a3c;
+}
+
+.access-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.access-heading h2 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.contract-badge {
+  padding: 4px 7px;
+  border: 1px solid #7f8cff66;
+  border-radius: 999px;
+  color: var(--blue);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.permission-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.permission-summary > div {
+  min-width: 0;
+  padding: 8px 9px;
+  display: grid;
+  gap: 3px;
+  border: 1px solid #36475f;
+  border-radius: 9px;
+  background: #172333;
+}
+
+.permission-summary span {
+  color: var(--muted);
+  font-size: 7px;
+  text-transform: uppercase;
+}
+
+.permission-summary strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capability-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.capability-list span {
+  padding: 4px 7px;
+  border: 1px solid #42516a;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.capability-list .supported {
+  border-color: #69e6bd55;
+  color: var(--lime);
+}
+
+.capability-list .unsupported {
+  color: #7f8ea3;
+}
+
+.access-panel > small {
+  color: #7f90a7;
+  font-size: 7px;
+}
+
 .widget-settings {
   padding: 11px 16px;
   display: grid;
@@ -1195,9 +1283,12 @@ input:focus-visible {
     .loaded-model,
     .history-card,
     .expanded-toolbar,
+    .access-panel,
+    .permission-summary > div,
     .widget-settings,
     .runtime-settings,
     .runtime-options label,
+    .credential-settings,
     .instrumentation-card,
     .bridge-access,
     .session-readout,
@@ -1230,7 +1321,8 @@ input:focus-visible {
   }
 
   .runtime-settings,
-  .runtime-options {
+  .runtime-options,
+  .permission-summary {
     grid-template-columns: 1fr;
   }
 }

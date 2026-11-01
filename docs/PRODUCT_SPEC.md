@@ -32,7 +32,7 @@ A background/tray process is not a promise of monitoring when the **application 
 ### Runtime control
 
 - Enable/disable a built-in runtime from a settings list while keeping at least one active adapter.
-  Versioned capability and permissions metadata remains pending.
+  Each adapter exposes versioned capability and permission metadata independently of live authority.
 - Show `unavailable`, `external-running` or `managed-running` distinctly.
 - Start a supported _managed_ runtime on demand with no shell injection.
 - Stop only an OB-Pulse-owned process or an explicitly delegated provider server control, with
@@ -46,6 +46,8 @@ A background/tray process is not a promise of monitoring when the **application 
 - Release LM Studio control explicitly without stopping its server; the runtime immediately returns
   to external observation and will not be stopped when Pulse exits.
 - Manager permissions and process ownership survive UI hide, not OS reboot.
+- Show the selected adapter's contract version, supported actions, loopback scope, server-control
+  boundary, credential mode and prohibited content/model/process actions in the expanded view.
 
 ### Models and sessions
 

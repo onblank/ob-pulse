@@ -6,9 +6,11 @@ import type {
   Capabilities,
   ControlAuthority,
   ModelRecord,
+  RuntimeAdapterManifest,
   RuntimePort,
   ServerState,
 } from '@obpulse/contracts';
+import { RUNTIME_ADAPTER_CONTRACT_VERSION } from '@obpulse/contracts';
 import { tokensPerSecond } from '@obpulse/domain';
 const BASE = 'http://127.0.0.1:11434';
 type Dict = Record<string, unknown>;
@@ -78,10 +80,23 @@ const CAPABILITIES: Capabilities = {
   unloadModel: true,
   benchmark: true,
 };
+const MANIFEST: RuntimeAdapterManifest = {
+  contractVersion: RUNTIME_ADAPTER_CONTRACT_VERSION,
+  adapterVersion: '0.1.0',
+  capabilities: CAPABILITIES,
+  permissions: {
+    networkScope: 'loopback-only',
+    serverControl: 'owned-process-only',
+    credentialMode: 'none',
+    externalProcessTermination: false,
+    modelFileDeletion: false,
+    inferenceContentAccess: false,
+  },
+};
 export class OllamaRuntime implements RuntimePort {
   readonly id = 'ollama' as const;
   readonly displayName = 'Ollama';
-  readonly capabilities = CAPABILITIES;
+  readonly manifest = MANIFEST;
   private child: ChildProcess | null = null;
   ownedProcessId(): number | null {
     const child = this.child;

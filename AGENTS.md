@@ -38,6 +38,8 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
 12. All branding assets are bundled locally; official logos need review prior to release.
 13. A user-approved loopback runtime credential may be persisted only through an OS-protected
     credential backend, with no plaintext fallback, logs, renderer readback or remote-provider use.
+14. Every runtime adapter exposes the versioned capability/permission manifest. Static adapter
+    support must remain separate from dynamic control authority; the UI must not imply one from the other.
 
 ## Clean Architecture
 
