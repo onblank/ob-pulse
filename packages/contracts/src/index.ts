@@ -182,6 +182,7 @@ export interface RuntimePort {
   listLoaded(): Promise<ModelRecord[]>;
   startServer(): Promise<void>;
   stopServer(): Promise<void>;
+  shutdownOwned(): Promise<void>;
   loadModel(modelId: string): Promise<void>;
   unloadModel(modelId: string): Promise<void>;
   benchmark(modelId: string): Promise<BenchmarkRecord>;

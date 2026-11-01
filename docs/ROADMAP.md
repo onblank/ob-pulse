@@ -22,8 +22,9 @@
 - Built-in runtime visibility settings are implemented with validated local persistence, a
   mandatory active adapter and safe selection fallback. Disabling an adapter does not stop its
   service or remove models.
-- LM Studio v1 model load/unload is implemented for unprotected loopback servers. LM Studio server
-  lifecycle/authentication, llama.cpp/MLX adapters and managed service attach policy remain pending.
+- LM Studio v1 model load/unload and session-owned loopback server start/stop are implemented for
+  unprotected servers. Pre-existing servers remain observation-only; authentication, GUI/daemon
+  process ownership, llama.cpp/MLX adapters and broader managed-service attach policy remain pending.
 - LM Studio has an explicit non-persistent native v1 benchmark for provider-reported decode speed,
   token counts and first-token latency; prefill speed remains unavailable rather than estimated.
 - Direct-child CPU/RAM is implemented on Windows, macOS and Linux for an Ollama server started and

@@ -145,6 +145,9 @@ export class OllamaRuntime implements RuntimePort {
     if (!killed) throw new Error('Could not signal owned Ollama process');
     this.child = null;
   }
+  async shutdownOwned(): Promise<void> {
+    this.stopManagedImmediately();
+  }
   private async modelCommand(modelId: string, keepAlive: string | number): Promise<void> {
     if (!modelId || modelId.length > 240 || containsControlCharacter(modelId))
       throw new Error('Invalid model ID');

@@ -45,6 +45,8 @@ let runtimePreferences: RuntimePreferences = { enabledRuntimeIds: [...RUNTIME_ID
 let runtimePreferencesPath: string | null = null;
 let sampler: NodeJS.Timeout | null = null;
 let sampleInFlight = false;
+let quitCleanupStarted = false;
+let quitCleanupComplete = false;
 const WINDOW_SIZES = {
   compact: { width: 360, height: 430, minWidth: 340, minHeight: 400 },
   expanded: { width: 900, height: 680, minWidth: 720, minHeight: 560 },
@@ -303,11 +305,22 @@ app
     console.error('OB-Pulse initialization failed', error);
     app.quit();
   });
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
   allowExit = true;
+  if (quitCleanupComplete) return;
+  event.preventDefault();
+  if (quitCleanupStarted) return;
+  quitCleanupStarted = true;
   if (sampler) clearInterval(sampler);
+  sampler = null;
   instrumentationBridge.close();
-  ollama.stopManagedImmediately();
+  void service
+    .shutdownOwnedOnQuit()
+    .catch((error) => console.error('OB-Pulse owned runtime cleanup failed', error))
+    .finally(() => {
+      quitCleanupComplete = true;
+      app.quit();
+    });
 });
 app.on('activate', () => {
   if (mainWindow) show();

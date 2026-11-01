@@ -1,3 +1,9 @@
+import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+import process from 'node:process';
+import { promisify } from 'node:util';
 import type {
   BenchmarkRecord,
   Capabilities,
@@ -8,12 +14,14 @@ import type {
 
 const BASE = 'http://127.0.0.1:1234';
 const MODELS_PATH = '/api/v1/models';
+const execFileAsync = promisify(execFile);
+const CLI_TIMEOUT_MS = 60_000;
 
 const CAPABILITIES: Capabilities = {
   listInstalled: true,
   listLoaded: true,
-  startServer: false,
-  stopServer: false,
+  startServer: true,
+  stopServer: true,
   loadModel: true,
   unloadModel: true,
   benchmark: true,
@@ -21,6 +29,18 @@ const CAPABILITIES: Capabilities = {
 
 type RecordObject = Record<string, unknown>;
 type Fetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+type CommandResult = { stdout: string };
+type CommandExecutor = (
+  executable: string,
+  args: readonly string[],
+  timeoutMs: number,
+) => Promise<CommandResult>;
+
+export interface LMStudioLifecycle {
+  serverRunning(): Promise<boolean>;
+  startServer(): Promise<void>;
+  stopServer(): Promise<void>;
+}
 
 class LMStudioHttpError extends Error {
   constructor(readonly status: number) {
@@ -53,12 +73,83 @@ function loadedInstances(model: RecordObject): RecordObject[] {
   return Array.isArray(model.loaded_instances) ? model.loaded_instances.filter(obj) : [];
 }
 
+export function resolveLmsBinary(
+  homeDirectory = homedir(),
+  platform = process.platform,
+  fileExists: (path: string) => boolean = existsSync,
+): string {
+  const candidate = join(
+    homeDirectory,
+    '.lmstudio',
+    'bin',
+    platform === 'win32' ? 'lms.exe' : 'lms',
+  );
+  if (!fileExists(candidate))
+    throw new Error(`LM Studio CLI was not found at the expected path: ${candidate}`);
+  return candidate;
+}
+
+export function parseServerStatus(stdout: string): boolean {
+  const lines = stdout
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .split(/\r?\n/)
+    .reverse();
+  for (const line of lines) {
+    try {
+      const parsed: unknown = JSON.parse(line);
+      if (obj(parsed) && typeof parsed.running === 'boolean') return parsed.running;
+    } catch {
+      // Continue to a possible final JSON line after trusted CLI progress output.
+    }
+  }
+  throw new Error('Malformed LM Studio server status');
+}
+
+const executeCommand: CommandExecutor = async (executable, args, timeoutMs) => {
+  const { stdout } = await execFileAsync(executable, [...args], {
+    encoding: 'utf8',
+    timeout: timeoutMs,
+    maxBuffer: 64 * 1024,
+    windowsHide: true,
+  });
+  return { stdout: String(stdout) };
+};
+
+export class LmsCliLifecycle implements LMStudioLifecycle {
+  constructor(
+    private readonly binary: () => string = resolveLmsBinary,
+    private readonly execute: CommandExecutor = executeCommand,
+  ) {}
+
+  private run(args: readonly string[]): Promise<CommandResult> {
+    return this.execute(this.binary(), args, CLI_TIMEOUT_MS);
+  }
+
+  async serverRunning(): Promise<boolean> {
+    return parseServerStatus((await this.run(['server', 'status', '--json'])).stdout);
+  }
+
+  async startServer(): Promise<void> {
+    await this.run(['server', 'start', '--port', '1234', '--bind', '127.0.0.1']);
+  }
+
+  async stopServer(): Promise<void> {
+    await this.run(['server', 'stop']);
+  }
+}
+
 export class LMStudioRuntime implements RuntimePort {
   readonly id = 'lmstudio' as const;
   readonly displayName = 'LM Studio';
   readonly capabilities = CAPABILITIES;
 
-  constructor(private readonly fetcher: Fetcher = fetch) {}
+  private ownsServer = false;
+
+  constructor(
+    private readonly fetcher: Fetcher = fetch,
+    private readonly lifecycle: LMStudioLifecycle = new LmsCliLifecycle(),
+  ) {}
 
   ownedProcessId(): number | null {
     return null;
@@ -80,15 +171,21 @@ export class LMStudioRuntime implements RuntimePort {
     return data.models.filter(obj);
   }
 
-  async state(): Promise<ServerState> {
+  private async probe(): Promise<boolean> {
     try {
       await this.models();
-      return 'external-running';
+      return true;
     } catch (error) {
-      if (error instanceof LMStudioHttpError && (error.status === 401 || error.status === 403))
-        return 'external-running';
-      return 'stopped';
+      return error instanceof LMStudioHttpError && (error.status === 401 || error.status === 403);
     }
+  }
+
+  async state(): Promise<ServerState> {
+    if (await this.probe()) return this.ownsServer ? 'managed-running' : 'external-running';
+    if (!this.ownsServer) return 'stopped';
+    if (await this.lifecycle.serverRunning()) return 'managed-running';
+    this.ownsServer = false;
+    return 'stopped';
   }
 
   async listInstalled(): Promise<ModelRecord[]> {
@@ -116,11 +213,40 @@ export class LMStudioRuntime implements RuntimePort {
   }
 
   async startServer(): Promise<void> {
-    throw new Error('LM Studio must be started outside OB-Pulse in this release');
+    if (await this.probe()) return;
+    if (await this.lifecycle.serverRunning()) return;
+    try {
+      await this.lifecycle.startServer();
+      this.ownsServer = true;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        if (await this.probe()) return;
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      throw new Error('LM Studio did not become reachable on 127.0.0.1:1234');
+    } catch (error) {
+      if (this.ownsServer) {
+        try {
+          await this.lifecycle.stopServer();
+        } catch {
+          // Preserve the original start failure.
+        }
+      }
+      this.ownsServer = false;
+      throw error;
+    }
   }
 
   async stopServer(): Promise<void> {
-    throw new Error('Cannot stop LM Studio: OB-Pulse does not own this server');
+    if (!this.ownsServer)
+      throw new Error('Cannot stop LM Studio: OB-Pulse does not own this server');
+    await this.lifecycle.stopServer();
+    this.ownsServer = false;
+  }
+
+  async shutdownOwned(): Promise<void> {
+    if (!this.ownsServer) return;
+    await this.lifecycle.stopServer();
+    this.ownsServer = false;
   }
 
   async loadModel(modelId: string): Promise<void> {
