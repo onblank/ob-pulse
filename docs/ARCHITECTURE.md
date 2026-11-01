@@ -12,10 +12,13 @@ React compact/expanded UI <- typed preload <- Electron main (composition + sampl
                                       |-> Opt-in loopback instrumentation adapter
 ```
 
-Runtime providers report capabilities, not pretend feature parity. `RuntimePort` supports
+Runtime providers expose a `RuntimeAdapterManifest` contract at version `1.0.0`, not pretend feature
+parity. The manifest is the single static source for capabilities plus loopback, server-control,
+credential and prohibited-action permissions. `RuntimePort` supports
 `controlAuthority`, `ownedProcessId`, `state`, `listInstalled`, `listLoaded`, `startServer`, `stopServer`, `takeControl`, `releaseControl`,
 `loadModel`, `unloadModel` and `benchmark`. Each adapter returns _unsupported_ for unimplemented operations;
-`capabilities` drives disabled UI.
+`manifest.capabilities` drives disabled UI. Dynamic `controlAuthority` remains outside the manifest:
+support for an operation does not mean Pulse currently has authority to execute it.
 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.

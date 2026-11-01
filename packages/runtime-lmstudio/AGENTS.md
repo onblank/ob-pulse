@@ -15,5 +15,7 @@ Bearer authentication may use only an explicitly supplied in-memory token. Add i
 requests, never expose/log it, and distinguish missing from rejected credentials without echoing the
 secret. Never infer delegation, use a generic process kill, invoke `daemon down`, close the LM Studio
 GUI, claim its process PID or unload an ambiguous model instance.
+Its manifest describes provider-server-toggle control and OS-protected write-only credentials, not
+GUI/daemon ownership, external-process termination, model deletion or inference-content access.
 
 The repository's privacy, ownership, process lifecycle, truthful-metrics and Clean Architecture policies remain authoritative.

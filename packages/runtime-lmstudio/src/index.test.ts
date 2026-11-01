@@ -124,12 +124,23 @@ describe('LM Studio v1 runtime', () => {
         contextCapacityTokens: null,
       },
     ]);
-    expect(runtime.capabilities).toMatchObject({
+    expect(runtime.manifest.capabilities).toMatchObject({
       takeControl: true,
       releaseControl: true,
       loadModel: true,
       unloadModel: true,
       benchmark: true,
+    });
+    expect(runtime.manifest).toMatchObject({
+      contractVersion: '1.0.0',
+      permissions: {
+        networkScope: 'loopback-only',
+        serverControl: 'provider-server-toggle',
+        credentialMode: 'os-protected-write-only',
+        externalProcessTermination: false,
+        modelFileDeletion: false,
+        inferenceContentAccess: false,
+      },
     });
   });
 
@@ -218,7 +229,7 @@ describe('LM Studio v1 runtime', () => {
     await expect(runtime.state()).resolves.toBe('managed-running');
     expect(runtime.controlAuthority()).toBe('session-managed');
     expect(runtime.ownedProcessId()).toBeNull();
-    expect(runtime.capabilities).toMatchObject({ startServer: true, stopServer: true });
+    expect(runtime.manifest.capabilities).toMatchObject({ startServer: true, stopServer: true });
 
     await runtime.stopServer();
 

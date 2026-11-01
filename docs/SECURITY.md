@@ -18,6 +18,10 @@
   atomically to a machine-local preferences file. Opacity accepts only safe presets from 75–100%.
 - Runtime visibility settings accept only registered built-in IDs, reject duplicates and never
   permit disabling every adapter. Changing visibility cannot start, stop or delete runtime assets.
+- Versioned adapter manifests describe static support and invariant permission boundaries only.
+  They cannot grant live authority; process ownership or explicit provider delegation is still
+  required at execution time. The current schema cannot represent external-process termination,
+  model-file deletion or inference-content access as allowed.
 - LM Studio API tokens cross one write-only IPC method, are bounded/validated in Electron main and
   are encrypted with asynchronous `safeStorage`. Disk contains only a versioned ciphertext envelope
   written atomically with `0600` mode. The renderer can query only configured/storage/error status.

@@ -9,9 +9,11 @@ import type {
   Capabilities,
   ControlAuthority,
   ModelRecord,
+  RuntimeAdapterManifest,
   RuntimePort,
   ServerState,
 } from '@obpulse/contracts';
+import { RUNTIME_ADAPTER_CONTRACT_VERSION } from '@obpulse/contracts';
 
 const BASE = 'http://127.0.0.1:1234';
 const MODELS_PATH = '/api/v1/models';
@@ -28,6 +30,19 @@ const CAPABILITIES: Capabilities = {
   loadModel: true,
   unloadModel: true,
   benchmark: true,
+};
+const MANIFEST: RuntimeAdapterManifest = {
+  contractVersion: RUNTIME_ADAPTER_CONTRACT_VERSION,
+  adapterVersion: '0.1.0',
+  capabilities: CAPABILITIES,
+  permissions: {
+    networkScope: 'loopback-only',
+    serverControl: 'provider-server-toggle',
+    credentialMode: 'os-protected-write-only',
+    externalProcessTermination: false,
+    modelFileDeletion: false,
+    inferenceContentAccess: false,
+  },
 };
 
 type RecordObject = Record<string, unknown>;
@@ -154,7 +169,7 @@ export class LmsCliLifecycle implements LMStudioLifecycle {
 export class LMStudioRuntime implements RuntimePort {
   readonly id = 'lmstudio' as const;
   readonly displayName = 'LM Studio';
-  readonly capabilities = CAPABILITIES;
+  readonly manifest = MANIFEST;
 
   private ownsServer = false;
   private delegatedControl = false;

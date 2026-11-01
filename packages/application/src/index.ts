@@ -164,7 +164,7 @@ export class MonitorService {
         displayName: runtime.displayName,
         state,
         controlAuthority: runtime.controlAuthority(),
-        capabilities: runtime.capabilities,
+        manifest: runtime.manifest,
         installed,
         loaded,
         ownedProcess,

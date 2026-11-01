@@ -29,6 +29,8 @@
   labeled as benchmarks**, not a live stream from unrelated clients. LM Studio additionally reports
   first-token latency; its synthetic response is discarded immediately.
 - A typed, provider-agnostic contract plus domain tests for token throughput/context semantics.
+- A visible versioned adapter manifest separating supported operations from current authority,
+  loopback/network scope, process-control limits, credential handling and prohibited content access.
 
 ## Not yet shipped
 

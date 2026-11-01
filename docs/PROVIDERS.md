@@ -9,6 +9,10 @@
 | Other OpenAI-compatible runtimes |       planned |                — |             — |                         — |                 — | —                   |
 
 Provider addresses are pinned to loopback; no connection to external URL or LAN in this scaffold.
+Each built-in adapter exposes manifest contract `1.0.0`. Ollama declares owned-child process control
+and no credential storage; LM Studio declares provider-server-toggle control and OS-protected
+write-only credentials. Both explicitly deny external-process termination, model-file deletion and
+inference-content access. The live authority shown by Pulse is evaluated separately.
 No process manager or launch-daemon/service setting is changed.
 `ollama serve` binary must be installed/available; inability to spawn is presented as an error.
 LM Studio server start uses the resolved machine-local `lms` executable with fixed loopback
