@@ -3,7 +3,7 @@
 Current local verification as of 2026-11-01:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- `pnpm check` passes formatting, ESLint, TypeScript checks for all nine packages, 50 tests and
+- `pnpm check` passes formatting, ESLint, TypeScript checks for all nine packages, 51 tests and
   the Electron main/preload/renderer production builds.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,

@@ -73,6 +73,7 @@ const CAPABILITIES: Capabilities = {
   startServer: true,
   stopServer: true,
   takeControl: false,
+  releaseControl: false,
   loadModel: true,
   unloadModel: true,
   benchmark: true,
@@ -152,6 +153,9 @@ export class OllamaRuntime implements RuntimePort {
   }
   async takeControl(): Promise<void> {
     throw new Error('Cannot take control of an external Ollama server safely');
+  }
+  async releaseControl(): Promise<void> {
+    throw new Error('Cannot release control of an OB-Pulse-owned Ollama process safely');
   }
   async shutdownOwned(): Promise<void> {
     this.stopManagedImmediately();

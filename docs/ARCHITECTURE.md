@@ -13,8 +13,8 @@ React compact/expanded UI <- typed preload <- Electron main (composition + sampl
 ```
 
 Runtime providers report capabilities, not pretend feature parity. `RuntimePort` supports
-`controlAuthority`, `ownedProcessId`, `state`, `listInstalled`, `listLoaded`, `startServer`, `stopServer`, `takeControl`, `loadModel`,
-`unloadModel` and `benchmark`. Each adapter returns _unsupported_ for unimplemented operations;
+`controlAuthority`, `ownedProcessId`, `state`, `listInstalled`, `listLoaded`, `startServer`, `stopServer`, `takeControl`, `releaseControl`,
+`loadModel`, `unloadModel` and `benchmark`. Each adapter returns _unsupported_ for unimplemented operations;
 `capabilities` drives disabled UI.
 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
@@ -25,7 +25,9 @@ For LM Studio, an explicit start invokes the resolved machine-local `lms` CLI wi
 server toggle only for its current process lifetime and may then invoke `lms server stop`; a server
 already reachable remains external until the user confirms a session-scoped `takeControl()` handover.
 That handover authorizes only `lms server stop`, is released without stopping the server when Pulse
-quits, and never becomes process ownership. The CLI may wake LM Studio, but Pulse neither closes its GUI,
+quits, and never becomes process ownership. An explicit `releaseControl()` also clears either
+session-managed or delegated authority without invoking the CLI, leaving the server running as
+external. The CLI may wake LM Studio, but Pulse neither closes its GUI,
 invokes `daemon down` nor claims a daemon PID. A multi-instance model is not unloaded until the UI
 can identify the intended runtime instance explicitly.
 

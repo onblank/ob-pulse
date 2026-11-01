@@ -67,6 +67,8 @@ authenticated clients may report content-free session/request/compaction events 
 loopback bridge is active. The app can control **Ollama it started itself**; for already-running Ollama it
 attaches in observation mode. A reachable LM Studio server can enter explicit, session-scoped delegated
 control through the official `lms server` CLI; this never grants ownership of its GUI or daemon.
+LM Studio control may be explicitly released without stopping the server; after release Pulse must
+return to observer authority and must not stop that server on quit.
 
 ## Workflow
 

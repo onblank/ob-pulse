@@ -24,6 +24,7 @@ const CAPABILITIES: Capabilities = {
   startServer: true,
   stopServer: true,
   takeControl: true,
+  releaseControl: true,
   loadModel: true,
   unloadModel: true,
   benchmark: true,
@@ -262,6 +263,13 @@ export class LMStudioRuntime implements RuntimePort {
     if (!(await this.probe()))
       throw new Error('Cannot take control of LM Studio: its loopback server is not reachable');
     this.delegatedControl = true;
+  }
+
+  async releaseControl(): Promise<void> {
+    if (!this.ownsServer && !this.delegatedControl)
+      throw new Error('Cannot release LM Studio control: OB-Pulse is only observing this server');
+    this.ownsServer = false;
+    this.delegatedControl = false;
   }
 
   async shutdownOwned(): Promise<void> {

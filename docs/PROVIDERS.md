@@ -14,7 +14,8 @@ No process manager or launch-daemon/service setting is changed.
 LM Studio server start uses the resolved machine-local `lms` executable with fixed loopback
 arguments and no shell. Pulse may stop a server it enabled or a reachable server whose control the
 user explicitly delegates for the current Pulse session. Delegation is released without stopping
-that server on app exit.
+that server on app exit. Pulse can also explicitly release session-owned or delegated server
+control without invoking the lifecycle CLI, leaving the server running in observation-only mode.
 The CLI may wake the LM Studio app, but Pulse neither closes that app nor invokes `daemon down`; no
 LM Studio process PID is attributed to Pulse. `lms` installation and removal remain external.
 LM Studio model load/unload uses only its native v1 loopback API. An unload is refused when a model

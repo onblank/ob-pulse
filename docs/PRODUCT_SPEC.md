@@ -43,6 +43,8 @@ A background/tray process is not a promise of monitoring when the **application 
 - LM Studio is managed at the local HTTP-server toggle only: Pulse may stop a toggle it enabled or
   one explicitly delegated for the current Pulse session. Delegation is released without stopping
   on exit; GUI/daemon lifecycle remains external.
+- Release LM Studio control explicitly without stopping its server; the runtime immediately returns
+  to external observation and will not be stopped when Pulse exits.
 - Manager permissions and process ownership survive UI hide, not OS reboot.
 
 ### Models and sessions
