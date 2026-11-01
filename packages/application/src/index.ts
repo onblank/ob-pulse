@@ -163,6 +163,7 @@ export class MonitorService {
         id: runtime.id,
         displayName: runtime.displayName,
         state,
+        controlAuthority: runtime.controlAuthority(),
         capabilities: runtime.capabilities,
         installed,
         loaded,
@@ -192,6 +193,9 @@ export class MonitorService {
   }
   async stop(): Promise<void> {
     await this.provider.stopServer();
+  }
+  async takeControl(): Promise<void> {
+    await this.provider.takeControl();
   }
   async load(modelId: string): Promise<void> {
     await this.provider.loadModel(modelId);

@@ -214,6 +214,24 @@ main {
   white-space: nowrap;
 }
 
+.take-control {
+  align-self: flex-start;
+  margin-top: 4px;
+  border: 1px solid color-mix(in srgb, var(--lime) 55%, transparent);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: color-mix(in srgb, var(--lime) 12%, transparent);
+  color: var(--lime);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.take-control:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .state {
   color: #d8a3aa;
   font-size: 9px;
