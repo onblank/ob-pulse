@@ -197,6 +197,9 @@ export class MonitorService {
   async takeControl(): Promise<void> {
     await this.provider.takeControl();
   }
+  async releaseControl(): Promise<void> {
+    await this.provider.releaseControl();
+  }
   async load(modelId: string): Promise<void> {
     await this.provider.loadModel(modelId);
   }

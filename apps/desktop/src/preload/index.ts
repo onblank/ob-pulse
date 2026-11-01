@@ -11,6 +11,7 @@ const api = {
   start: () => ipcRenderer.invoke('pulse:start'),
   stop: () => ipcRenderer.invoke('pulse:stop'),
   takeControl: () => ipcRenderer.invoke('pulse:take-control'),
+  releaseControl: () => ipcRenderer.invoke('pulse:release-control'),
   load: (modelId: string) => ipcRenderer.invoke('pulse:load', modelId),
   unload: (modelId: string) => ipcRenderer.invoke('pulse:unload', modelId),
   benchmark: (modelId: string) => ipcRenderer.invoke('pulse:benchmark', modelId),

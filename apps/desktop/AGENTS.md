@@ -10,6 +10,8 @@ server only after an explicit current-session handover and confirmation through 
 control path. LM Studio server control never implies ownership of its GUI or daemon process, and
 delegated control never triggers shutdown on app exit. Never claim benchmark readings to be live external usage. Hide-to-tray and
 always-on-top settings must never trap the user in an overlay.
+The user may explicitly release LM Studio server control without stopping it; the UI must confirm
+that action and immediately show observation-only state.
 
 Brand files in `src/renderer/assets/brand` are local placeholders and must be replaced with approved
 onBlank artwork before release. App packaging is prepared, not yet signed/tested on target OSes.

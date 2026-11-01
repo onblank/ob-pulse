@@ -22,6 +22,7 @@ declare global {
       start(): Promise<void>;
       stop(): Promise<void>;
       takeControl(): Promise<void>;
+      releaseControl(): Promise<void>;
       load(modelId: string): Promise<void>;
       unload(modelId: string): Promise<void>;
       benchmark(modelId: string): Promise<unknown>;

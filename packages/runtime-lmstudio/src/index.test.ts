@@ -126,6 +126,7 @@ describe('LM Studio v1 runtime', () => {
     ]);
     expect(runtime.capabilities).toMatchObject({
       takeControl: true,
+      releaseControl: true,
       loadModel: true,
       unloadModel: true,
       benchmark: true,
@@ -234,6 +235,21 @@ describe('LM Studio v1 runtime', () => {
     expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
     expect(runtime.controlAuthority()).toBe('observer');
     await expect(runtime.state()).resolves.toBe('external-running');
+  });
+
+  it('releases session control without stopping the LM Studio server', async () => {
+    const harness = lifecycleHarness();
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+
+    await runtime.startServer();
+    await runtime.releaseControl();
+
+    expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
+    expect(runtime.controlAuthority()).toBe('observer');
+    await expect(runtime.state()).resolves.toBe('external-running');
+    await expect(runtime.stopServer()).rejects.toThrow('has not been delegated');
+    await runtime.shutdownOwned();
+    expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
   });
 
   it('runs a non-persistent benchmark and keeps only provider-reported metrics', async () => {
