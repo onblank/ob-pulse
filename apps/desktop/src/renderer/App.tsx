@@ -187,12 +187,13 @@ function PowerControl({
 }) {
   const runtime = snapshot?.runtime;
   const state = runtime?.state ?? 'stopped';
+  const capabilities = runtime?.manifest?.capabilities;
   const running = state !== 'stopped';
-  const canStart = state === 'stopped' && !!runtime?.capabilities.startServer;
-  const canStop = state === 'managed-running' && !!runtime?.capabilities.stopServer;
+  const canStart = state === 'stopped' && !!capabilities?.startServer;
+  const canStop = state === 'managed-running' && !!capabilities?.stopServer;
   const external = state === 'external-running';
-  const canTakeControl = external && !!runtime?.capabilities.takeControl;
-  const canReleaseControl = state === 'managed-running' && !!runtime?.capabilities.releaseControl;
+  const canTakeControl = external && !!capabilities?.takeControl;
+  const canReleaseControl = state === 'managed-running' && !!capabilities?.releaseControl;
   const enabled = !busy && (canStart || canStop);
   const stateLabel = external
     ? 'Server managed externally'
@@ -239,6 +240,95 @@ function PowerControl({
         )}
       </div>
     </div>
+  );
+}
+
+function RuntimeAccessPanel({ snapshot }: { snapshot: DashboardSnapshot | null }) {
+  const runtime = snapshot?.runtime;
+  if (!runtime?.manifest) return null;
+  const { manifest, controlAuthority } = runtime;
+  const capabilities = [
+    ['Installed models', manifest.capabilities.listInstalled],
+    ['Loaded models', manifest.capabilities.listLoaded],
+    ['Start server', manifest.capabilities.startServer],
+    ['Stop controlled server', manifest.capabilities.stopServer],
+    ['Take control', manifest.capabilities.takeControl],
+    ['Release control', manifest.capabilities.releaseControl],
+    ['Load model', manifest.capabilities.loadModel],
+    ['Unload model', manifest.capabilities.unloadModel],
+    ['Benchmark', manifest.capabilities.benchmark],
+  ] as const;
+  const authorityLabel =
+    controlAuthority === 'process-owned'
+      ? 'Process owned'
+      : controlAuthority === 'session-managed'
+        ? 'Session managed'
+        : controlAuthority === 'delegated'
+          ? 'Delegated control'
+          : controlAuthority === 'service-managed'
+            ? 'Service managed'
+            : 'Observer only';
+  const serverControlLabel =
+    manifest.permissions.serverControl === 'owned-process-only'
+      ? 'Owned child process only'
+      : 'Provider server toggle';
+  const credentialLabel =
+    manifest.permissions.credentialMode === 'os-protected-write-only'
+      ? 'OS-protected, write-only'
+      : 'No credential storage';
+  return (
+    <section className="access-panel" aria-labelledby="runtime-access-title">
+      <div className="access-heading">
+        <div>
+          <span className="eyebrow">ACCESS & CAPABILITIES</span>
+          <h2 id="runtime-access-title">{runtime.displayName} adapter</h2>
+        </div>
+        <span className="contract-badge">CONTRACT {manifest.contractVersion}</span>
+      </div>
+      <div className="permission-summary">
+        <div>
+          <span>Current authority</span>
+          <strong>{authorityLabel}</strong>
+        </div>
+        <div>
+          <span>Network</span>
+          <strong>Loopback only</strong>
+        </div>
+        <div>
+          <span>Server control</span>
+          <strong>{serverControlLabel}</strong>
+        </div>
+        <div>
+          <span>Credentials</span>
+          <strong>{credentialLabel}</strong>
+        </div>
+        <div>
+          <span>Inference content</span>
+          <strong>{manifest.permissions.inferenceContentAccess ? 'Allowed' : 'No access'}</strong>
+        </div>
+        <div>
+          <span>External processes</span>
+          <strong>
+            {manifest.permissions.externalProcessTermination ? 'Can terminate' : 'Never terminate'}
+          </strong>
+        </div>
+        <div>
+          <span>Model deletion</span>
+          <strong>{manifest.permissions.modelFileDeletion ? 'Allowed' : 'Never'}</strong>
+        </div>
+      </div>
+      <div className="capability-list">
+        {capabilities.map(([label, supported]) => (
+          <span key={label} className={supported ? 'supported' : 'unsupported'}>
+            {supported ? '✓' : '—'} {label}
+          </span>
+        ))}
+      </div>
+      <small>
+        Adapter {manifest.adapterVersion} · capabilities describe support; current authority decides
+        whether a control action is available now.
+      </small>
+    </section>
   );
 }
 
@@ -985,6 +1075,8 @@ export default function App() {
               />
             </section>
 
+            <RuntimeAccessPanel snapshot={snapshot} />
+
             <WidgetSettings
               preferences={preferences}
               busy={busy}
@@ -1084,9 +1176,11 @@ export default function App() {
                           loaded={isLoaded}
                           busy={busy}
                           enabled={
-                            isLoaded ? info.capabilities.unloadModel : info.capabilities.loadModel
+                            (isLoaded
+                              ? info.manifest?.capabilities.unloadModel
+                              : info.manifest?.capabilities.loadModel) ?? false
                           }
-                          canBenchmark={info.capabilities.benchmark}
+                          canBenchmark={info.manifest?.capabilities.benchmark ?? false}
                           onAction={() =>
                             void action(() =>
                               isLoaded

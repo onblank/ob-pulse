@@ -6,8 +6,19 @@ describe('Ollama process ownership', () => {
     const runtime = new OllamaRuntime();
     expect(runtime.ownedProcessId()).toBeNull();
     expect(runtime.controlAuthority()).toBe('observer');
-    expect(runtime.capabilities.takeControl).toBe(false);
-    expect(runtime.capabilities.releaseControl).toBe(false);
+    expect(runtime.manifest.capabilities.takeControl).toBe(false);
+    expect(runtime.manifest.capabilities.releaseControl).toBe(false);
+    expect(runtime.manifest).toMatchObject({
+      contractVersion: '1.0.0',
+      permissions: {
+        networkScope: 'loopback-only',
+        serverControl: 'owned-process-only',
+        credentialMode: 'none',
+        externalProcessTermination: false,
+        modelFileDeletion: false,
+        inferenceContentAccess: false,
+      },
+    });
   });
 
   it('refuses unsafe takeover of an external server', async () => {

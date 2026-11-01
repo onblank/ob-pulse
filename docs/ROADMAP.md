@@ -22,6 +22,8 @@
 - Built-in runtime visibility settings are implemented with validated local persistence, a
   mandatory active adapter and safe selection fallback. Disabling an adapter does not stop its
   service or remove models.
+- Versioned `1.0.0` adapter manifests and an expanded capability/permission view are implemented,
+  with static support kept separate from dynamic control authority.
 - LM Studio v1 model load/unload, session-owned loopback server start/stop and explicit
   session-scoped handover of a reachable pre-existing server are implemented for unprotected
   servers. Session-managed or delegated control can be explicitly released while leaving the

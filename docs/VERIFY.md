@@ -16,7 +16,10 @@ Current local verification as of 2026-11-01:
 - Widget preference tests cover strict value validation, safe corrupt/missing-file fallback,
   atomic persistence and work-area-clamped tray/corner placement.
 - Runtime preference and application tests cover non-empty/unique registered adapter validation,
-  filtered discovery, disabled-selection rejection and deterministic selection fallback.
+  filtered discovery, disabled-selection rejection, deterministic selection fallback and manifest
+  propagation without duplicating capability state.
+- Provider tests lock manifest contract version, loopback scope, server-control boundary, credential
+  mode and prohibited process/model/content permissions for Ollama and LM Studio.
 - Credential tests cover strict token validation, absent secure-storage refusal, encrypted-only
   atomic persistence, malformed-envelope rejection, deletion and re-encryption after key rotation.
   LM Studio adapter tests verify bearer headers and secret-free rejection errors.

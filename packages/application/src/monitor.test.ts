@@ -10,6 +10,7 @@ import type {
   OwnedProcessSample,
   ProcessMetricsPort,
   RuntimePort,
+  RuntimeAdapterManifest,
   RuntimeId,
   ServerState,
 } from '@obpulse/contracts';
@@ -24,6 +25,19 @@ const capabilities: Capabilities = {
   loadModel: true,
   unloadModel: true,
   benchmark: true,
+};
+const manifest: RuntimeAdapterManifest = {
+  contractVersion: '1.0.0',
+  adapterVersion: 'test',
+  capabilities,
+  permissions: {
+    networkScope: 'loopback-only',
+    serverControl: 'owned-process-only',
+    credentialMode: 'none',
+    externalProcessTermination: false,
+    modelFileDeletion: false,
+    inferenceContentAccess: false,
+  },
 };
 const hostSample: HostSample = {
   sampledAt: '2026-10-14T00:00:00Z',
@@ -71,7 +85,7 @@ function stubRuntime(
   return {
     id,
     displayName: id,
-    capabilities,
+    manifest,
     controlAuthority: () => (ownedProcessId == null ? 'observer' : 'process-owned'),
     ownedProcessId: () => ownedProcessId,
     state: async () => state,
@@ -98,6 +112,7 @@ describe('runtime monitoring', () => {
     const snapshot = await service.snapshot();
     expect(snapshot.host.cpuUtilizationPercent).toBeNull();
     expect(snapshot.runtime.state).toBe('stopped');
+    expect(snapshot.runtime.manifest).toBe(manifest);
     expect(snapshot.runtime.loaded).toHaveLength(0);
     expect(snapshot.latestBenchmark).toBeNull();
     expect(snapshot.runtime.ownedProcess).toBeNull();
@@ -213,7 +228,7 @@ function dashboardAt(
       displayName: 'Ollama',
       state: 'managed-running',
       controlAuthority: 'process-owned',
-      capabilities,
+      manifest,
       installed: [model],
       loaded: [{ ...model, gpuResidentBytes: 12 }],
       error: null,

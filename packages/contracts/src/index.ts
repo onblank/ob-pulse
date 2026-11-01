@@ -36,6 +36,23 @@ export interface Capabilities {
   readonly unloadModel: boolean;
   readonly benchmark: boolean;
 }
+export type ServerControlScope = 'owned-process-only' | 'provider-server-toggle';
+export type RuntimeCredentialMode = 'none' | 'os-protected-write-only';
+export const RUNTIME_ADAPTER_CONTRACT_VERSION = '1.0.0' as const;
+export interface RuntimePermissions {
+  readonly networkScope: 'loopback-only';
+  readonly serverControl: ServerControlScope;
+  readonly credentialMode: RuntimeCredentialMode;
+  readonly externalProcessTermination: false;
+  readonly modelFileDeletion: false;
+  readonly inferenceContentAccess: false;
+}
+export interface RuntimeAdapterManifest {
+  readonly contractVersion: typeof RUNTIME_ADAPTER_CONTRACT_VERSION;
+  readonly adapterVersion: string;
+  readonly capabilities: Capabilities;
+  readonly permissions: RuntimePermissions;
+}
 export interface ModelRecord {
   readonly id: string;
   readonly displayName: string;
@@ -75,7 +92,7 @@ export interface RuntimeSnapshot {
   readonly displayName: string;
   readonly state: ServerState;
   readonly controlAuthority: ControlAuthority;
-  readonly capabilities: Capabilities;
+  readonly manifest: RuntimeAdapterManifest;
   readonly installed: ModelRecord[];
   readonly loaded: ModelRecord[];
   readonly ownedProcess: OwnedProcessSample | null;
@@ -187,7 +204,7 @@ export interface InstrumentationBridgeStatus {
 export interface RuntimePort {
   readonly id: RuntimeId;
   readonly displayName: string;
-  readonly capabilities: Capabilities;
+  readonly manifest: RuntimeAdapterManifest;
   controlAuthority(): ControlAuthority;
   ownedProcessId(): number | null;
   state(): Promise<ServerState>;
