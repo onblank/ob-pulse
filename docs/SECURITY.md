@@ -20,6 +20,9 @@
   permit disabling every adapter. Changing visibility cannot start, stop or delete runtime assets.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
 - Server stop applies only to a tracked child PID that OB-Pulse itself created during this process lifetime.
+- LM Studio server start/stop uses the resolved `~/.lmstudio/bin/lms` executable, fixed arguments,
+  loopback port/bind and no shell. Pulse stops only a server toggle it enabled during the current
+  process lifetime; it never runs `daemon down`, closes the GUI or claims ownership of its PID.
 - Process metrics use only that tracked direct child PID, only while its adapter reports
   `managed-running`. The macOS/Linux probe executes fixed `/bin/ps` arguments; the Windows probe
   executes the system Windows PowerShell without profiles or interaction and reads only the process

@@ -188,11 +188,11 @@ function PowerControl({
   const external = state === 'external-running';
   const enabled = !busy && (canStart || canStop);
   const stateLabel = external
-    ? 'Managed externally'
+    ? 'Server managed externally'
     : state === 'managed-running'
-      ? 'Managed by OB-Pulse'
+      ? 'Server managed by OB-Pulse'
       : canStart
-        ? 'Ready to start'
+        ? 'Server ready to start'
         : 'Observation only';
   return (
     <div className="power-control">
@@ -200,9 +200,13 @@ function PowerControl({
         className={`power-button ${running ? 'running' : ''} ${external ? 'external' : ''}`}
         disabled={!enabled}
         onClick={onToggle}
-        aria-label={canStop ? `Stop ${runtime?.displayName}` : `Start ${runtime?.displayName}`}
+        aria-label={
+          canStop ? `Stop ${runtime?.displayName} server` : `Start ${runtime?.displayName} server`
+        }
         title={
-          external ? 'This runtime was started outside OB-Pulse and cannot be stopped here' : ''
+          external
+            ? 'This runtime server was started outside OB-Pulse and cannot be stopped here'
+            : ''
         }
       >
         <span className="power-symbol">⏻</span>

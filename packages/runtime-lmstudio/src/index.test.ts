@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { LMStudioRuntime } from './index';
+import {
+  LmsCliLifecycle,
+  LMStudioRuntime,
+  type LMStudioLifecycle,
+  parseServerStatus,
+  resolveLmsBinary,
+} from './index';
 
 type FetchStub = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
@@ -33,7 +39,68 @@ const json = (body: unknown, status = 200) =>
     headers: { 'content-type': 'application/json' },
   });
 
+function lifecycleHarness(
+  options: {
+    serverRunning?: boolean;
+  } = {},
+) {
+  let serverRunning = options.serverRunning ?? false;
+  const fetcher = vi.fn<FetchStub>(async () => {
+    if (!serverRunning) throw new TypeError('fetch failed');
+    return json(modelList);
+  });
+  const lifecycle: LMStudioLifecycle = {
+    serverRunning: vi.fn(async () => serverRunning),
+    startServer: vi.fn(async () => {
+      serverRunning = true;
+    }),
+    stopServer: vi.fn(async () => {
+      serverRunning = false;
+    }),
+  };
+  return { fetcher, lifecycle };
+}
+
 describe('LM Studio v1 runtime', () => {
+  it('parses strict server status after trusted CLI progress output', () => {
+    expect(parseServerStatus('Waking up LM Studio service...\n{"running":true,"port":1234}')).toBe(
+      true,
+    );
+    expect(parseServerStatus('{"running":false}')).toBe(false);
+    expect(() => parseServerStatus('{"running":"yes"}')).toThrow(
+      'Malformed LM Studio server status',
+    );
+  });
+
+  it('resolves only the expected machine-local CLI path', () => {
+    expect(resolveLmsBinary('/Users/test', 'darwin', () => true)).toBe(
+      '/Users/test/.lmstudio/bin/lms',
+    );
+    expect(resolveLmsBinary('C:\\Users\\test', 'win32', () => true)).toContain(
+      '.lmstudio/bin/lms.exe',
+    );
+    expect(() => resolveLmsBinary('/Users/test', 'darwin', () => false)).toThrow(
+      'LM Studio CLI was not found',
+    );
+  });
+
+  it('uses fixed non-interactive lifecycle commands', async () => {
+    const execute = vi.fn(async (_executable: string, args: readonly string[]) => ({
+      stdout: args[1] === 'status' ? '{"running":false}' : '',
+    }));
+    const lifecycle = new LmsCliLifecycle(() => '/fixed/lms', execute);
+
+    await lifecycle.serverRunning();
+    await lifecycle.startServer();
+    await lifecycle.stopServer();
+
+    expect(execute.mock.calls.map((call) => call.slice(0, 2))).toEqual([
+      ['/fixed/lms', ['server', 'status', '--json']],
+      ['/fixed/lms', ['server', 'start', '--port', '1234', '--bind', '127.0.0.1']],
+      ['/fixed/lms', ['server', 'stop']],
+    ]);
+  });
+
   it('reports downloaded and loaded models without inventing residency metrics', async () => {
     const fetcher = vi.fn(async () => json(modelList));
     const runtime = new LMStudioRuntime(fetcher);
@@ -116,9 +183,33 @@ describe('LM Studio v1 runtime', () => {
     expect(fetcher).toHaveBeenCalledOnce();
   });
 
-  it('keeps external server lifecycle outside OB-Pulse ownership', async () => {
-    const runtime = new LMStudioRuntime(vi.fn());
-    await expect(runtime.startServer()).rejects.toThrow('started outside OB-Pulse');
+  it('starts and stops only the loopback server it enabled', async () => {
+    const harness = lifecycleHarness();
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+
+    await expect(runtime.state()).resolves.toBe('stopped');
+    await runtime.startServer();
+
+    expect(harness.lifecycle.startServer).toHaveBeenCalledOnce();
+    await expect(runtime.state()).resolves.toBe('managed-running');
+    expect(runtime.ownedProcessId()).toBeNull();
+    expect(runtime.capabilities).toMatchObject({ startServer: true, stopServer: true });
+
+    await runtime.stopServer();
+
+    expect(harness.lifecycle.stopServer).toHaveBeenCalledOnce();
+    expect(runtime.ownedProcessId()).toBeNull();
+    await expect(runtime.state()).resolves.toBe('stopped');
+  });
+
+  it('attaches to an existing server without taking ownership', async () => {
+    const harness = lifecycleHarness({ serverRunning: true });
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+
+    await runtime.startServer();
+
+    await expect(runtime.state()).resolves.toBe('external-running');
+    expect(harness.lifecycle.startServer).not.toHaveBeenCalled();
     await expect(runtime.stopServer()).rejects.toThrow('does not own');
   });
 

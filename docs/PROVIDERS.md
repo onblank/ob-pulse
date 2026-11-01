@@ -3,7 +3,7 @@
 | Provider                         | Detect server | Installed models | Loaded models |     Start/stop server | Load/unload model | Speeds              |
 | -------------------------------- | ------------: | ---------------: | ------------: | --------------------: | ----------------: | ------------------- |
 | Ollama                           |           yes |              yes |           yes | managed instance only |               yes | explicit local test |
-| LM Studio v1                     |           yes |        yes (API) |     yes (API) |  no (external server) |         yes (API) | explicit local test |
+| LM Studio v1                     |           yes |        yes (API) |     yes (API) |  session-owned server |         yes (API) | explicit local test |
 | llama.cpp server                 |       planned |                — |             — |                     — |                 — | —                   |
 | MLX server                       |       planned |                — |             — |                     — |                 — | —                   |
 | Other OpenAI-compatible runtimes |       planned |                — |             — |                     — |                 — | —                   |
@@ -11,7 +11,10 @@
 Provider addresses are pinned to loopback; no connection to external URL or LAN in this scaffold.
 No process manager or launch-daemon/service setting is changed.
 `ollama serve` binary must be installed/available; inability to spawn is presented as an error.
-`lms` install/uninstall and service management are **not** yet implemented.
+LM Studio server start uses the resolved machine-local `lms` executable with fixed loopback
+arguments and no shell. Pulse may stop only a server it enabled during the current process lifetime.
+The CLI may wake the LM Studio app, but Pulse neither closes that app nor invokes `daemon down`; no
+LM Studio process PID is attributed to Pulse. `lms` installation and removal remain external.
 LM Studio model load/unload uses only its native v1 loopback API. An unload is refused when a model
 has multiple loaded instances because the current UI selects the model key, not a specific instance.
 Servers requiring an API token are detected but cannot yet be configured in OB-Pulse.

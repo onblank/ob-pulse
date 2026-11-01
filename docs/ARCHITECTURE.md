@@ -20,9 +20,12 @@ Runtime providers report capabilities, not pretend feature parity. `RuntimePort`
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.
 When Ollama was started by LaunchAgent/Brew/another app, the button must not terminate it.
-LM Studio remains an external server in this iteration: OB-Pulse may call its native v1 model
-load/unload endpoints, but it neither invokes `lms` nor stops the service. A multi-instance model
-is not unloaded until the UI can identify the intended runtime instance explicitly.
+For LM Studio, an explicit start invokes the resolved machine-local `lms` CLI with fixed
+`server start --port 1234 --bind 127.0.0.1` arguments and no shell. Pulse records ownership of that
+server toggle only for its current process lifetime and may then invoke `lms server stop`; a server
+already reachable remains external. The CLI may wake LM Studio, but Pulse neither closes its GUI,
+invokes `daemon down` nor claims a daemon PID. A multi-instance model is not unloaded until the UI
+can identify the intended runtime instance explicitly.
 
 **Metric boundaries**:
 
