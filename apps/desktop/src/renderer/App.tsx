@@ -9,6 +9,7 @@ import type {
   MetricHistoryWindow,
   ModelRecord,
   RuntimeCatalogEntry,
+  RuntimeCredentialStatus,
   RuntimeId,
   RuntimePreferences,
   WidgetPosition,
@@ -659,6 +660,84 @@ function RuntimeSettings({
   );
 }
 
+function LMStudioAuthentication({
+  status,
+  busy,
+  onSave,
+  onClear,
+}: {
+  status: RuntimeCredentialStatus | null;
+  busy: boolean;
+  onSave: (token: string) => void;
+  onClear: () => void;
+}) {
+  const [token, setToken] = useState('');
+  if (!status) return null;
+  const submit = () => {
+    const submitted = token;
+    setToken('');
+    onSave(submitted);
+  };
+  return (
+    <section className="credential-settings" aria-labelledby="lmstudio-auth-title">
+      <div>
+        <span className="eyebrow">LM STUDIO</span>
+        <h2 id="lmstudio-auth-title">API authentication</h2>
+        <p>
+          The token is encrypted with the operating system credential store and is never displayed
+          again by OB-Pulse.
+        </p>
+      </div>
+      <div className="credential-controls">
+        <span className={status.configured ? 'credential-state configured' : 'credential-state'}>
+          {status.configured ? 'TOKEN CONFIGURED' : 'NO TOKEN'}
+        </span>
+        <label>
+          <span>API token</span>
+          <input
+            type="password"
+            value={token}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={status.configured ? 'Replace configured token' : 'Paste LM Studio token'}
+            disabled={busy || !status.secureStorageAvailable}
+            onChange={(event) => setToken(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && token.trim()) submit();
+            }}
+          />
+        </label>
+        <div className="credential-actions">
+          <button
+            disabled={busy || !status.secureStorageAvailable || !token.trim()}
+            onClick={submit}
+          >
+            {status.configured ? 'Replace token' : 'Save token'}
+          </button>
+          {(status.configured || status.storedCredentialPresent) && (
+            <button
+              className="quiet"
+              disabled={busy}
+              onClick={() => {
+                if (window.confirm('Remove the saved LM Studio API token from this device?'))
+                  onClear();
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        {!status.secureStorageAvailable && (
+          <small>
+            Protected OS credential storage is unavailable; Pulse will not save a token.
+          </small>
+        )}
+        {status.error && <small className="credential-error">{status.error}</small>}
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [history, setHistory] = useState<MetricHistoryWindow | null>(null);
@@ -666,6 +745,9 @@ export default function App() {
   const [runtimes, setRuntimes] = useState<Array<{ id: RuntimeId; name: string }>>([]);
   const [runtimeCatalog, setRuntimeCatalog] = useState<RuntimeCatalogEntry[]>([]);
   const [runtimePreferences, setRuntimePreferences] = useState<RuntimePreferences | null>(null);
+  const [lmStudioCredential, setLMStudioCredential] = useState<RuntimeCredentialStatus | null>(
+    null,
+  );
   const [mode, setMode] = useState<WindowMode>('compact');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -705,6 +787,18 @@ export default function App() {
     const ticker = setInterval(() => void refresh(), 3000);
     return () => clearInterval(ticker);
   }, []);
+
+  useEffect(() => {
+    if (mode !== 'expanded' || runtime !== 'lmstudio') return;
+    void window.obpulse
+      .lmStudioCredentialStatus()
+      .then(setLMStudioCredential)
+      .catch((credentialError) =>
+        setError(
+          credentialError instanceof Error ? credentialError.message : String(credentialError),
+        ),
+      );
+  }, [mode, runtime]);
 
   const action = async (operation: () => Promise<unknown>) => {
     setBusy(true);
@@ -799,6 +893,34 @@ export default function App() {
       setBusy(false);
     }
   };
+  const saveLMStudioToken = async (token: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      setLMStudioCredential(await window.obpulse.setLMStudioApiToken(token));
+      await refresh();
+    } catch (credentialError) {
+      setError(
+        credentialError instanceof Error ? credentialError.message : String(credentialError),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  const clearLMStudioToken = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      setLMStudioCredential(await window.obpulse.clearLMStudioApiToken());
+      await refresh();
+    } catch (credentialError) {
+      setError(
+        credentialError instanceof Error ? credentialError.message : String(credentialError),
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className={`app ${mode}${preferences?.highContrast ? ' high-contrast' : ''}`}>
@@ -875,6 +997,15 @@ export default function App() {
               busy={busy}
               onChange={(next) => void updateRuntimePreferences(next)}
             />
+
+            {runtime === 'lmstudio' && (
+              <LMStudioAuthentication
+                status={lmStudioCredential}
+                busy={busy}
+                onSave={(token) => void saveLMStudioToken(token)}
+                onClear={() => void clearLMStudioToken()}
+              />
+            )}
 
             <InstrumentationPanel
               bridge={bridge}

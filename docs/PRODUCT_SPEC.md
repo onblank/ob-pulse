@@ -76,6 +76,9 @@ A background/tray process is not a promise of monitoring when the **application 
   the volatile metric history.
 - Enabled runtime identifiers are machine-local preferences; they contain no endpoint, credential
   or runtime observation data.
+- A user may configure an LM Studio API token. It is encrypted by an acceptable operating-system
+  credential backend, never persisted in plaintext or returned to the renderer, and can be replaced
+  or removed explicitly. If protected storage is unavailable, persistence is disabled.
 - Opt-in client request history uses the same volatile boundary, has a 7,200-sample hard cap and is
   cleared immediately when its loopback bridge is disabled.
 - Any future SQLite sample history is opt-in, bounded by retention and contains no inference content.

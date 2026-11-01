@@ -23,6 +23,12 @@ Enabled built-in runtime identifiers follow the same boundary in a separate vali
 file. They contain no endpoints, credentials, process identifiers or observations, and an empty or
 invalid file falls back to all built-in adapters.
 
+LM Studio authentication is deliberately separate from preferences. If configured, Electron main
+writes `lmstudio-api-token.enc.json` under `userData` as a versioned ciphertext envelope protected
+by the operating-system credential store. The token is never stored in the runtime-preferences file,
+returned through IPC or included in telemetry/history. A backend without acceptable OS protection
+cannot persist it.
+
 Current owned-process CPU/RAM samples are volatile UI observations and are not persisted. A future
 history schema must not infer process ownership from a saved PID because operating systems reuse
 identifiers after process exit.

@@ -553,6 +553,101 @@ select option {
   font-size: 7px;
 }
 
+.credential-settings {
+  padding: 13px 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
+  gap: 18px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #1e2a3c;
+}
+
+.credential-settings h2 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.credential-settings p {
+  max-width: 430px;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.credential-controls {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.credential-controls label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.credential-controls input {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #42516a;
+  border-radius: 8px;
+  outline: none;
+  background: #172333;
+  color: var(--white);
+}
+
+.credential-controls input:focus {
+  border-color: var(--lime);
+}
+
+.credential-state {
+  width: max-content;
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.credential-state.configured {
+  color: var(--lime);
+}
+
+.credential-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.credential-actions button {
+  padding: 6px 10px;
+  border: 1px solid #69e6bd88;
+  border-radius: 8px;
+  background: #21433f;
+  color: var(--lime);
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.credential-actions button.quiet {
+  border-color: #596b84;
+  background: #26354a;
+  color: #dbe5f2;
+}
+
+.credential-controls small {
+  color: #8798ae;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.credential-controls small.credential-error {
+  color: #f1aab3;
+}
+
 .instrumentation-card {
   padding: 13px 16px;
   border: 1px solid var(--line);
