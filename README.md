@@ -12,9 +12,10 @@
 - Persistent local visibility controls for the built-in Ollama and LM Studio adapters, always
   keeping at least one runtime available and never stopping a service as a side effect.
 - Ollama detection, list installed/loaded models, **app-managed** Ollama start/stop, and explicit model load/unload.
-- LM Studio v1 local server detection, session-owned loopback server start/stop through its
-  machine-local CLI, installed/loaded-model listing and explicit model load/unload through its
-  native API. Pre-existing servers remain external and cannot be stopped by OB-Pulse.
+- LM Studio v1 local server detection, session-owned loopback server start/stop and explicit
+  session-scoped handover of a pre-existing server through its machine-local CLI, plus
+  installed/loaded-model listing and model load/unload through its native API. Handover requires
+  confirmation, does not claim GUI/daemon ownership and is released without stopping on Pulse exit.
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
 - Current CPU and resident-memory readings for the direct Ollama server process only when OB-Pulse
   started and still owns it on Windows, macOS or Linux. Windows CPU needs two valid observations;

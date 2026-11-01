@@ -30,7 +30,7 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
 4. Never claim metrics to be more precise than the adapter can prove. `null` means unobserved/not supported; `0` means measured zero.
 5. Model context is scoped to a **client session**, not to loaded model/host. A reset needs an observed client session boundary or explicit user command; compaction has explicit semantics.
 6. Reading/prefill tps and writing/decode tps require provider response timing or instrumented per-request events. Polling `/api/ps` cannot reveal live prompt throughput of unrelated clients.
-7. Separate **server management**, **loaded-model management**, and **observation**. Only stop a server owned/spawned by OB-Pulse. Never kill user/other-app services.
+7. Separate **server management**, **loaded-model management**, and **observation**. Stop only a process OB-Pulse spawned or a server whose control the user explicitly delegated through a reviewed provider control plane. Never use generic PID/name/port kills against user or other-app services.
 8. Never let a UI model-unload action delete downloaded weights. Installation/removal of model binaries needs separate confirmation.
 9. No shell interpolation for runtime commands, no renderer subprocess access. OS process lifecycle stays behind adapters and typed IPC.
 10. UI remains in background/tray; no invasive floating overlays by default. Always-on-top is optional.
@@ -65,7 +65,8 @@ This is an early implementation. Do not claim model-specific CPU/GPU telemetry, 
 streams, database history, updater or signed installers have shipped unless implemented and tested. Explicitly
 authenticated clients may report content-free session/request/compaction events only while the user-enabled
 loopback bridge is active. The app can control **Ollama it started itself**; for already-running Ollama it
-attaches in observation mode.
+attaches in observation mode. A reachable LM Studio server can enter explicit, session-scoped delegated
+control through the official `lms server` CLI; this never grants ownership of its GUI or daemon.
 
 ## Workflow
 

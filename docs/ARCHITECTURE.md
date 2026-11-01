@@ -13,7 +13,7 @@ React compact/expanded UI <- typed preload <- Electron main (composition + sampl
 ```
 
 Runtime providers report capabilities, not pretend feature parity. `RuntimePort` supports
-`ownedProcessId`, `state`, `listInstalled`, `listLoaded`, `startServer`, `stopServer`, `loadModel`,
+`controlAuthority`, `ownedProcessId`, `state`, `listInstalled`, `listLoaded`, `startServer`, `stopServer`, `takeControl`, `loadModel`,
 `unloadModel` and `benchmark`. Each adapter returns _unsupported_ for unimplemented operations;
 `capabilities` drives disabled UI.
 
@@ -23,9 +23,16 @@ When Ollama was started by LaunchAgent/Brew/another app, the button must not ter
 For LM Studio, an explicit start invokes the resolved machine-local `lms` CLI with fixed
 `server start --port 1234 --bind 127.0.0.1` arguments and no shell. Pulse records ownership of that
 server toggle only for its current process lifetime and may then invoke `lms server stop`; a server
-already reachable remains external. The CLI may wake LM Studio, but Pulse neither closes its GUI,
+already reachable remains external until the user confirms a session-scoped `takeControl()` handover.
+That handover authorizes only `lms server stop`, is released without stopping the server when Pulse
+quits, and never becomes process ownership. The CLI may wake LM Studio, but Pulse neither closes its GUI,
 invokes `daemon down` nor claims a daemon PID. A multi-instance model is not unloaded until the UI
 can identify the intended runtime instance explicitly.
+
+**Control authority** is explicit and typed: `observer`, `session-managed`, `delegated`,
+`service-managed` or `process-owned`. Current Ollama uses `observer`/`process-owned`; current LM
+Studio uses `observer`/`session-managed`/`delegated`. Capability metadata hides handover where the
+adapter cannot prove a safe provider control plane.
 
 **Metric boundaries**:
 

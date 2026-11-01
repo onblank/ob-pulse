@@ -158,6 +158,7 @@ function registerIPC() {
   );
   ipcMain.handle('pulse:start', () => service.start());
   ipcMain.handle('pulse:stop', () => service.stop());
+  ipcMain.handle('pulse:take-control', () => service.takeControl());
   ipcMain.handle('pulse:load', (_event, id: unknown) => service.load(validModel(id)));
   ipcMain.handle('pulse:unload', (_event, id: unknown) => service.unload(validModel(id)));
   ipcMain.handle('pulse:benchmark', (_event, id: unknown) => service.benchmark(validModel(id)));

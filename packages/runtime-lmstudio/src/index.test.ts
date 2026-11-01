@@ -125,6 +125,7 @@ describe('LM Studio v1 runtime', () => {
       },
     ]);
     expect(runtime.capabilities).toMatchObject({
+      takeControl: true,
       loadModel: true,
       unloadModel: true,
       benchmark: true,
@@ -192,6 +193,7 @@ describe('LM Studio v1 runtime', () => {
 
     expect(harness.lifecycle.startServer).toHaveBeenCalledOnce();
     await expect(runtime.state()).resolves.toBe('managed-running');
+    expect(runtime.controlAuthority()).toBe('session-managed');
     expect(runtime.ownedProcessId()).toBeNull();
     expect(runtime.capabilities).toMatchObject({ startServer: true, stopServer: true });
 
@@ -202,15 +204,36 @@ describe('LM Studio v1 runtime', () => {
     await expect(runtime.state()).resolves.toBe('stopped');
   });
 
-  it('attaches to an existing server without taking ownership', async () => {
+  it('takes explicit session control of an existing server before stopping it', async () => {
     const harness = lifecycleHarness({ serverRunning: true });
     const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
 
     await runtime.startServer();
 
     await expect(runtime.state()).resolves.toBe('external-running');
+    expect(runtime.controlAuthority()).toBe('observer');
     expect(harness.lifecycle.startServer).not.toHaveBeenCalled();
-    await expect(runtime.stopServer()).rejects.toThrow('does not own');
+    await expect(runtime.stopServer()).rejects.toThrow('has not been delegated');
+
+    await runtime.takeControl();
+
+    expect(runtime.controlAuthority()).toBe('delegated');
+    await expect(runtime.state()).resolves.toBe('managed-running');
+    await runtime.stopServer();
+    expect(harness.lifecycle.stopServer).toHaveBeenCalledOnce();
+    expect(runtime.controlAuthority()).toBe('observer');
+  });
+
+  it('releases delegated control on quit without stopping an external server', async () => {
+    const harness = lifecycleHarness({ serverRunning: true });
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+
+    await runtime.takeControl();
+    await runtime.shutdownOwned();
+
+    expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
+    expect(runtime.controlAuthority()).toBe('observer');
+    await expect(runtime.state()).resolves.toBe('external-running');
   });
 
   it('runs a non-persistent benchmark and keeps only provider-reported metrics', async () => {
