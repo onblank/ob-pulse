@@ -205,10 +205,14 @@ export class MonitorService {
     if (this.selected === selectedAtStart) this.lastBenchmark = result;
     return result;
   }
-  /** On explicit quit only. Never stop an unowned external runtime. */
-  async stopManagedOnQuit(): Promise<void> {
-    for (const provider of this.providers.values()) {
-      if ((await provider.state()) === 'managed-running') await provider.stopServer();
-    }
+  /** On explicit quit only. Providers must leave every external runtime untouched. */
+  async shutdownOwnedOnQuit(): Promise<void> {
+    const results = await Promise.allSettled(
+      Array.from(this.providers.values(), (provider) => provider.shutdownOwned()),
+    );
+    const failures = results.flatMap((result) =>
+      result.status === 'rejected' ? [result.reason] : [],
+    );
+    if (failures.length > 0) throw new AggregateError(failures, 'Owned runtime shutdown failed');
   }
 }

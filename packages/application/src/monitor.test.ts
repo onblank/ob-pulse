@@ -76,6 +76,7 @@ function stubRuntime(
     listLoaded: async () => [model],
     startServer: async () => undefined,
     stopServer: async () => undefined,
+    shutdownOwned: async () => undefined,
     loadModel: async () => undefined,
     unloadModel: async () => undefined,
     benchmark: async () => benchmark,
@@ -167,6 +168,30 @@ describe('runtime monitoring', () => {
     ]);
     expect((await service.snapshot()).selectedRuntime).toBe('lmstudio');
     expect(() => service.useRuntime('ollama')).toThrow('Runtime is disabled');
+  });
+
+  it('asks every provider to release only its owned resources on quit', async () => {
+    const released: RuntimeId[] = [];
+    const ollama = stubRuntime('ollama', 'external-running');
+    const lmstudio = stubRuntime('lmstudio', 'stopped');
+    ollama.shutdownOwned = async () => {
+      released.push('ollama');
+    };
+    lmstudio.shutdownOwned = async () => {
+      released.push('lmstudio');
+    };
+    const service = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', ollama],
+        ['lmstudio', lmstudio],
+      ]),
+      host,
+      processes,
+    );
+
+    await service.shutdownOwnedOnQuit();
+
+    expect(released).toEqual(['ollama', 'lmstudio']);
   });
 });
 

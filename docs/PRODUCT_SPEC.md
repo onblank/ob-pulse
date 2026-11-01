@@ -38,6 +38,8 @@ A background/tray process is not a promise of monitoring when the **application 
 - Stop only an OB-Pulse-owned process, with confirmation if inference is running.
 - Load/unload supported models from RAM without deleting downloaded model weights.
 - External servers are observed, not killed. Explicit management handover must be designed separately.
+- LM Studio is managed at the local HTTP-server toggle only: Pulse may stop it only when Pulse
+  enabled that toggle during the current process lifetime. GUI/daemon lifecycle remains external.
 - Manager permissions and process ownership survive UI hide, not OS reboot.
 
 ### Models and sessions
