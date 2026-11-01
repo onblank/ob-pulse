@@ -24,6 +24,7 @@ export interface Capabilities {
   readonly startServer: boolean;
   readonly stopServer: boolean;
   readonly takeControl: boolean;
+  readonly releaseControl: boolean;
   readonly loadModel: boolean;
   readonly unloadModel: boolean;
   readonly benchmark: boolean;
@@ -188,6 +189,7 @@ export interface RuntimePort {
   startServer(): Promise<void>;
   stopServer(): Promise<void>;
   takeControl(): Promise<void>;
+  releaseControl(): Promise<void>;
   shutdownOwned(): Promise<void>;
   loadModel(modelId: string): Promise<void>;
   unloadModel(modelId: string): Promise<void>;

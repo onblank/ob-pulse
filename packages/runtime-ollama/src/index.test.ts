@@ -7,9 +7,12 @@ describe('Ollama process ownership', () => {
     expect(runtime.ownedProcessId()).toBeNull();
     expect(runtime.controlAuthority()).toBe('observer');
     expect(runtime.capabilities.takeControl).toBe(false);
+    expect(runtime.capabilities.releaseControl).toBe(false);
   });
 
   it('refuses unsafe takeover of an external server', async () => {
-    await expect(new OllamaRuntime().takeControl()).rejects.toThrow('safely');
+    const runtime = new OllamaRuntime();
+    await expect(runtime.takeControl()).rejects.toThrow('safely');
+    await expect(runtime.releaseControl()).rejects.toThrow('safely');
   });
 });

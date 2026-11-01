@@ -25,6 +25,8 @@
   the user explicitly delegated for the current session. Delegated control is released without a
   stop on app exit; Pulse never runs `daemon down`, closes the GUI, claims ownership of its PID or
   discovers/kills it by process name or port.
+- Explicit LM Studio control release changes only in-memory authority. It does not invoke the CLI,
+  stop the server or persist permission beyond the current Pulse process.
 - Process metrics use only that tracked direct child PID, only while its adapter reports
   `managed-running`. The macOS/Linux probe executes fixed `/bin/ps` arguments; the Windows probe
   executes the system Windows PowerShell without profiles or interaction and reads only the process

@@ -176,11 +176,13 @@ function PowerControl({
   busy,
   onToggle,
   onTakeControl,
+  onReleaseControl,
 }: {
   snapshot: DashboardSnapshot | null;
   busy: boolean;
   onToggle: () => void;
   onTakeControl: () => void;
+  onReleaseControl: () => void;
 }) {
   const runtime = snapshot?.runtime;
   const state = runtime?.state ?? 'stopped';
@@ -189,6 +191,7 @@ function PowerControl({
   const canStop = state === 'managed-running' && !!runtime?.capabilities.stopServer;
   const external = state === 'external-running';
   const canTakeControl = external && !!runtime?.capabilities.takeControl;
+  const canReleaseControl = state === 'managed-running' && !!runtime?.capabilities.releaseControl;
   const enabled = !busy && (canStart || canStop);
   const stateLabel = external
     ? 'Server managed externally'
@@ -226,6 +229,11 @@ function PowerControl({
         {canTakeControl && (
           <button className="take-control" disabled={busy} onClick={onTakeControl}>
             Take control
+          </button>
+        )}
+        {canReleaseControl && (
+          <button className="release-control" disabled={busy} onClick={onReleaseControl}>
+            Release control
           </button>
         )}
       </div>
@@ -746,6 +754,15 @@ export default function App() {
       return;
     void action(() => window.obpulse.takeControl());
   };
+  const releaseControl = () => {
+    if (
+      !window.confirm(
+        'Release OB-Pulse control of this LM Studio server? The server will remain running and return to observation-only mode.',
+      )
+    )
+      return;
+    void action(() => window.obpulse.releaseControl());
+  };
   const updatePreferences = async (next: WidgetPreferences) => {
     setBusy(true);
     setError(null);
@@ -802,6 +819,7 @@ export default function App() {
               busy={busy}
               onToggle={togglePower}
               onTakeControl={takeControl}
+              onReleaseControl={releaseControl}
             />
             <section className="loaded-model">
               <span className={`pulse-dot ${compactModel ? 'online' : ''}`} />
@@ -841,6 +859,7 @@ export default function App() {
                 busy={busy}
                 onToggle={togglePower}
                 onTakeControl={takeControl}
+                onReleaseControl={releaseControl}
               />
             </section>
 
