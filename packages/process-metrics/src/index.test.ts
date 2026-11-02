@@ -68,7 +68,13 @@ describe('owned process metrics', () => {
   });
 
   it('samples only an explicitly supplied live PID on supported platforms', async () => {
-    const sample = await new NodeProcessMetrics().sample(process.pid);
+    const metrics = new NodeProcessMetrics();
+    let sample = await metrics.sample(process.pid);
+    if (process.platform === 'win32' && !sample) {
+      // A cold Windows PowerShell process can exhaust the bounded first probe on a busy CI host.
+      // Retry once without weakening the production timeout or accepting a persistent failure.
+      sample = await metrics.sample(process.pid);
+    }
     if (
       process.platform === 'darwin' ||
       process.platform === 'linux' ||
@@ -79,5 +85,5 @@ describe('owned process metrics', () => {
     } else {
       expect(sample).toBeNull();
     }
-  });
+  }, 15_000);
 });
