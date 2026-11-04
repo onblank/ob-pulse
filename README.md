@@ -9,7 +9,7 @@
 - Electron tray application with tray-only, compact gadget and expanded dashboard surfaces,
   always-on-top and hide-to-tray behavior, plus local widget position, opacity and high-contrast
   preferences.
-- Persistent local visibility controls for the built-in Ollama and LM Studio adapters, always
+- Persistent local visibility controls for the built-in Ollama, LM Studio and llama.cpp adapters, always
   keeping at least one runtime available and never stopping a service as a side effect.
 - Ollama detection, list installed/loaded models, **app-managed** Ollama start/stop, and explicit model load/unload.
 - LM Studio v1 local server detection, session-owned loopback server start/stop and explicit
@@ -19,6 +19,8 @@
   the server; it is also released without stopping on Pulse exit.
 - Optional LM Studio bearer-token configuration stored only as OS-protected encrypted bytes. Pulse
   never displays the saved token again and refuses persistence without an acceptable secure backend.
+- Observation-only llama.cpp detection at its official `127.0.0.1:9931` default, including the
+  loaded model reported by `/v1/models`; Pulse does not start, stop or send inference to that server.
 - Host-wide CPU and RAM samples with totals and percentages; loaded Ollama model RAM/VRAM residency as reported by the API.
 - Current CPU and resident-memory readings for the direct Ollama server process only when OB-Pulse
   started and still owns it on Windows, macOS or Linux. Windows CPU needs two valid observations;
@@ -37,7 +39,7 @@
 - Passive token-speed capture from arbitrary third-party apps; clients must explicitly implement and authenticate against the instrumentation contract.
 - Automatic session/context discovery from clients that do not emit the instrumentation contract.
 - Per-model CPU/GPU utilization on every OS, persistent/long-term chart history and external model installs.
-- LM Studio GUI/daemon process ownership, llama.cpp/MLX adapters, signing/notarization, production
+- LM Studio GUI/daemon process ownership, llama.cpp lifecycle/model management, MLX adapters, signing/notarization, production
   native installers and automated distribution.
 
 Unsupported values appear as `—`, **never** as fabricated zero.

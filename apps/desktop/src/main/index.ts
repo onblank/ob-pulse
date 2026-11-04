@@ -24,6 +24,7 @@ import { RUNTIME_IDS } from '@obpulse/contracts';
 import { NodeHostMetrics } from '@obpulse/host-metrics';
 import { LoopbackInstrumentationBridge } from '@obpulse/instrumentation-http';
 import { NodeProcessMetrics } from '@obpulse/process-metrics';
+import { LlamaCppRuntime } from '@obpulse/runtime-llamacpp';
 import { OllamaRuntime } from '@obpulse/runtime-ollama';
 import { LMStudioRuntime } from '@obpulse/runtime-lmstudio';
 import { EncryptedCredentialStore, validApiToken, type SecretCipher } from './credentials.js';
@@ -38,7 +39,8 @@ import {
 const here = path.dirname(fileURLToPath(import.meta.url));
 const ollama = new OllamaRuntime();
 const lmstudio = new LMStudioRuntime();
-const providers: RuntimePort[] = [ollama, lmstudio];
+const llamacpp = new LlamaCppRuntime();
+const providers: RuntimePort[] = [ollama, lmstudio, llamacpp];
 const service = new MonitorService(
   new Map(providers.map((provider) => [provider.id, provider])),
   new NodeHostMetrics(),

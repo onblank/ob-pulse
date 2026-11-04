@@ -48,6 +48,8 @@ A background/tray process is not a promise of monitoring when the **application 
 - Manager permissions and process ownership survive UI hide, not OS reboot.
 - Show the selected adapter's contract version, supported actions, loopback scope, server-control
   boundary, credential mode and prohibited content/model/process actions in the expanded view.
+- Detect a llama.cpp server at its official default loopback address and show its reported loaded
+  model without implying lifecycle, cache, load/unload or inference authority.
 
 ### Models and sessions
 

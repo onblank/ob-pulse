@@ -40,6 +40,8 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
     credential backend, with no plaintext fallback, logs, renderer readback or remote-provider use.
 14. Every runtime adapter exposes the versioned capability/permission manifest. Static adapter
     support must remain separate from dynamic control authority; the UI must not imply one from the other.
+15. The llama.cpp adapter is observation-only at the fixed official loopback default. It must not
+    start or stop a server, enumerate model files, invoke inference, or claim load/unload authority.
 
 ## Clean Architecture
 
