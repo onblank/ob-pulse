@@ -1,9 +1,9 @@
 # Verification report
 
-Current local verification as of 2026-11-01:
+Current local verification as of 2026-11-04:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- `pnpm check` passes formatting, ESLint, TypeScript checks for all nine packages, 58 tests and
+- Formatting, ESLint, TypeScript checks for all ten packages, 63 tests and
   the Electron main/preload/renderer production builds.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
@@ -19,7 +19,10 @@ Current local verification as of 2026-11-01:
   filtered discovery, disabled-selection rejection, deterministic selection fallback and manifest
   propagation without duplicating capability state.
 - Provider tests lock manifest contract version, loopback scope, server-control boundary, credential
-  mode and prohibited process/model/content permissions for Ollama and LM Studio.
+  mode and prohibited process/model/content permissions for Ollama, LM Studio and llama.cpp.
+- llama.cpp adapter tests cover the fixed official loopback endpoint, ready/loading/absent states,
+  strict loaded-model parsing, unavailable metrics and refusal of every lifecycle, model-management
+  and benchmark operation.
 - Credential tests cover strict token validation, absent secure-storage refusal, encrypted-only
   atomic persistence, malformed-envelope rejection, deletion and re-encryption after key rotation.
   LM Studio adapter tests verify bearer headers and secret-free rejection errors.
@@ -27,7 +30,8 @@ Current local verification as of 2026-11-01:
   semantics, a live self-PID probe on macOS/Linux, absent Ollama ownership and the application rule
   that only a managed runtime with an owned PID receives a process sample. A dedicated
   `windows-latest` CI job runs the same live self-PID probe and package typecheck natively.
-- The macOS development app launches at 360×430 and changes to the 900×680 expanded surface.
+- The macOS development app launches with the three statically registered adapters; its compact and
+  expanded surfaces build successfully.
 
 Still required before an official release:
 

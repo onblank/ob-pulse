@@ -269,9 +269,11 @@ function RuntimeAccessPanel({ snapshot }: { snapshot: DashboardSnapshot | null }
             ? 'Service managed'
             : 'Observer only';
   const serverControlLabel =
-    manifest.permissions.serverControl === 'owned-process-only'
-      ? 'Owned child process only'
-      : 'Provider server toggle';
+    manifest.permissions.serverControl === 'none'
+      ? 'Observation only'
+      : manifest.permissions.serverControl === 'owned-process-only'
+        ? 'Owned child process only'
+        : 'Provider server toggle';
   const credentialLabel =
     manifest.permissions.credentialMode === 'os-protected-write-only'
       ? 'OS-protected, write-only'
@@ -916,6 +918,10 @@ export default function App() {
   const running = info != null && info.state !== 'stopped';
   const loadedIds = useMemo(() => new Set(info?.loaded.map((model) => model.id) ?? []), [info]);
   const loaded = info?.loaded ?? [];
+  const presentedModels = [
+    ...(info?.installed ?? []),
+    ...loaded.filter((model) => !(info?.installed ?? []).some((entry) => entry.id === model.id)),
+  ];
   const compactModel = loaded[0] ?? null;
   const togglePower = () => {
     if (info?.state === 'managed-running') {
@@ -1162,10 +1168,14 @@ export default function App() {
                   <span>{info?.installed.length ?? 0} installed</span>
                 </div>
                 {!running ? (
-                  <div className="empty">Start the runtime to inspect installed models.</div>
-                ) : info?.installed.length ? (
+                  <div className="empty">
+                    {info?.manifest.capabilities.startServer
+                      ? 'Start the runtime to inspect its models.'
+                      : 'Runtime unavailable. Start it outside OB-Pulse to inspect its models.'}
+                  </div>
+                ) : presentedModels.length ? (
                   <div className="models">
-                    {info.installed.map((model) => {
+                    {presentedModels.map((model) => {
                       const isLoaded = loadedIds.has(model.id);
                       const presentedModel =
                         loaded.find((loadedModel) => loadedModel.id === model.id) ?? model;
@@ -1194,7 +1204,7 @@ export default function App() {
                     })}
                   </div>
                 ) : (
-                  <div className="empty">No installed models reported by this runtime.</div>
+                  <div className="empty">No models reported by this runtime.</div>
                 )}
               </section>
             </div>

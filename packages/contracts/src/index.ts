@@ -1,4 +1,4 @@
-export type RuntimeId = 'ollama' | 'lmstudio';
+export type RuntimeId = 'ollama' | 'lmstudio' | 'llamacpp';
 export type ServerState = 'stopped' | 'external-running' | 'managed-running';
 export type ControlAuthority =
   'observer' | 'session-managed' | 'delegated' | 'service-managed' | 'process-owned';
@@ -36,7 +36,7 @@ export interface Capabilities {
   readonly unloadModel: boolean;
   readonly benchmark: boolean;
 }
-export type ServerControlScope = 'owned-process-only' | 'provider-server-toggle';
+export type ServerControlScope = 'none' | 'owned-process-only' | 'provider-server-toggle';
 export type RuntimeCredentialMode = 'none' | 'os-protected-write-only';
 export const RUNTIME_ADAPTER_CONTRACT_VERSION = '1.0.0' as const;
 export interface RuntimePermissions {
@@ -225,4 +225,4 @@ export interface HostMetricsPort {
 export interface ProcessMetricsPort {
   sample(pid: number): Promise<OwnedProcessSample | null>;
 }
-export const RUNTIME_IDS = ['ollama', 'lmstudio'] as const;
+export const RUNTIME_IDS = ['ollama', 'lmstudio', 'llamacpp'] as const;

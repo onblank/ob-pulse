@@ -4,15 +4,16 @@
 | -------------------------------- | ------------: | ---------------: | ------------: | ------------------------: | ----------------: | ------------------- |
 | Ollama                           |           yes |              yes |           yes |     managed instance only |               yes | explicit local test |
 | LM Studio v1                     |           yes |        yes (API) |     yes (API) | owned or delegated server |         yes (API) | explicit local test |
-| llama.cpp server                 |       planned |                — |             — |                         — |                 — | —                   |
+| llama.cpp server                 |           yes |               no |           yes |          observation only |                no | no                  |
 | MLX server                       |       planned |                — |             — |                         — |                 — | —                   |
 | Other OpenAI-compatible runtimes |       planned |                — |             — |                         — |                 — | —                   |
 
 Provider addresses are pinned to loopback; no connection to external URL or LAN in this scaffold.
 Each built-in adapter exposes manifest contract `1.0.0`. Ollama declares owned-child process control
 and no credential storage; LM Studio declares provider-server-toggle control and OS-protected
-write-only credentials. Both explicitly deny external-process termination, model-file deletion and
-inference-content access. The live authority shown by Pulse is evaluated separately.
+write-only credentials. llama.cpp declares no server control or credential storage. All three
+explicitly deny external-process termination, model-file deletion and inference-content access. The
+live authority shown by Pulse is evaluated separately.
 No process manager or launch-daemon/service setting is changed.
 `ollama serve` binary must be installed/available; inability to spawn is presented as an error.
 LM Studio server start uses the resolved machine-local `lms` executable with fixed loopback
@@ -32,6 +33,11 @@ and managed in LM Studio, not by Pulse. See the official
 Its manual benchmark calls native `/api/v1/chat` with `store:false`, discards output immediately and
 keeps only input/output counts, provider-reported decode speed and first-token latency. LM Studio v1
 does not report prefill speed in this response, so that value remains unavailable.
+
+The llama.cpp adapter is pinned to the official default `http://127.0.0.1:9931`. It checks
+`GET /health` and reads the currently loaded model from `GET /v1/models`. It does not inspect the
+model cache, use `/models`, send inference, accept an API key, execute the CLI, discover a process or
+expose lifecycle/model controls. Custom ports and authenticated servers are not supported yet.
 
 Follow upstream API contracts, do not scrape provider UIs:
 
