@@ -70,6 +70,9 @@ describe('runtime preferences', () => {
     expect(parseRuntimePreferences({ enabledRuntimeIds: ['lmstudio'] })).toEqual({
       enabledRuntimeIds: ['lmstudio'],
     });
+    expect(parseRuntimePreferences({ enabledRuntimeIds: ['llamacpp'] })).toEqual({
+      enabledRuntimeIds: ['llamacpp'],
+    });
     expect(() => parseRuntimePreferences({ enabledRuntimeIds: [] })).toThrow(
       'At least one runtime must remain enabled',
     );
@@ -84,7 +87,7 @@ describe('runtime preferences', () => {
   it('falls back to all built-in runtimes and persists a validated subset', async () => {
     const filePath = await temporaryFile();
     await expect(loadRuntimePreferences(filePath)).resolves.toEqual({
-      enabledRuntimeIds: ['ollama', 'lmstudio'],
+      enabledRuntimeIds: ['ollama', 'lmstudio', 'llamacpp'],
     });
     await expect(
       saveRuntimePreferences(filePath, { enabledRuntimeIds: ['ollama'] }),

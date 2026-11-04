@@ -4,6 +4,7 @@
 - The renderer has zero access to Node, `fs`, environment variables, subprocesses or arbitrary URLs.
 - `contextIsolation: true`, `sandbox: true`, `nodeIntegration: false`, narrow IPC.
 - Runtime endpoints remain fixed loopback addresses; no runtime URL field is supplied from the renderer.
+  The llama.cpp observer is fixed to `127.0.0.1:9931` and performs only health/model-list reads.
 - The optional instrumentation listener is disabled by default, binds only to `127.0.0.1` on an
   ephemeral port and requires a fresh 256-bit bearer token. It enforces a strict v1 numeric schema,
   16 KiB bodies, a rolling request limit and bounded replay suppression. Disable/quit closes it.
@@ -22,6 +23,8 @@
   They cannot grant live authority; process ownership or explicit provider delegation is still
   required at execution time. The current schema cannot represent external-process termination,
   model-file deletion or inference-content access as allowed.
+- Observation-only manifest scope `none` disables server control even when llama.cpp is reachable.
+  The adapter has no CLI, process discovery, filesystem scan, credential field or inference request.
 - LM Studio API tokens cross one write-only IPC method, are bounded/validated in Electron main and
   are encrypted with asynchronous `safeStorage`. Disk contains only a versioned ciphertext envelope
   written atomically with `0600` mode. The renderer can query only configured/storage/error status.

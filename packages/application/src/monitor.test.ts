@@ -78,7 +78,7 @@ const benchmark: BenchmarkRecord = {
   timeToFirstTokenMs: 80,
 };
 function stubRuntime(
-  id: 'ollama' | 'lmstudio',
+  id: RuntimeId,
   state: ServerState,
   ownedProcessId: number | null = null,
 ): RuntimePort {

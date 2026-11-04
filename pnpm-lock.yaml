@@ -208,6 +208,9 @@ importers:
       '@obpulse/process-metrics':
         specifier: workspace:*
         version: link:../../packages/process-metrics
+      '@obpulse/runtime-llamacpp':
+        specifier: workspace:*
+        version: link:../../packages/runtime-llamacpp
       '@obpulse/runtime-lmstudio':
         specifier: workspace:*
         version: link:../../packages/runtime-lmstudio
@@ -269,6 +272,12 @@ importers:
         version: link:../contracts
 
   packages/process-metrics:
+    dependencies:
+      '@obpulse/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
+  packages/runtime-llamacpp:
     dependencies:
       '@obpulse/contracts':
         specifier: workspace:*

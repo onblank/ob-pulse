@@ -19,6 +19,9 @@ credential and prohibited-action permissions. `RuntimePort` supports
 `loadModel`, `unloadModel` and `benchmark`. Each adapter returns _unsupported_ for unimplemented operations;
 `manifest.capabilities` drives disabled UI. Dynamic `controlAuthority` remains outside the manifest:
 support for an operation does not mean Pulse currently has authority to execute it.
+The llama.cpp implementation is a third static adapter with `serverControl: none`: it uses only
+official health/model-read endpoints at the fixed default loopback address and always remains an
+observer.
 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.
@@ -45,7 +48,7 @@ adapter cannot prove a safe provider control plane.
 - Process CPU/RAM is sampled only from the direct child PID retained by an adapter for a service
   that OB-Pulse started. It excludes descendants and is not model-specific. CPU is core-equivalent
   and may exceed 100% for multithreaded work; RAM is resident bytes.
-- External Ollama, LM Studio and a failed/unsupported process probe report process metrics as
+- External Ollama, LM Studio, llama.cpp and a failed/unsupported process probe report process metrics as
   unavailable. OB-Pulse never discovers a process by name, port or service.
 - Ollama `/api/ps` reports loaded models, `size`, `size_vram`, `context_length`; it does not report live requests/sessions.
 - A per-request final response reports prompt/response token counts and evaluation durations; these may calculate tps **only for that request**.
