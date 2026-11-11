@@ -1044,7 +1044,8 @@ export default function App() {
               <div>
                 <span className="eyebrow">LOADED MODEL</span>
                 <strong>
-                  {compactModel?.displayName ?? (running ? 'No model loaded' : 'Runtime offline')}
+                  {compactModel?.displayName ??
+                    (running ? 'No loaded model reported' : 'Runtime offline')}
                 </strong>
                 {loaded.length > 1 && <small>+{loaded.length - 1} additional loaded</small>}
               </div>

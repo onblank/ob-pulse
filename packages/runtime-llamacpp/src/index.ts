@@ -8,6 +8,7 @@ import type {
   ServerState,
 } from '@obpulse/contracts';
 import { RUNTIME_ADAPTER_CONTRACT_VERSION } from '@obpulse/contracts';
+import { parseOpenAiModelList } from '@obpulse/runtime-openai-compatible';
 
 const BASE = 'http://127.0.0.1:9931';
 const OBSERVATION_ONLY_ERROR = 'llama.cpp adapter is observation-only';
@@ -19,18 +20,6 @@ function object(value: unknown): value is RecordObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function modelId(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  if (
-    value.length === 0 ||
-    value.length > 240 ||
-    value.trim() !== value ||
-    Array.from(value).some((character) => character.charCodeAt(0) <= 0x1f)
-  )
-    return null;
-  return value;
-}
-
 export function isLlamaCppHealth(status: number, value: unknown): boolean {
   if (!object(value)) return false;
   if (status === 200) return value.status === 'ok';
@@ -39,23 +28,7 @@ export function isLlamaCppHealth(status: number, value: unknown): boolean {
 }
 
 export function parseLlamaCppModels(value: unknown): ModelRecord[] {
-  if (!object(value) || !Array.isArray(value.data))
-    throw new Error('Malformed llama.cpp models response');
-  return value.data.flatMap((entry: unknown) => {
-    if (!object(entry)) return [];
-    const id = modelId(entry.id);
-    if (!id) return [];
-    return [
-      {
-        id,
-        displayName: id,
-        loaded: true,
-        sizeBytes: null,
-        gpuResidentBytes: null,
-        contextCapacityTokens: null,
-      },
-    ];
-  });
+  return parseOpenAiModelList(value, { loaded: true, providerName: 'llama.cpp' });
 }
 
 const CAPABILITIES: Capabilities = {
