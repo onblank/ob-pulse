@@ -293,10 +293,11 @@ function refreshMenu() {
         },
       },
       {
-        label: 'Widget settings…',
+        label: 'Settings…',
         click: () => {
           applyWindowMode('expanded');
           show();
+          mainWindow?.webContents.send('pulse:open-settings');
         },
       },
       { type: 'separator' },

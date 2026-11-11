@@ -3,7 +3,7 @@
 This versioned protocol is implemented by an optional local HTTP bridge. It lets Agent OS, Hermes
 clients or editor plugins provide trustworthy numeric usage and session context without importing
 their code or violating repository ownership. The bridge is disabled on startup and must be enabled
-explicitly in OB-Pulse's expanded view.
+explicitly in OB-Pulse's settings surface.
 
 When enabled, the UI shows an ephemeral endpoint such as
 `http://127.0.0.1:54321/v1/events` and a fresh bearer token. Clients send `POST` requests with

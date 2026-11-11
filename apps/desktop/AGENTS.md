@@ -15,8 +15,11 @@ that action and immediately show observation-only state.
 Runtime credentials are Restricted. The renderer may submit an LM Studio token through one narrow
 write-only IPC method and query non-secret status; it must never retrieve, log or persist the token.
 Electron main must refuse persistence when OS-protected storage is unavailable or weak.
-The expanded UI must present adapter capabilities separately from current control authority and use
-only the typed versioned manifest; it must not infer permissions from server reachability.
+The settings surface must present adapter capabilities separately from current control authority and
+use only the typed versioned manifest; it must not infer permissions from server reachability.
+The expanded monitor is reserved for runtime/model operations, resource history and KPIs. Appearance,
+runtime visibility, credentials, instrumentation setup/history and capability/permission detail stay
+behind the settings control, which expands the window before rendering settings.
 The built-in llama.cpp adapter may only observe health and the loaded model at `127.0.0.1:9931`;
 its UI controls remain disabled because reachability never grants process or model authority.
 MLX-LM is disabled by default and may only be enabled explicitly through runtime visibility. Its
