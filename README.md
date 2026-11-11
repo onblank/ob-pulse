@@ -83,4 +83,5 @@ Read [`AGENTS.md`](AGENTS.md) and each scoped `AGENTS.md` before editing. The ce
 
 ## Attribution & license
 
-Apache-2.0 code; brand/trademark policy separate. See `LICENSE`, `NOTICE`, `TRADEMARK.md`. Brand SVG assets are development placeholders awaiting official approved artwork.
+Apache-2.0 code; brand/trademark policy separate. See `LICENSE`, `NOTICE`, `TRADEMARK.md`. The bundled
+onBlank corporate mark is owner-provided; OB-Pulse product artwork remains provisional.
