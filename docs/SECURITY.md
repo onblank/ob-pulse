@@ -25,6 +25,8 @@
   model-file deletion or inference-content access as allowed.
 - Observation-only manifest scope `none` disables server control even when llama.cpp is reachable.
   The adapter has no CLI, process discovery, filesystem scan, credential field or inference request.
+- MLX-LM probing is disabled by default. Enabling it authorizes only a fixed loopback GET to its
+  model catalog; it does not authorize inference, process discovery, credentials or filesystem access.
 - LM Studio API tokens cross one write-only IPC method, are bounded/validated in Electron main and
   are encrypted with asynchronous `safeStorage`. Disk contains only a versioned ciphertext envelope
   written atomically with `0600` mode. The renderer can query only configured/storage/error status.

@@ -42,6 +42,8 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
     support must remain separate from dynamic control authority; the UI must not imply one from the other.
 15. The llama.cpp adapter is observation-only at the fixed official loopback default. It must not
     start or stop a server, enumerate model files, invoke inference, or claim load/unload authority.
+16. MLX-LM observation is opt-in at `127.0.0.1:8080`. Its model list means available, not loaded;
+    reachability must not grant lifecycle, inference, credential or model-management authority.
 
 ## Clean Architecture
 

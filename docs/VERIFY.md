@@ -1,9 +1,9 @@
 # Verification report
 
-Current local verification as of 2026-11-04:
+Current local verification as of 2026-11-11:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- Formatting, ESLint, TypeScript checks for all ten packages, 63 tests and
+- Formatting, ESLint, TypeScript checks for all twelve packages, 68 tests and
   the Electron main/preload/renderer production builds.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
@@ -23,6 +23,10 @@ Current local verification as of 2026-11-04:
 - llama.cpp adapter tests cover the fixed official loopback endpoint, ready/loading/absent states,
   strict loaded-model parsing, unavailable metrics and refusal of every lifecycle, model-management
   and benchmark operation.
+- MLX-LM adapter tests cover its opt-in fixed loopback endpoint, strict available-model parsing,
+  the distinction between available and loaded models, absent/malformed server responses and
+  refusal of every lifecycle, model-management and benchmark operation. The shared OpenAI-compatible
+  parser tests preserve the same strict payload and identifier validation for MLX-LM and llama.cpp.
 - Credential tests cover strict token validation, absent secure-storage refusal, encrypted-only
   atomic persistence, malformed-envelope rejection, deletion and re-encryption after key rotation.
   LM Studio adapter tests verify bearer headers and secret-free rejection errors.
@@ -30,7 +34,7 @@ Current local verification as of 2026-11-04:
   semantics, a live self-PID probe on macOS/Linux, absent Ollama ownership and the application rule
   that only a managed runtime with an owned PID receives a process sample. A dedicated
   `windows-latest` CI job runs the same live self-PID probe and package typecheck natively.
-- The macOS development app launches with the three statically registered adapters; its compact and
+- The macOS development app launches with the four statically registered adapters; its compact and
   expanded surfaces build successfully.
 
 Still required before an official release:

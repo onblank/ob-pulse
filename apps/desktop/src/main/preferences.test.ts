@@ -73,6 +73,9 @@ describe('runtime preferences', () => {
     expect(parseRuntimePreferences({ enabledRuntimeIds: ['llamacpp'] })).toEqual({
       enabledRuntimeIds: ['llamacpp'],
     });
+    expect(parseRuntimePreferences({ enabledRuntimeIds: ['mlxlm'] })).toEqual({
+      enabledRuntimeIds: ['mlxlm'],
+    });
     expect(() => parseRuntimePreferences({ enabledRuntimeIds: [] })).toThrow(
       'At least one runtime must remain enabled',
     );

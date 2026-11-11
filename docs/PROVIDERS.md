@@ -5,7 +5,7 @@
 | Ollama                           |           yes |              yes |           yes |     managed instance only |               yes | explicit local test |
 | LM Studio v1                     |           yes |        yes (API) |     yes (API) | owned or delegated server |         yes (API) | explicit local test |
 | llama.cpp server                 |           yes |               no |           yes |          observation only |                no | no                  |
-| MLX server                       |       planned |                — |             — |                         — |                 — | —                   |
+| MLX-LM server                    |  yes (opt-in) |  yes (available) |            no |          observation only |                no | no                  |
 | Other OpenAI-compatible runtimes |       planned |                — |             — |                         — |                 — | —                   |
 
 Provider addresses are pinned to loopback; no connection to external URL or LAN in this scaffold.
@@ -39,8 +39,14 @@ The llama.cpp adapter is pinned to the official default `http://127.0.0.1:9931`.
 model cache, use `/models`, send inference, accept an API key, execute the CLI, discover a process or
 expose lifecycle/model controls. Custom ports and authenticated servers are not supported yet.
 
+MLX-LM is disabled by default and becomes reachable only after the user enables it in runtime
+visibility. It is pinned to `http://127.0.0.1:8080/v1/models`. That endpoint is treated as an
+available-model catalog, not evidence of loaded residency. Pulse sends no inference, executes no
+Python/CLI, accepts no credential and exposes no lifecycle or model-management action.
+
 Follow upstream API contracts, do not scrape provider UIs:
 
 - https://docs.ollama.com/api/ps
 - https://docs.ollama.com/api/generate
 - https://lmstudio.ai/docs/developer/rest
+- https://github.com/ml-explore/mlx-lm/blob/main/mlx_lm/SERVER.md

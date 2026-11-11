@@ -22,6 +22,8 @@ support for an operation does not mean Pulse currently has authority to execute 
 The llama.cpp implementation is a third static adapter with `serverControl: none`: it uses only
 official health/model-read endpoints at the fixed default loopback address and always remains an
 observer.
+MLX-LM is another `serverControl: none` adapter, disabled by default. Its fixed model-list endpoint
+proves only a compatible reachable catalog; records remain installed/available and never loaded.
 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.

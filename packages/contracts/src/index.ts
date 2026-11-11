@@ -1,4 +1,4 @@
-export type RuntimeId = 'ollama' | 'lmstudio' | 'llamacpp';
+export type RuntimeId = 'ollama' | 'lmstudio' | 'llamacpp' | 'mlxlm';
 export type ServerState = 'stopped' | 'external-running' | 'managed-running';
 export type ControlAuthority =
   'observer' | 'session-managed' | 'delegated' | 'service-managed' | 'process-owned';
@@ -225,4 +225,4 @@ export interface HostMetricsPort {
 export interface ProcessMetricsPort {
   sample(pid: number): Promise<OwnedProcessSample | null>;
 }
-export const RUNTIME_IDS = ['ollama', 'lmstudio', 'llamacpp'] as const;
+export const RUNTIME_IDS = ['ollama', 'lmstudio', 'llamacpp', 'mlxlm'] as const;

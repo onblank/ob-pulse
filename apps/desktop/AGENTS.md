@@ -19,6 +19,8 @@ The expanded UI must present adapter capabilities separately from current contro
 only the typed versioned manifest; it must not infer permissions from server reachability.
 The built-in llama.cpp adapter may only observe health and the loaded model at `127.0.0.1:9931`;
 its UI controls remain disabled because reachability never grants process or model authority.
+MLX-LM is disabled by default and may only be enabled explicitly through runtime visibility. Its
+`/v1/models` entries are available models and must never be presented as loaded observations.
 
 Brand files in `src/renderer/assets/brand` are local placeholders and must be replaced with approved
 onBlank artwork before release. App packaging is prepared, not yet signed/tested on target OSes.
