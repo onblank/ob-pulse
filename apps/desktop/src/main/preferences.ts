@@ -25,7 +25,7 @@ export const DEFAULT_WIDGET_PREFERENCES: WidgetPreferences = {
 };
 
 export const DEFAULT_RUNTIME_PREFERENCES: RuntimePreferences = {
-  enabledRuntimeIds: [...RUNTIME_IDS],
+  enabledRuntimeIds: ['ollama', 'lmstudio', 'llamacpp'],
 };
 
 interface Bounds {

@@ -50,6 +50,8 @@ A background/tray process is not a promise of monitoring when the **application 
   boundary, credential mode and prohibited content/model/process actions in the expanded view.
 - Detect a llama.cpp server at its official default loopback address and show its reported loaded
   model without implying lifecycle, cache, load/unload or inference authority.
+- Allow explicit opt-in observation of MLX-LM's default loopback catalog while keeping every model
+  unloaded/unknown until a future provider signal proves residency.
 
 ### Models and sessions
 

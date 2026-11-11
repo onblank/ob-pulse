@@ -18,6 +18,7 @@ No clarification blocked this scaffold. Decisions recorded for owner approval be
 | D-012 | LM Studio token is write-only and OS-encrypted; no plaintext fallback              | implemented and tested                              |
 | D-013 | Versioned adapter manifests separate static support from live authority            | implemented and tested                              |
 | D-014 | llama.cpp begins as a fixed-loopback, observation-only adapter                     | implemented and tested                              |
+| D-015 | MLX-LM begins opt-in, fixed-loopback and available-catalog-only                    | implemented and tested                              |
 
 **External requirement**: global onBlank workspace instructions `../AGENTS.md` are referenced by
 all repositories but are not represented by a root repository in the GitHub list. Owner must attach

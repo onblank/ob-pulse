@@ -214,6 +214,9 @@ importers:
       '@obpulse/runtime-lmstudio':
         specifier: workspace:*
         version: link:../../packages/runtime-lmstudio
+      '@obpulse/runtime-mlxlm':
+        specifier: workspace:*
+        version: link:../../packages/runtime-mlxlm
       '@obpulse/runtime-ollama':
         specifier: workspace:*
         version: link:../../packages/runtime-ollama
@@ -282,12 +285,24 @@ importers:
       '@obpulse/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@obpulse/runtime-openai-compatible':
+        specifier: workspace:*
+        version: link:../runtime-openai-compatible
 
   packages/runtime-lmstudio:
     dependencies:
       '@obpulse/contracts':
         specifier: workspace:*
         version: link:../contracts
+
+  packages/runtime-mlxlm:
+    dependencies:
+      '@obpulse/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@obpulse/runtime-openai-compatible':
+        specifier: workspace:*
+        version: link:../runtime-openai-compatible
 
   packages/runtime-ollama:
     dependencies:
@@ -297,6 +312,12 @@ importers:
       '@obpulse/domain':
         specifier: workspace:*
         version: link:../domain
+
+  packages/runtime-openai-compatible:
+    dependencies:
+      '@obpulse/contracts':
+        specifier: workspace:*
+        version: link:../contracts
 
 packages:
 

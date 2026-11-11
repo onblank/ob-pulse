@@ -24,6 +24,7 @@
     "@obpulse/instrumentation-http": "workspace:*",
     "@obpulse/process-metrics": "workspace:*",
     "@obpulse/runtime-llamacpp": "workspace:*",
+    "@obpulse/runtime-mlxlm": "workspace:*",
     "@obpulse/runtime-ollama": "workspace:*",
     "@obpulse/runtime-lmstudio": "workspace:*",
     "react": "19.3.0",
