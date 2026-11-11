@@ -29,6 +29,10 @@ const api = {
       if (mode === 'compact' || mode === 'expanded') listener(mode);
     });
   },
+  onOpenSettings: (listener: () => void) => {
+    ipcRenderer.removeAllListeners('pulse:open-settings');
+    ipcRenderer.on('pulse:open-settings', () => listener());
+  },
   widgetPreferences: () => ipcRenderer.invoke('pulse:widget-preferences'),
   setWidgetPreferences: (preferences: unknown) =>
     ipcRenderer.invoke('pulse:set-widget-preferences', preferences),

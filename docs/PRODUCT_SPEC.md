@@ -13,18 +13,21 @@ zero cloud dependency. Keep it out of the way until you need it.
 
 ## Navigation / surface
 
-OB-Pulse has three surfaces: tray-only while hidden, a compact 360×430 gadget for daily monitoring
-and control, and an expanded 900×680 dashboard for model selection and detailed readings. The
-compact surface is fixed-size; the expanded surface is resizable. Both provide a manual
-pin/always-on-top control, and closing the window hides it in the tray.
+OB-Pulse has four surfaces: tray-only while hidden, a compact 360×430 gadget for daily monitoring
+and control, an expanded 900×680 monitor for model operations and detailed readings, and a settings
+surface rendered at the expanded size. The compact surface is fixed-size; expanded surfaces are
+resizable. The window header provides pin, settings, expand/compact and hide controls. Opening
+settings from the compact gadget expands the window first; compacting always returns to monitoring.
 
 The compact gadget shows the runtime-safe power action, loaded model and one-hour RAM, reported GPU
-residency and benchmark output-speed charts. The expanded dashboard adds runtime/model controls and
-the detailed host and benchmark readings. Its widget settings persist a tray/corner position, one
-of four deliberately bounded opacity levels and an accessible high-contrast mode. Window placement
-is best-effort on display servers such as Wayland that reserve placement decisions for the
-compositor. Runtime settings can hide or re-enable each built-in adapter while preserving at least
-one active choice; hiding an adapter never stops its service or deletes model files.
+residency and benchmark output-speed charts. The expanded monitor contains only runtime/model
+controls, model load/unload and benchmark actions, history and resource KPIs. Settings contains
+appearance/position, runtime visibility, credentials, instrumentation controls/history and adapter
+capability/permission detail. Widget settings persist a tray/corner position, one of four bounded
+opacity levels and an accessible high-contrast mode. Window placement is best-effort on display
+servers such as Wayland that reserve placement decisions for the compositor. Runtime settings can
+hide or re-enable each built-in adapter while preserving at least one active choice; hiding an
+adapter never stops its service or deletes model files.
 A background/tray process is not a promise of monitoring when the **application quits**.
 
 ## Core acceptance tests for v1
@@ -47,7 +50,7 @@ A background/tray process is not a promise of monitoring when the **application 
   to external observation and will not be stopped when Pulse exits.
 - Manager permissions and process ownership survive UI hide, not OS reboot.
 - Show the selected adapter's contract version, supported actions, loopback scope, server-control
-  boundary, credential mode and prohibited content/model/process actions in the expanded view.
+  boundary, credential mode and prohibited content/model/process actions in settings.
 - Detect a llama.cpp server at its official default loopback address and show its reported loaded
   model without implying lifecycle, cache, load/unload or inference authority.
 - Allow explicit opt-in observation of MLX-LM's default loopback catalog while keeping every model
