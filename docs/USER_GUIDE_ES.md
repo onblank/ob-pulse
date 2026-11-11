@@ -42,6 +42,10 @@ LM Studio en `127.0.0.1:1234`.
   última hora. Usa el botón de ampliar para abrir el panel completo.
 - El modo ampliado queda dedicado al selector de runtime, modelos, carga/descarga, benchmark,
   consumos e indicadores. Usa el botón de contraer para volver al gadget.
+- La franja superior muestra simultáneamente todos los runtimes habilitados. Pulsa una tarjeta para
+  ver su detalle; los errores, modelos y acciones pertenecen únicamente a ese proveedor.
+- Cada tarjeta ofrece solo una acción permitida y segura: iniciar, detener un proceso propio, tomar
+  control explícito o liberarlo. Los runtimes de solo observación no muestran controles falsos.
 - El engranaje abre configuración. Si estás en el gadget compacto, OB-Pulse amplía primero la
   ventana. Apariencia, runtimes visibles, credenciales, instrumentación y permisos viven allí.
 - Al salir de configuración vuelves al monitor ampliado; al contraer vuelves siempre al gadget.

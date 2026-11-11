@@ -431,6 +431,127 @@ main {
   font-size: 9px;
 }
 
+.runtime-center {
+  padding: 12px 13px 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #182536;
+}
+
+.runtime-center-heading {
+  margin-bottom: 9px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.runtime-center-heading h2 {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.runtime-center-heading > span {
+  color: var(--lime);
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.runtime-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.runtime-card {
+  min-width: 0;
+  padding: 2px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  border: 1px solid #3b4c65;
+  border-radius: 11px;
+  background: #1e2b3e;
+}
+
+.runtime-card.selected {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 1px #7f8cff42;
+}
+
+.runtime-card-select {
+  min-width: 0;
+  padding: 9px;
+  display: grid;
+  gap: 7px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
+.runtime-card-select:hover {
+  background: #26354a;
+}
+
+.runtime-card-title {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.runtime-card-title strong,
+.runtime-card-model {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runtime-card-title small {
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.runtime-card-title small.error {
+  color: #f1aab3;
+}
+
+.runtime-card-model {
+  color: #dfe8f4;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.runtime-card-facts {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+.runtime-card-action {
+  margin: 0 7px 7px;
+  padding: 5px 7px;
+  border: 1px solid #596b84;
+  border-radius: 7px;
+  background: #26354a;
+  color: #dbe5f2;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.runtime-card-action:hover {
+  border-color: var(--lime);
+  color: var(--lime);
+}
+
 .expanded-toolbar {
   min-height: 84px;
   padding: 12px 16px;
@@ -445,6 +566,12 @@ main {
 
 .expanded-toolbar > div:first-child {
   min-width: 180px;
+}
+
+.selected-runtime-name {
+  margin-top: 3px;
+  display: block;
+  font-size: 18px;
 }
 
 select {
@@ -1311,6 +1438,8 @@ input:focus-visible {
     .loaded-model,
     .history-card,
     .expanded-toolbar,
+    .runtime-center,
+    .runtime-card,
     .settings-heading,
     .access-panel,
     .permission-summary > div,
@@ -1339,6 +1468,10 @@ input:focus-visible {
   .instrumentation-grid,
   .expanded-grid {
     grid-template-columns: 1fr;
+  }
+
+  .runtime-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .resource-grid {

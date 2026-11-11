@@ -44,6 +44,9 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
     start or stop a server, enumerate model files, invoke inference, or claim load/unload authority.
 16. MLX-LM observation is opt-in at `127.0.0.1:8080`. Its model list means available, not loaded;
     reachability must not grant lifecycle, inference, credential or model-management authority.
+17. Multi-runtime observation must isolate adapter failures, bound each polling cycle and preserve
+    runtime-specific history/benchmarks. A control-center action is available only when that
+    runtime's manifest and current authority prove it safe.
 
 ## Clean Architecture
 

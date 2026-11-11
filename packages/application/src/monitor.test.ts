@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { InMemoryMetricHistory, MonitorService } from './index';
 import type {
   BenchmarkRecord,
@@ -116,6 +116,7 @@ describe('runtime monitoring', () => {
     expect(snapshot.runtime.loaded).toHaveLength(0);
     expect(snapshot.latestBenchmark).toBeNull();
     expect(snapshot.runtime.ownedProcess).toBeNull();
+    expect(snapshot.runtimes).toEqual([snapshot.runtime]);
   });
   it('attributes process metrics only to a managed runtime with an owned PID', async () => {
     const managed = new MonitorService(
@@ -136,7 +137,7 @@ describe('runtime monitoring', () => {
     );
     expect((await external.snapshot()).runtime.ownedProcess).toBeNull();
   });
-  it('clears last benchmark on runtime switch to avoid false attribution', async () => {
+  it('keeps each runtime benchmark isolated across selection changes', async () => {
     const providers = new Map<RuntimeId, RuntimePort>([
       ['ollama', stubRuntime('ollama', 'external-running')],
       ['lmstudio', stubRuntime('lmstudio', 'external-running')],
@@ -146,6 +147,8 @@ describe('runtime monitoring', () => {
     expect((await service.snapshot()).latestBenchmark?.readTokensPerSecond).toBe(42);
     service.useRuntime('lmstudio');
     expect((await service.snapshot()).latestBenchmark).toBeNull();
+    service.useRuntime('ollama');
+    expect((await service.snapshot()).latestBenchmark?.readTokensPerSecond).toBe(42);
   });
   it('reports runtime discovery without requiring a hard-coded UI model list', () => {
     const service = new MonitorService(
@@ -187,7 +190,75 @@ describe('runtime monitoring', () => {
       { id: 'lmstudio', name: 'lmstudio', enabled: true },
     ]);
     expect((await service.snapshot()).selectedRuntime).toBe('lmstudio');
+    expect((await service.snapshot()).runtimes.map((runtime) => runtime.id)).toEqual(['lmstudio']);
     expect(() => service.useRuntime('ollama')).toThrow('Runtime is disabled');
+    await expect(service.start('ollama')).rejects.toThrow('Runtime is disabled');
+  });
+
+  it('observes enabled runtimes together and isolates adapter failures', async () => {
+    const broken = stubRuntime('lmstudio', 'external-running');
+    broken.state = async () => {
+      throw new Error('provider unavailable');
+    };
+    const service = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', stubRuntime('ollama', 'managed-running', processSample.pid)],
+        ['lmstudio', broken],
+      ]),
+      host,
+      processes,
+    );
+
+    const snapshot = await service.snapshot();
+
+    expect(snapshot.runtimes).toHaveLength(2);
+    expect(snapshot.runtimes.find((runtime) => runtime.id === 'ollama')).toMatchObject({
+      state: 'managed-running',
+      ownedProcess: processSample,
+      error: null,
+    });
+    expect(snapshot.runtimes.find((runtime) => runtime.id === 'lmstudio')).toMatchObject({
+      state: 'stopped',
+      error: 'provider unavailable',
+    });
+  });
+
+  it('bounds a stalled adapter without losing responsive runtime observations', async () => {
+    const stalled = stubRuntime('lmstudio', 'external-running');
+    stalled.state = () => new Promise<ServerState>(() => undefined);
+    const service = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', stubRuntime('ollama', 'external-running')],
+        ['lmstudio', stalled],
+      ]),
+      host,
+      processes,
+      undefined,
+      undefined,
+      5,
+    );
+
+    const snapshot = await service.snapshot();
+
+    expect(snapshot.runtimes.find((runtime) => runtime.id === 'ollama')?.loaded).toHaveLength(1);
+    expect(snapshot.runtimes.find((runtime) => runtime.id === 'lmstudio')?.error).toBe(
+      'lmstudio observation timed out',
+    );
+  });
+
+  it('shares an in-flight multi-runtime poll between concurrent consumers', async () => {
+    const ollama = stubRuntime('ollama', 'external-running');
+    const state = vi.spyOn(ollama, 'state');
+    const service = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([['ollama', ollama]]),
+      host,
+      processes,
+    );
+
+    const [first, second] = await Promise.all([service.snapshot(), service.snapshot()]);
+
+    expect(first).toBe(second);
+    expect(state).toHaveBeenCalledTimes(1);
   });
 
   it('asks every provider to release only its owned resources on quit', async () => {
@@ -219,22 +290,25 @@ function dashboardAt(
   sampledAt: string,
   latestBenchmark: BenchmarkRecord | null = null,
 ): DashboardSnapshot {
+  const runtime = {
+    id: 'ollama' as const,
+    displayName: 'Ollama',
+    state: 'managed-running' as const,
+    controlAuthority: 'process-owned' as const,
+    manifest,
+    installed: [model],
+    loaded: [{ ...model, gpuResidentBytes: 12 }],
+    error: null,
+    ownedProcess: processSample,
+    latestBenchmark,
+    observedAt: sampledAt,
+  };
   return {
     selectedRuntime: 'ollama',
     host: { ...hostSample, sampledAt },
     latestBenchmark,
-    runtime: {
-      id: 'ollama',
-      displayName: 'Ollama',
-      state: 'managed-running',
-      controlAuthority: 'process-owned',
-      manifest,
-      installed: [model],
-      loaded: [{ ...model, gpuResidentBytes: 12 }],
-      error: null,
-      ownedProcess: processSample,
-      observedAt: sampledAt,
-    },
+    runtime,
+    runtimes: [runtime],
   };
 }
 
@@ -265,5 +339,24 @@ describe('one-hour in-memory metric history', () => {
       outputTokensPerSecond: null,
       outputTokensSource: null,
     });
+  });
+
+  it('records one isolated sample per observed runtime', () => {
+    const history = new InMemoryMetricHistory();
+    const dashboard = dashboardAt('2026-10-14T00:00:00.000Z');
+    const lmstudio = {
+      ...dashboard.runtime,
+      id: 'lmstudio' as const,
+      displayName: 'LM Studio',
+      loaded: [],
+      latestBenchmark: null,
+    };
+
+    history.capture({ ...dashboard, runtimes: [dashboard.runtime, lmstudio] });
+
+    expect(history.window(Date.parse(dashboard.host.sampledAt)).samples).toMatchObject([
+      { runtimeId: 'ollama', modelId: model.id },
+      { runtimeId: 'lmstudio', modelId: null },
+    ]);
   });
 });
