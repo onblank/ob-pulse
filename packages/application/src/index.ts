@@ -13,17 +13,20 @@ import type {
   RuntimePort,
   RuntimeSnapshot,
 } from '@obpulse/contracts';
+import { RUNTIME_IDS } from '@obpulse/contracts';
 import { InstrumentationSessionStore } from './instrumentation';
 
 export { InstrumentationSessionStore } from './instrumentation';
 
 export const HISTORY_RETENTION_MS = 60 * 60 * 1000;
 export const HISTORY_SAMPLE_INTERVAL_MS = 3000;
-const HISTORY_MAX_SAMPLES = Math.ceil(HISTORY_RETENTION_MS / HISTORY_SAMPLE_INTERVAL_MS) + 1;
+export const RUNTIME_POLL_TIMEOUT_MS = 2500;
+const HISTORY_MAX_SAMPLES =
+  (Math.ceil(HISTORY_RETENTION_MS / HISTORY_SAMPLE_INTERVAL_MS) + 1) * RUNTIME_IDS.length;
 
 export class InMemoryMetricHistory {
   private readonly samples: MetricHistorySample[] = [];
-  private lastBenchmarkAt: string | null = null;
+  private readonly lastBenchmarkAt = new Map<RuntimeId, string>();
 
   constructor(
     private readonly retentionMs = HISTORY_RETENTION_MS,
@@ -31,29 +34,31 @@ export class InMemoryMetricHistory {
     private readonly maxSamples = HISTORY_MAX_SAMPLES,
   ) {}
 
-  capture(snapshot: DashboardSnapshot): MetricHistorySample {
-    const loaded = snapshot.runtime.loaded;
-    const residentValues = loaded
-      .map((model) => model.gpuResidentBytes)
-      .filter((value): value is number => value != null);
-    const benchmark = snapshot.latestBenchmark;
-    const isNewBenchmark = benchmark != null && benchmark.at !== this.lastBenchmarkAt;
-    if (isNewBenchmark) this.lastBenchmarkAt = benchmark.at;
-    const sample: MetricHistorySample = {
-      sampledAt: snapshot.host.sampledAt,
-      runtimeId: snapshot.selectedRuntime,
-      modelId: loaded[0]?.id ?? null,
-      hostMemoryUsedPercent: snapshot.host.memoryUsedPercent,
-      gpuResidentBytes:
-        residentValues.length > 0
-          ? residentValues.reduce((total, value) => total + value, 0)
-          : null,
-      outputTokensPerSecond: isNewBenchmark ? (benchmark.writeTokensPerSecond ?? null) : null,
-      outputTokensSource: isNewBenchmark ? 'benchmark' : null,
-    };
-    this.samples.push(sample);
-    this.prune(Date.parse(sample.sampledAt));
-    return sample;
+  capture(snapshot: DashboardSnapshot): MetricHistorySample[] {
+    const captured = snapshot.runtimes.map((runtime) => {
+      const residentValues = runtime.loaded
+        .map((model) => model.gpuResidentBytes)
+        .filter((value): value is number => value != null);
+      const benchmark = runtime.latestBenchmark;
+      const isNewBenchmark =
+        benchmark != null && benchmark.at !== this.lastBenchmarkAt.get(runtime.id);
+      if (isNewBenchmark && benchmark) this.lastBenchmarkAt.set(runtime.id, benchmark.at);
+      return {
+        sampledAt: snapshot.host.sampledAt,
+        runtimeId: runtime.id,
+        modelId: runtime.loaded[0]?.id ?? null,
+        hostMemoryUsedPercent: snapshot.host.memoryUsedPercent,
+        gpuResidentBytes:
+          residentValues.length > 0
+            ? residentValues.reduce((total, value) => total + value, 0)
+            : null,
+        outputTokensPerSecond: isNewBenchmark ? (benchmark?.writeTokensPerSecond ?? null) : null,
+        outputTokensSource: isNewBenchmark ? ('benchmark' as const) : null,
+      } satisfies MetricHistorySample;
+    });
+    this.samples.push(...captured);
+    this.prune(Date.parse(snapshot.host.sampledAt));
+    return captured;
   }
 
   window(nowMs = Date.now()): MetricHistoryWindow {
@@ -80,13 +85,15 @@ export class InMemoryMetricHistory {
 export class MonitorService {
   private selected: RuntimeId;
   private enabledRuntimeIds: ReadonlySet<RuntimeId>;
-  private lastBenchmark: BenchmarkRecord | null = null;
+  private readonly lastBenchmarks = new Map<RuntimeId, BenchmarkRecord>();
+  private snapshotInFlight: Promise<DashboardSnapshot> | null = null;
   constructor(
     private readonly providers: ReadonlyMap<RuntimeId, RuntimePort>,
     private readonly host: HostMetricsPort,
     private readonly processes: ProcessMetricsPort,
     private readonly metricHistory = new InMemoryMetricHistory(),
     private readonly instrumentation = new InstrumentationSessionStore(),
+    private readonly runtimePollTimeoutMs = RUNTIME_POLL_TIMEOUT_MS,
   ) {
     this.enabledRuntimeIds = new Set(providers.keys());
     const initialRuntime = providers.has('ollama') ? 'ollama' : providers.keys().next().value;
@@ -116,64 +123,118 @@ export class MonitorService {
       const next = ids[0];
       if (!next) throw new Error('At least one runtime must remain enabled');
       this.selected = next;
-      this.lastBenchmark = null;
     }
+    this.snapshotInFlight = null;
   }
   useRuntime(id: RuntimeId): void {
     if (!this.providers.has(id)) throw new Error('Unknown runtime');
     if (!this.enabledRuntimeIds.has(id)) throw new Error('Runtime is disabled');
     this.selected = id;
-    this.lastBenchmark = null;
+    this.snapshotInFlight = null;
   }
-  private get provider(): RuntimePort {
-    const runtime = this.providers.get(this.selected);
+  private providerFor(id = this.selected): RuntimePort {
+    const runtime = this.providers.get(id);
     if (!runtime) throw new Error('Missing runtime');
+    if (!this.enabledRuntimeIds.has(id)) throw new Error('Runtime is disabled');
     return runtime;
   }
-  async snapshot(): Promise<DashboardSnapshot> {
-    const runtime = this.provider;
+  private async observeRuntime(runtime: RuntimePort): Promise<RuntimeSnapshot> {
     let state: RuntimeSnapshot['state'] = 'stopped';
     let installed: RuntimeSnapshot['installed'] = [];
     let loaded: RuntimeSnapshot['loaded'] = [];
     let ownedProcess: OwnedProcessSample | null = null;
     let error: string | null = null;
-    try {
-      state = await runtime.state();
-      if (state !== 'stopped') {
-        [installed, loaded] = await Promise.all([runtime.listInstalled(), runtime.listLoaded()]);
-      }
-      if (state === 'managed-running') {
-        const pid = runtime.ownedProcessId();
-        if (pid != null) {
+    const observation = (async () => {
+      try {
+        state = await runtime.state();
+        if (state !== 'stopped') {
           try {
-            ownedProcess = await this.processes.sample(pid);
-          } catch {
-            ownedProcess = null;
+            [installed, loaded] = await Promise.all([
+              runtime.listInstalled(),
+              runtime.listLoaded(),
+            ]);
+          } catch (modelsError) {
+            error = modelsError instanceof Error ? modelsError.message : String(modelsError);
           }
         }
+        if (state === 'managed-running') {
+          const pid = runtime.ownedProcessId();
+          if (pid != null) {
+            try {
+              ownedProcess = await this.processes.sample(pid);
+            } catch {
+              ownedProcess = null;
+            }
+          }
+        }
+      } catch (runtimeError) {
+        error = runtimeError instanceof Error ? runtimeError.message : String(runtimeError);
       }
-    } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+    })();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        observation,
+        new Promise<never>((_resolve, reject) => {
+          timeout = setTimeout(
+            () => reject(new Error(`${runtime.displayName} observation timed out`)),
+            this.runtimePollTimeoutMs,
+          );
+        }),
+      ]);
+    } catch (observationError) {
+      error =
+        observationError instanceof Error ? observationError.message : String(observationError);
+    } finally {
+      if (timeout) clearTimeout(timeout);
     }
+    let controlAuthority: RuntimeSnapshot['controlAuthority'] = 'observer';
+    try {
+      controlAuthority = runtime.controlAuthority();
+    } catch (authorityError) {
+      error ??= authorityError instanceof Error ? authorityError.message : String(authorityError);
+    }
+    return {
+      id: runtime.id,
+      displayName: runtime.displayName,
+      state,
+      controlAuthority,
+      manifest: runtime.manifest,
+      installed,
+      loaded,
+      ownedProcess,
+      latestBenchmark: this.lastBenchmarks.get(runtime.id) ?? null,
+      error,
+      observedAt: new Date().toISOString(),
+    };
+  }
+  snapshot(): Promise<DashboardSnapshot> {
+    if (this.snapshotInFlight) return this.snapshotInFlight;
+    const observation = this.collectSnapshot();
+    this.snapshotInFlight = observation;
+    const clear = () => {
+      if (this.snapshotInFlight === observation) this.snapshotInFlight = null;
+    };
+    void observation.then(clear, clear);
+    return observation;
+  }
+  private async collectSnapshot(): Promise<DashboardSnapshot> {
+    const runtimes = await Promise.all(
+      Array.from(this.providers.values())
+        .filter((runtime) => this.enabledRuntimeIds.has(runtime.id))
+        .map((runtime) => this.observeRuntime(runtime)),
+    );
+    const runtime = runtimes.find((entry) => entry.id === this.selected);
+    if (!runtime) throw new Error('Selected runtime snapshot is unavailable');
     return {
       selectedRuntime: this.selected,
       host: this.host.sample(),
-      latestBenchmark: this.lastBenchmark,
-      runtime: {
-        id: runtime.id,
-        displayName: runtime.displayName,
-        state,
-        controlAuthority: runtime.controlAuthority(),
-        manifest: runtime.manifest,
-        installed,
-        loaded,
-        ownedProcess,
-        error,
-        observedAt: new Date().toISOString(),
-      },
+      latestBenchmark: runtime.latestBenchmark,
+      runtime,
+      runtimes,
     };
   }
-  async captureHistory(): Promise<MetricHistorySample> {
+  async captureHistory(): Promise<MetricHistorySample[]> {
     return this.metricHistory.capture(await this.snapshot());
   }
   history(nowMs = Date.now()): MetricHistoryWindow {
@@ -188,28 +249,53 @@ export class MonitorService {
   clearInstrumentation(): void {
     this.instrumentation.clear();
   }
-  async start(): Promise<void> {
-    await this.provider.startServer();
+  async start(id = this.selected): Promise<void> {
+    try {
+      await this.providerFor(id).startServer();
+    } finally {
+      this.snapshotInFlight = null;
+    }
   }
-  async stop(): Promise<void> {
-    await this.provider.stopServer();
+  async stop(id = this.selected): Promise<void> {
+    try {
+      await this.providerFor(id).stopServer();
+    } finally {
+      this.snapshotInFlight = null;
+    }
   }
-  async takeControl(): Promise<void> {
-    await this.provider.takeControl();
+  async takeControl(id = this.selected): Promise<void> {
+    try {
+      await this.providerFor(id).takeControl();
+    } finally {
+      this.snapshotInFlight = null;
+    }
   }
-  async releaseControl(): Promise<void> {
-    await this.provider.releaseControl();
+  async releaseControl(id = this.selected): Promise<void> {
+    try {
+      await this.providerFor(id).releaseControl();
+    } finally {
+      this.snapshotInFlight = null;
+    }
   }
   async load(modelId: string): Promise<void> {
-    await this.provider.loadModel(modelId);
+    try {
+      await this.providerFor().loadModel(modelId);
+    } finally {
+      this.snapshotInFlight = null;
+    }
   }
   async unload(modelId: string): Promise<void> {
-    await this.provider.unloadModel(modelId);
+    try {
+      await this.providerFor().unloadModel(modelId);
+    } finally {
+      this.snapshotInFlight = null;
+    }
   }
   async benchmark(modelId: string): Promise<BenchmarkRecord> {
     const selectedAtStart = this.selected;
-    const result = await this.provider.benchmark(modelId);
-    if (this.selected === selectedAtStart) this.lastBenchmark = result;
+    const result = await this.providerFor().benchmark(modelId);
+    if (this.selected === selectedAtStart) this.lastBenchmarks.set(selectedAtStart, result);
+    this.snapshotInFlight = null;
     return result;
   }
   /** On explicit quit only. Providers must leave every external runtime untouched. */

@@ -3,7 +3,7 @@
 Current local verification as of 2026-11-11:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- Formatting, ESLint, TypeScript checks for all twelve packages, 71 tests and
+- Formatting, ESLint, TypeScript checks for all twelve packages, 78 tests and
   the Electron main/preload/renderer production builds.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
@@ -18,8 +18,11 @@ Current local verification as of 2026-11-11:
 - Panel-navigation tests cover compact-to-settings expansion, settings-to-monitor return and the
   invariant that compacting always closes settings.
 - Runtime preference and application tests cover non-empty/unique registered adapter validation,
-  filtered discovery, disabled-selection rejection, deterministic selection fallback and manifest
-  propagation without duplicating capability state.
+  filtered discovery, disabled-selection/command rejection, deterministic selection fallback,
+  concurrent multi-runtime snapshots, failure/timeout isolation, in-flight poll sharing,
+  runtime-scoped benchmarks/history and manifest propagation without duplicating capability state.
+- Renderer control-center tests prove that primary actions follow state/capabilities, prefer safe
+  release over shutdown and remain absent for observation-only runtimes.
 - Provider tests lock manifest contract version, loopback scope, server-control boundary, credential
   mode and prohibited process/model/content permissions for Ollama, LM Studio and llama.cpp.
 - llama.cpp adapter tests cover the fixed official loopback endpoint, ready/loading/absent states,
@@ -37,7 +40,7 @@ Current local verification as of 2026-11-11:
   that only a managed runtime with an owned PID receives a process sample. A dedicated
   `windows-latest` CI job runs the same live self-PID probe and package typecheck natively.
 - The macOS development app launches with the four statically registered adapters; its compact,
-  expanded monitor and dedicated settings surfaces build successfully.
+  multi-runtime monitor and dedicated settings surfaces build successfully.
 
 Still required before an official release:
 

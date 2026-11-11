@@ -11,6 +11,8 @@
   preferences.
 - Persistent local visibility controls for Ollama, LM Studio, llama.cpp and opt-in MLX-LM adapters, always
   keeping at least one runtime available and never stopping a service as a side effect.
+- Concurrent control-center cards for every enabled runtime, with isolated health, authority, loaded
+  models, owned-process metrics and only the primary action that runtime can safely perform.
 - Ollama detection, list installed/loaded models, **app-managed** Ollama start/stop, and explicit model load/unload.
 - LM Studio v1 local server detection, session-owned loopback server start/stop and explicit
   session-scoped handover of a pre-existing server through its machine-local CLI, plus
@@ -27,7 +29,8 @@
 - Current CPU and resident-memory readings for the direct Ollama server process only when OB-Pulse
   started and still owns it on Windows, macOS or Linux. Windows CPU needs two valid observations;
   external services, descendants and model-specific attribution remain unavailable.
-- A rolling one-hour chart kept only in process memory for host RAM, provider-reported GPU residency and explicit benchmark output speed.
+- Per-runtime rolling one-hour charts kept only in process memory for host RAM, provider-reported GPU
+  residency and explicit benchmark output speed.
 - An optional authenticated loopback bridge for strict, content-free client session events, with measured context use, prefill/decode speed and first-token latency.
 - User-invoked Ollama and LM Studio sample requests with provider-reported token metrics, **clearly
   labeled as benchmarks**, not a live stream from unrelated clients. LM Studio additionally reports

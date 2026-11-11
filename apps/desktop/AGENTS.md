@@ -20,6 +20,9 @@ use only the typed versioned manifest; it must not infer permissions from server
 The expanded monitor is reserved for runtime/model operations, resource history and KPIs. Appearance,
 runtime visibility, credentials, instrumentation setup/history and capability/permission detail stay
 behind the settings control, which expands the window before rendering settings.
+The runtime control center observes every enabled adapter but must keep selection, state, authority,
+models, process metrics, errors and actions isolated per runtime. One failed adapter must not erase
+healthy runtime cards. Card actions use typed runtime IDs through narrow IPC and never infer control.
 The built-in llama.cpp adapter may only observe health and the loaded model at `127.0.0.1:9931`;
 its UI controls remain disabled because reachability never grants process or model authority.
 MLX-LM is disabled by default and may only be enabled explicitly through runtime visibility. Its

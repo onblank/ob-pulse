@@ -43,6 +43,9 @@
   accessible high-contrast mode and a tray/header shortcut to a dedicated settings surface. The
   expanded monitor is limited to model operations, resource history and KPIs. Programmatic
   positioning remains best-effort on Wayland, where the compositor may control placement.
+- A multi-runtime control center observes every enabled adapter concurrently with bounded,
+  failure-isolated polling. Runtime cards show truthful authority, models, owned-process metrics and
+  safe manifest-driven actions; selection scopes per-runtime history and benchmarks.
 
 ## 1.0 — public release
 

@@ -17,11 +17,13 @@
 | GPU max capacity                | OS-specific reliable hardware API                   | physical GPU          | planned/unsupported                                  |
 
 **Units**: tps = token count × 1e9 / nanoseconds; zero/null/negative duration yields `null`.
-**Sampling**: host and runtime snapshots every 3 seconds while the application process is alive,
-including when its window is hidden in the tray. No sampling occurs after the application quits.
-The in-memory window retains at most the latest hour and has no restart persistence. Host RAM is a
-continuous series; loaded-model GPU-resident bytes are provider-reported residency, not GPU load;
-decode/write tps is a sparse point recorded once per explicit benchmark.
+**Sampling**: host and every enabled runtime are observed concurrently every 3 seconds while the
+application process is alive, including when its window is hidden in the tray. Each adapter poll is
+bounded to 2.5 seconds and failures remain runtime-local. No sampling occurs after the application
+quits. The in-memory window retains at most the latest hour per runtime and has no restart
+persistence. Host RAM is repeated only as that runtime's aligned series; loaded-model GPU-resident
+bytes are provider-reported residency, not GPU load; decode/write tps is a runtime-scoped sparse
+point recorded once per explicit benchmark.
 Owned-process CPU is core-equivalent and may exceed 100% when the direct child uses more than one
 logical processor. On Windows the first valid observation has no prior cumulative-CPU baseline, so
 CPU is `null` while resident memory is already available.

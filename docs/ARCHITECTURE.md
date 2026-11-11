@@ -31,6 +31,13 @@ dashboard. Opening settings requests expanded geometry first; receiving compact 
 returns the renderer to monitor. The narrow `pulse:open-settings` event preserves the tray shortcut
 without exposing generic renderer navigation through IPC.
 
+**Multi-runtime observation**: `MonitorService.snapshot()` observes all enabled adapters concurrently
+and returns both the selected detail and the complete runtime list. Each observation has a 2.5-second
+application-layer bound and its own error state; model or provider failure does not discard healthy
+cards. Concurrent UI/sampler consumers share the same in-flight poll. Commands carry a validated
+runtime ID, remain blocked for disabled adapters and still delegate lifecycle authority to the
+adapter. The renderer never controls by discovered PID, name or port.
+
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.
 When Ollama was started by LaunchAgent/Brew/another app, the button must not terminate it.
@@ -67,10 +74,10 @@ adapter cannot prove a safe provider control plane.
 - Context utilisation is client-session-based; configured window is an upper bound, not the effective remaining user-token budget (system/tool overhead matters).
 
 **Current rolling history**: `InMemoryMetricHistory` belongs to the application layer. Electron main
-captures a snapshot every three seconds while the application process is alive, including when the
-window is hidden in the tray. Samples older than one hour are evicted and nothing is restored after
-quit or restart. Benchmark throughput is stored as a sparse event, not repeated as if it were live
-traffic.
+captures one isolated sample per enabled runtime every three seconds while the application process
+is alive, including when the window is hidden in the tray. Samples older than one hour are evicted
+and nothing is restored after quit or restart. Benchmark throughput is stored once as a sparse event
+for its runtime, not repeated or transferred when selection changes.
 
 **Owned-process sampling**: `@obpulse/process-metrics` is separate from host-wide metrics. On macOS
 and Linux it invokes fixed `/bin/ps` flags. On Windows it invokes the system Windows PowerShell
@@ -78,9 +85,9 @@ executable without profiles or interaction and reads only .NET `Process` start t
 processor time and `WorkingSet64`. Both paths receive only the validated positive PID provided by
 `RuntimePort.ownedProcessId()` and never use a shell or discover processes. Windows requires two
 valid observations before deriving CPU; its first sample still exposes resident RAM. PID plus start
-time guards the CPU baseline against PID reuse. `MonitorService` requests a sample only while the
-selected runtime reports `managed-running`. The current sample is neither added to the one-hour
-history nor persisted.
+time guards the CPU baseline against PID reuse. `MonitorService` requests a sample only for an
+enabled runtime that reports `managed-running` and supplies its owned PID. Process samples appear on
+their runtime card/detail and are neither persisted nor misattributed to external services.
 
 **Widget preferences**: Electron main validates and atomically stores a small
 `widget-preferences.json` file under Electron's machine-local `userData` directory. The renderer can

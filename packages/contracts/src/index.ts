@@ -96,12 +96,14 @@ export interface RuntimeSnapshot {
   readonly installed: ModelRecord[];
   readonly loaded: ModelRecord[];
   readonly ownedProcess: OwnedProcessSample | null;
+  readonly latestBenchmark: BenchmarkRecord | null;
   readonly error: string | null;
   readonly observedAt: string;
 }
 export interface DashboardSnapshot {
   readonly selectedRuntime: RuntimeId;
   readonly runtime: RuntimeSnapshot;
+  readonly runtimes: readonly RuntimeSnapshot[];
   readonly host: HostSample;
   readonly latestBenchmark: BenchmarkRecord | null;
 }
