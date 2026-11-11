@@ -17,8 +17,14 @@ import type {
 } from '@obpulse/contracts';
 import logo from './assets/brand/ob-pulse-logo.svg';
 import onblankLogo from './assets/brand/onblank-logo.png';
-
-type WindowMode = 'compact' | 'expanded';
+import {
+  receiveWindowMode,
+  toggleSettings,
+  toggleWindowMode,
+  type PanelNavigation,
+  type PanelSurface,
+  type WindowMode,
+} from './panel-navigation';
 
 const DISABLED_BRIDGE: InstrumentationBridgeStatus = {
   enabled: false,
@@ -336,13 +342,17 @@ function RuntimeAccessPanel({ snapshot }: { snapshot: DashboardSnapshot | null }
 
 function WindowHeader({
   mode,
+  surface,
   top,
   onMode,
+  onSettings,
   onTop,
 }: {
   mode: WindowMode;
+  surface: PanelSurface;
   top: boolean;
   onMode: () => void;
+  onSettings: () => void;
   onTop: () => void;
 }) {
   return (
@@ -354,6 +364,15 @@ function WindowHeader({
       <div className="window-buttons">
         <button className={top ? 'icon active' : 'icon'} title="Keep on top" onClick={onTop}>
           ⌁
+        </button>
+        <button
+          className={surface === 'settings' ? 'icon active' : 'icon'}
+          title={surface === 'settings' ? 'Back to monitor' : 'Settings'}
+          aria-label={surface === 'settings' ? 'Back to monitor' : 'Open settings'}
+          aria-pressed={surface === 'settings'}
+          onClick={onSettings}
+        >
+          ⚙
         </button>
         <button className="icon" title={mode === 'compact' ? 'Expand' : 'Compact'} onClick={onMode}>
           {mode === 'compact' ? '↗' : '↙'}
@@ -841,6 +860,7 @@ export default function App() {
     null,
   );
   const [mode, setMode] = useState<WindowMode>('compact');
+  const [surface, setSurface] = useState<PanelSurface>('monitor');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [top, setTop] = useState(false);
@@ -874,14 +894,24 @@ export default function App() {
     void window.obpulse.runtimePreferences().then(setRuntimePreferences).catch(setError);
     void window.obpulse.isAlwaysOnTop().then(setTop);
     void window.obpulse.getWindowMode().then(setMode);
-    window.obpulse.onWindowModeChanged(setMode);
+    window.obpulse.onWindowModeChanged((nextMode) => {
+      setMode(nextMode);
+      setSurface(
+        (currentSurface) =>
+          receiveWindowMode({ mode: nextMode, surface: currentSurface }, nextMode).surface,
+      );
+    });
+    window.obpulse.onOpenSettings(() => {
+      setMode('expanded');
+      setSurface('settings');
+    });
     void window.obpulse.widgetPreferences().then(setPreferences).catch(setError);
     const ticker = setInterval(() => void refresh(), 3000);
     return () => clearInterval(ticker);
   }, []);
 
   useEffect(() => {
-    if (mode !== 'expanded' || runtime !== 'lmstudio') return;
+    if (surface !== 'settings' || runtime !== 'lmstudio') return;
     void window.obpulse
       .lmStudioCredentialStatus()
       .then(setLMStudioCredential)
@@ -890,7 +920,7 @@ export default function App() {
           credentialError instanceof Error ? credentialError.message : String(credentialError),
         ),
       );
-  }, [mode, runtime]);
+  }, [surface, runtime]);
 
   const action = async (operation: () => Promise<unknown>) => {
     setBusy(true);
@@ -910,10 +940,21 @@ export default function App() {
     setSnapshot(null);
     void action(() => window.obpulse.selectRuntime(id));
   };
-  const toggleMode = () => {
-    const next = mode === 'compact' ? 'expanded' : 'compact';
-    void window.obpulse.setWindowMode(next).then(setMode).catch(setError);
+  const navigate = (next: PanelNavigation) => {
+    if (next.mode === mode) {
+      setSurface(next.surface);
+      return;
+    }
+    void window.obpulse
+      .setWindowMode(next.mode)
+      .then((savedMode) => {
+        setMode(savedMode);
+        setSurface(savedMode === 'compact' ? 'monitor' : next.surface);
+      })
+      .catch(setError);
   };
+  const toggleMode = () => navigate(toggleWindowMode({ mode, surface }));
+  const toggleSettingsPanel = () => navigate(toggleSettings({ mode, surface }));
   const info = snapshot?.runtime;
   const running = info != null && info.state !== 'stopped';
   const loadedIds = useMemo(() => new Set(info?.loaded.map((model) => model.id) ?? []), [info]);
@@ -1022,8 +1063,10 @@ export default function App() {
     <div className={`app ${mode}${preferences?.highContrast ? ' high-contrast' : ''}`}>
       <WindowHeader
         mode={mode}
+        surface={surface}
         top={top}
         onMode={toggleMode}
+        onSettings={toggleSettingsPanel}
         onTop={() => void window.obpulse.toggleAlwaysOnTop().then(setTop)}
       />
       <main>
@@ -1051,6 +1094,52 @@ export default function App() {
               </div>
             </section>
             <HistoryPanel history={history} runtime={runtime} snapshot={snapshot} />
+          </div>
+        ) : surface === 'settings' ? (
+          <div className="settings-content">
+            <section className="settings-heading">
+              <div>
+                <span className="eyebrow">SETTINGS</span>
+                <h1>Preferences & access</h1>
+                <p>Local configuration, credentials and adapter permissions.</p>
+              </div>
+              <button className="quiet" onClick={toggleSettingsPanel}>
+                Back to monitor
+              </button>
+            </section>
+
+            <WidgetSettings
+              preferences={preferences}
+              busy={busy}
+              onChange={(next) => void updatePreferences(next)}
+            />
+
+            <RuntimeSettings
+              catalog={runtimeCatalog}
+              preferences={runtimePreferences}
+              busy={busy}
+              onChange={(next) => void updateRuntimePreferences(next)}
+            />
+
+            <RuntimeAccessPanel snapshot={snapshot} />
+
+            {runtime === 'lmstudio' && (
+              <LMStudioAuthentication
+                status={lmStudioCredential}
+                busy={busy}
+                onSave={(token) => void saveLMStudioToken(token)}
+                onClear={() => void clearLMStudioToken()}
+              />
+            )}
+
+            <InstrumentationPanel
+              bridge={bridge}
+              instrumentation={instrumentation}
+              busy={busy}
+              onToggle={() =>
+                void action(() => window.obpulse.setInstrumentationEnabled(!bridge.enabled))
+              }
+            />
           </div>
         ) : (
           <div className="expanded-content">
@@ -1081,39 +1170,6 @@ export default function App() {
                 onReleaseControl={releaseControl}
               />
             </section>
-
-            <RuntimeAccessPanel snapshot={snapshot} />
-
-            <WidgetSettings
-              preferences={preferences}
-              busy={busy}
-              onChange={(next) => void updatePreferences(next)}
-            />
-
-            <RuntimeSettings
-              catalog={runtimeCatalog}
-              preferences={runtimePreferences}
-              busy={busy}
-              onChange={(next) => void updateRuntimePreferences(next)}
-            />
-
-            {runtime === 'lmstudio' && (
-              <LMStudioAuthentication
-                status={lmStudioCredential}
-                busy={busy}
-                onSave={(token) => void saveLMStudioToken(token)}
-                onClear={() => void clearLMStudioToken()}
-              />
-            )}
-
-            <InstrumentationPanel
-              bridge={bridge}
-              instrumentation={instrumentation}
-              busy={busy}
-              onToggle={() =>
-                void action(() => window.obpulse.setInstrumentationEnabled(!bridge.enabled))
-              }
-            />
 
             <div className="expanded-grid">
               <div className="expanded-primary">

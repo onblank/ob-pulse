@@ -36,6 +36,7 @@ declare global {
       setWindowMode(mode: 'compact' | 'expanded'): Promise<'compact' | 'expanded'>;
       getWindowMode(): Promise<'compact' | 'expanded'>;
       onWindowModeChanged(listener: (mode: 'compact' | 'expanded') => void): void;
+      onOpenSettings(listener: () => void): void;
       widgetPreferences(): Promise<WidgetPreferences>;
       setWidgetPreferences(preferences: WidgetPreferences): Promise<WidgetPreferences>;
       instrumentationStatus(): Promise<InstrumentationBridgeStatus>;

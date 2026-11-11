@@ -6,7 +6,7 @@
 
 ## What currently works in the scaffold
 
-- Electron tray application with tray-only, compact gadget and expanded dashboard surfaces,
+- Electron tray application with tray-only, compact gadget, expanded monitor and dedicated settings surfaces,
   always-on-top and hide-to-tray behavior, plus local widget position, opacity and high-contrast
   preferences.
 - Persistent local visibility controls for Ollama, LM Studio, llama.cpp and opt-in MLX-LM adapters, always

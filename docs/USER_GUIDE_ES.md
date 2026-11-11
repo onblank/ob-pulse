@@ -24,7 +24,8 @@ desarrollo debe compilar, probar y publicar instaladores de Windows/macOS/Linux.
 ## LM Studio y autenticación
 
 1. Crea el token y sus permisos desde **Developer → Server Settings → Manage Tokens** en LM Studio.
-2. En OB-Pulse abre el modo ampliado, selecciona **LM Studio** y pega el token en **API authentication**.
+2. En OB-Pulse selecciona **LM Studio**, abre el engranaje de configuración y pega el token en
+   **API authentication**.
 3. Pulse lo cifra con Keychain, DPAPI o un almacén seguro compatible de Linux. Si no existe un
    backend protegido, el botón permanece deshabilitado y el token no se guarda.
 4. El valor guardado no vuelve a mostrarse. Puedes reemplazarlo o eliminarlo explícitamente.
@@ -33,14 +34,17 @@ desarrollo debe compilar, probar y publicar instaladores de Windows/macOS/Linux.
 No pegues tokens de proveedores remotos: este campo admite únicamente el token del servidor local
 LM Studio en `127.0.0.1:1234`.
 
-## Bandeja, modo compacto y modo ampliado
+## Bandeja, monitor y configuración
 
 - Al ocultar o cerrar la ventana solo queda el icono de OB-Pulse en la bandeja del sistema. Pulsa el
   icono para volver a mostrar u ocultar el gadget.
 - El modo compacto muestra el control de encendido seguro, el modelo cargado y los gráficos de la
   última hora. Usa el botón de ampliar para abrir el panel completo.
-- El modo ampliado añade el selector de runtime, la lista de modelos, carga/descarga, benchmark y
-  lecturas detalladas. Usa el botón de contraer para volver al gadget.
+- El modo ampliado queda dedicado al selector de runtime, modelos, carga/descarga, benchmark,
+  consumos e indicadores. Usa el botón de contraer para volver al gadget.
+- El engranaje abre configuración. Si estás en el gadget compacto, OB-Pulse amplía primero la
+  ventana. Apariencia, runtimes visibles, credenciales, instrumentación y permisos viven allí.
+- Al salir de configuración vuelves al monitor ampliado; al contraer vuelves siempre al gadget.
 - Los gráficos solo viven en memoria: conservan como máximo una hora mientras OB-Pulse siga abierto
   y se vacían al salir de la aplicación. Ocultar la ventana no detiene el muestreo.
 
@@ -55,7 +59,8 @@ LM Studio en `127.0.0.1:1234`.
 
 ## Instrumentación opcional de una sesión
 
-1. Amplía la ventana y busca **Session context**. El puente está desactivado al iniciar OB-Pulse.
+1. Abre el engranaje y busca **Sessions & request history**. El puente está desactivado al iniciar
+   OB-Pulse.
 2. Pulsa **Enable bridge** solo si vas a conectar un cliente local aprobado.
 3. Usa los botones **Copy** para entregar manualmente al cliente el endpoint `127.0.0.1` y el token
    temporal que muestra la app.

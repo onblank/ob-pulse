@@ -40,8 +40,9 @@
   owned by OB-Pulse. Windows CPU becomes available after its second valid observation; descendant
   aggregation, reliable GPU metrics and multi-device profiles remain pending.
 - Widget customization is implemented with tray/corner positioning, safe opacity presets,
-  accessible high-contrast mode and a tray shortcut to settings. Programmatic positioning remains
-  best-effort on Wayland, where the compositor may control placement.
+  accessible high-contrast mode and a tray/header shortcut to a dedicated settings surface. The
+  expanded monitor is limited to model operations, resource history and KPIs. Programmatic
+  positioning remains best-effort on Wayland, where the compositor may control placement.
 
 ## 1.0 — public release
 

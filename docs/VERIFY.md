@@ -3,7 +3,7 @@
 Current local verification as of 2026-11-11:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- Formatting, ESLint, TypeScript checks for all twelve packages, 68 tests and
+- Formatting, ESLint, TypeScript checks for all twelve packages, 71 tests and
   the Electron main/preload/renderer production builds.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
@@ -15,6 +15,8 @@ Current local verification as of 2026-11-11:
   and stopped the server, detected six installed linked models and loaded no model.
 - Widget preference tests cover strict value validation, safe corrupt/missing-file fallback,
   atomic persistence and work-area-clamped tray/corner placement.
+- Panel-navigation tests cover compact-to-settings expansion, settings-to-monitor return and the
+  invariant that compacting always closes settings.
 - Runtime preference and application tests cover non-empty/unique registered adapter validation,
   filtered discovery, disabled-selection rejection, deterministic selection fallback and manifest
   propagation without duplicating capability state.
@@ -34,8 +36,8 @@ Current local verification as of 2026-11-11:
   semantics, a live self-PID probe on macOS/Linux, absent Ollama ownership and the application rule
   that only a managed runtime with an owned PID receives a process sample. A dedicated
   `windows-latest` CI job runs the same live self-PID probe and package typecheck natively.
-- The macOS development app launches with the four statically registered adapters; its compact and
-  expanded surfaces build successfully.
+- The macOS development app launches with the four statically registered adapters; its compact,
+  expanded monitor and dedicated settings surfaces build successfully.
 
 Still required before an official release:
 

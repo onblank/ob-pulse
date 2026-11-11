@@ -3,7 +3,7 @@
 ## Dependency graph
 
 ```
-React compact/expanded UI <- typed preload <- Electron main (composition + sampler)
+React compact/monitor/settings UI <- typed preload <- Electron main (composition + sampler)
                                       |-> Application -> Domain
                                       |         |-> Contracts (runtime & host ports)
                                       |-> Ollama / LM Studio adapters (runtime infrastructure)
@@ -24,6 +24,12 @@ official health/model-read endpoints at the fixed default loopback address and a
 observer.
 MLX-LM is another `serverControl: none` adapter, disabled by default. Its fixed model-list endpoint
 proves only a compatible reachable catalog; records remain installed/available and never loaded.
+
+**UI surfaces**: the native window retains only `compact` and `expanded` geometry. Renderer-local
+navigation separates `monitor` from `settings` so configuration does not leak into the operational
+dashboard. Opening settings requests expanded geometry first; receiving compact geometry always
+returns the renderer to monitor. The narrow `pulse:open-settings` event preserves the tray shortcut
+without exposing generic renderer navigation through IPC.
 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
 only when API isn't already responding; `stopServer()` only kills the process created by this app.
