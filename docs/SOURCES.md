@@ -15,6 +15,7 @@ Public runtime API references:
 - https://lmstudio.ai/docs/developer/rest/list (v1 models schema)
 - https://lmstudio.ai/docs/developer/rest (v1 capabilities)
 
-This zip does not embed or depend on source code from OB-Tracker or OB-DaVi. Brand SVGs follow
-the same **development placeholder** approach and canonical palette, not official final artwork.
+This zip does not embed or depend on source code from OB-Tracker or OB-DaVi. The OB-Pulse product
+SVG follows the same **development placeholder** approach and canonical palette. The onBlank
+corporate PNG is owner-provided artwork, not derived from those repositories.
 The org-wide `../AGENTS.md` file could not be read from the listed repositories; confirm separately.

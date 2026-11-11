@@ -2,23 +2,23 @@
 
 No clarification blocked this scaffold. Decisions recorded for owner approval before public launch:
 
-| ID    | Decision                                                                           | Status                                              |
-| ----- | ---------------------------------------------------------------------------------- | --------------------------------------------------- |
-| D-001 | Provisional name **OB-Pulse**, repo `onblank/ob-pulse`                             | suggested, owner to confirm                         |
-| D-002 | Independent pnpm/Turbo + Electron 44 + React + TS                                  | scaffolded                                          |
-| D-003 | Local loopback only; no cloud dependency, auth or app telemetry                    | enforced in scaffold architecture                   |
-| D-004 | Own only spawned processes; allow explicit provider-native server handover         | Ollama ownership + LM Studio delegation implemented |
-| D-005 | Context usage/speed from client integrations or explicit benchmark, never invented | documented + benchmark implemented                  |
-| D-006 | Default compact widget + tray, always-on-top opt-in                                | scaffolded                                          |
-| D-007 | Code Apache-2.0, protected trademarks, local placeholder art                       | scaffolded, final legal/artwork review required     |
-| D-008 | Official installers via GitHub Releases after native QA/signing                    | planned                                             |
-| D-009 | Local history SQLite opt-in, no prompt contents                                    | planned                                             |
-| D-010 | Provider adapters built-in/static, plugin ABI after threat model                   | planned                                             |
-| D-011 | Instrumentation bridge opt-in, loopback-only, ephemeral bearer auth, strict v1     | implemented and tested                              |
-| D-012 | LM Studio token is write-only and OS-encrypted; no plaintext fallback              | implemented and tested                              |
-| D-013 | Versioned adapter manifests separate static support from live authority            | implemented and tested                              |
-| D-014 | llama.cpp begins as a fixed-loopback, observation-only adapter                     | implemented and tested                              |
-| D-015 | MLX-LM begins opt-in, fixed-loopback and available-catalog-only                    | implemented and tested                              |
+| ID    | Decision                                                                           | Status                                                 |
+| ----- | ---------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| D-001 | Provisional name **OB-Pulse**, repo `onblank/ob-pulse`                             | suggested, owner to confirm                            |
+| D-002 | Independent pnpm/Turbo + Electron 44 + React + TS                                  | scaffolded                                             |
+| D-003 | Local loopback only; no cloud dependency, auth or app telemetry                    | enforced in scaffold architecture                      |
+| D-004 | Own only spawned processes; allow explicit provider-native server handover         | Ollama ownership + LM Studio delegation implemented    |
+| D-005 | Context usage/speed from client integrations or explicit benchmark, never invented | documented + benchmark implemented                     |
+| D-006 | Default compact widget + tray, always-on-top opt-in                                | scaffolded                                             |
+| D-007 | Code Apache-2.0, protected trademarks, local bundled art                           | corporate mark supplied; product art still provisional |
+| D-008 | Official installers via GitHub Releases after native QA/signing                    | planned                                                |
+| D-009 | Local history SQLite opt-in, no prompt contents                                    | planned                                                |
+| D-010 | Provider adapters built-in/static, plugin ABI after threat model                   | planned                                                |
+| D-011 | Instrumentation bridge opt-in, loopback-only, ephemeral bearer auth, strict v1     | implemented and tested                                 |
+| D-012 | LM Studio token is write-only and OS-encrypted; no plaintext fallback              | implemented and tested                                 |
+| D-013 | Versioned adapter manifests separate static support from live authority            | implemented and tested                                 |
+| D-014 | llama.cpp begins as a fixed-loopback, observation-only adapter                     | implemented and tested                                 |
+| D-015 | MLX-LM begins opt-in, fixed-loopback and available-catalog-only                    | implemented and tested                                 |
 
 **External requirement**: global onBlank workspace instructions `../AGENTS.md` are referenced by
 all repositories but are not represented by a root repository in the GitHub list. Owner must attach

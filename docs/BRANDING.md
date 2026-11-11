@@ -11,12 +11,15 @@ Canonical palette copied from the independent OB-Tracker brand reference and ver
 
 Use **HEX** as the source of truth, not inconsistent source-document RGB annotations. Font stack: `Inter` if locally installed; system sans-serif fallback. Do not fetch remote fonts.
 
-Provisional product: **OB-Pulse** / subtitle **Local AI Monitor**. The logo is a project-specific placeholder: pulse/wave symbol in the corporate palette. Footer: "by onBlank Systems". It must be possible to replace these in-place assets without CSS changes:
+Provisional product: **OB-Pulse** / subtitle **Local AI Monitor**. Its product logo remains a
+project-specific placeholder: pulse/wave symbol in the corporate palette. The footer uses the
+owner-provided onBlank corporate artwork. Bundled brand assets are:
 
 ```
-apps/desktop/src/renderer/assets/brand/onblank-logo.svg
+apps/desktop/src/renderer/assets/brand/onblank-logo.png
 apps/desktop/src/renderer/assets/brand/ob-pulse-logo.svg
-apps/desktop/src/renderer/assets/brand/powered-by-onblank.svg
 ```
 
-Official onBlank branding may only be added after owner approval. Separate code license and trademark rights. App icon files for `.icns`, `.ico` and `.png` also require owner approval before official signing/release.
+The corporate PNG was supplied and approved by the repository owner. Separate code license and
+trademark rights still apply. OB-Pulse product artwork and app icon files for `.icns`, `.ico` and
+`.png` require explicit approval before official signing/release.
