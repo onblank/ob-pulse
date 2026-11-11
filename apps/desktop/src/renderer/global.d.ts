@@ -23,10 +23,10 @@ declare global {
       setLMStudioApiToken(token: string): Promise<RuntimeCredentialStatus>;
       clearLMStudioApiToken(): Promise<RuntimeCredentialStatus>;
       selectRuntime(id: RuntimeId): Promise<void>;
-      start(): Promise<void>;
-      stop(): Promise<void>;
-      takeControl(): Promise<void>;
-      releaseControl(): Promise<void>;
+      start(runtimeId: RuntimeId): Promise<void>;
+      stop(runtimeId: RuntimeId): Promise<void>;
+      takeControl(runtimeId: RuntimeId): Promise<void>;
+      releaseControl(runtimeId: RuntimeId): Promise<void>;
       load(modelId: string): Promise<void>;
       unload(modelId: string): Promise<void>;
       benchmark(modelId: string): Promise<unknown>;

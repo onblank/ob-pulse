@@ -220,10 +220,14 @@ function registerIPC() {
   ipcMain.handle('pulse:select-runtime', (_event, id: unknown) =>
     service.useRuntime(validRuntime(id)),
   );
-  ipcMain.handle('pulse:start', () => service.start());
-  ipcMain.handle('pulse:stop', () => service.stop());
-  ipcMain.handle('pulse:take-control', () => service.takeControl());
-  ipcMain.handle('pulse:release-control', () => service.releaseControl());
+  ipcMain.handle('pulse:start', (_event, id: unknown) => service.start(validRuntime(id)));
+  ipcMain.handle('pulse:stop', (_event, id: unknown) => service.stop(validRuntime(id)));
+  ipcMain.handle('pulse:take-control', (_event, id: unknown) =>
+    service.takeControl(validRuntime(id)),
+  );
+  ipcMain.handle('pulse:release-control', (_event, id: unknown) =>
+    service.releaseControl(validRuntime(id)),
+  );
   ipcMain.handle('pulse:load', (_event, id: unknown) => service.load(validModel(id)));
   ipcMain.handle('pulse:unload', (_event, id: unknown) => service.unload(validModel(id)));
   ipcMain.handle('pulse:benchmark', (_event, id: unknown) => service.benchmark(validModel(id)));

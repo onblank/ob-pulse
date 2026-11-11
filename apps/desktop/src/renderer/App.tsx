@@ -12,6 +12,7 @@ import type {
   RuntimeCredentialStatus,
   RuntimeId,
   RuntimePreferences,
+  RuntimeSnapshot,
   WidgetPosition,
   WidgetPreferences,
 } from '@obpulse/contracts';
@@ -25,6 +26,11 @@ import {
   type PanelSurface,
   type WindowMode,
 } from './panel-navigation';
+import {
+  runtimeActionLabel,
+  runtimePrimaryAction,
+  type RuntimePrimaryAction,
+} from './runtime-control';
 
 const DISABLED_BRIDGE: InstrumentationBridgeStatus = {
   enabled: false,
@@ -127,9 +133,10 @@ function HistoryPanel({
   snapshot: DashboardSnapshot | null;
 }) {
   const samples = history?.samples ?? [];
+  const runtimeSamples = samples.filter((sample) => sample.runtimeId === runtime);
   const runtimeValues = (pick: (sample: MetricHistorySample) => number | null) =>
-    samples.map((sample) => (sample.runtimeId === runtime ? pick(sample) : null));
-  const ram = samples.map((sample) => sample.hostMemoryUsedPercent);
+    runtimeSamples.map(pick);
+  const ram = runtimeValues((sample) => sample.hostMemoryUsedPercent);
   const vram = runtimeValues((sample) => sample.gpuResidentBytes);
   const output = runtimeValues((sample) => sample.outputTokensPerSecond);
   const loadedVram = snapshot?.runtime.loaded
@@ -246,6 +253,105 @@ function PowerControl({
         )}
       </div>
     </div>
+  );
+}
+
+function authorityLabel(runtime: RuntimeSnapshot): string {
+  switch (runtime.controlAuthority) {
+    case 'process-owned':
+      return 'Process owned';
+    case 'session-managed':
+      return 'Session managed';
+    case 'delegated':
+      return 'Delegated';
+    case 'service-managed':
+      return 'Service managed';
+    case 'observer':
+      return 'Observer';
+  }
+}
+
+function RuntimeControlCenter({
+  runtimes,
+  selectedRuntime,
+  busy,
+  onSelect,
+  onAction,
+}: {
+  runtimes: readonly RuntimeSnapshot[];
+  selectedRuntime: RuntimeId;
+  busy: boolean;
+  onSelect: (runtime: RuntimeId) => void;
+  onAction: (runtime: RuntimeSnapshot, action: RuntimePrimaryAction) => void;
+}) {
+  return (
+    <section className="runtime-center" aria-labelledby="runtime-center-title">
+      <div className="runtime-center-heading">
+        <div>
+          <span className="eyebrow">LOCAL AI CONTROL CENTER</span>
+          <h2 id="runtime-center-title">Runtime overview</h2>
+        </div>
+        <span>{runtimes.filter((runtime) => runtime.state !== 'stopped').length} online</span>
+      </div>
+      <div className="runtime-cards">
+        {runtimes.map((runtime) => {
+          const selected = runtime.id === selectedRuntime;
+          const action = runtimePrimaryAction(runtime);
+          const state = runtime.error
+            ? 'Read error'
+            : runtime.state === 'stopped'
+              ? 'Offline'
+              : runtime.state === 'managed-running'
+                ? 'Managed'
+                : 'External';
+          const loadedModel = runtime.loaded[0]?.displayName ?? null;
+          return (
+            <article
+              key={runtime.id}
+              className={selected ? 'runtime-card selected' : 'runtime-card'}
+            >
+              <button
+                className="runtime-card-select"
+                disabled={busy}
+                aria-pressed={selected}
+                onClick={() => onSelect(runtime.id)}
+              >
+                <span className="runtime-card-title">
+                  <span className={`pulse-dot ${runtime.state !== 'stopped' ? 'online' : ''}`} />
+                  <strong>{runtime.displayName}</strong>
+                  <small className={runtime.error ? 'error' : ''}>{state}</small>
+                </span>
+                <span className="runtime-card-model">
+                  {loadedModel ??
+                    (runtime.state === 'stopped'
+                      ? 'No server detected'
+                      : 'No loaded model reported')}
+                </span>
+                <span className="runtime-card-facts">
+                  <small>{authorityLabel(runtime)}</small>
+                  <small>
+                    {runtime.loaded.length} loaded · {runtime.installed.length} available
+                  </small>
+                  <small>
+                    CPU {pct(runtime.ownedProcess?.cpuUtilizationPercent ?? null)} · RAM{' '}
+                    {gib(runtime.ownedProcess?.memoryResidentBytes ?? null)}
+                  </small>
+                </span>
+              </button>
+              {action && (
+                <button
+                  className="runtime-card-action"
+                  disabled={busy}
+                  onClick={() => onAction(runtime, action)}
+                >
+                  {runtimeActionLabel(action)}
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -853,7 +959,6 @@ export default function App() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [history, setHistory] = useState<MetricHistoryWindow | null>(null);
   const [runtime, setRuntime] = useState<RuntimeId>('ollama');
-  const [runtimes, setRuntimes] = useState<Array<{ id: RuntimeId; name: string }>>([]);
   const [runtimeCatalog, setRuntimeCatalog] = useState<RuntimeCatalogEntry[]>([]);
   const [runtimePreferences, setRuntimePreferences] = useState<RuntimePreferences | null>(null);
   const [lmStudioCredential, setLMStudioCredential] = useState<RuntimeCredentialStatus | null>(
@@ -889,7 +994,6 @@ export default function App() {
 
   useEffect(() => {
     void refresh();
-    void window.obpulse.runtimes().then(setRuntimes).catch(setError);
     void window.obpulse.runtimeCatalog().then(setRuntimeCatalog).catch(setError);
     void window.obpulse.runtimePreferences().then(setRuntimePreferences).catch(setError);
     void window.obpulse.isAlwaysOnTop().then(setTop);
@@ -937,7 +1041,6 @@ export default function App() {
 
   const changeRuntime = (id: RuntimeId) => {
     setRuntime(id);
-    setSnapshot(null);
     void action(() => window.obpulse.selectRuntime(id));
   };
   const navigate = (next: PanelNavigation) => {
@@ -964,6 +1067,12 @@ export default function App() {
     ...loaded.filter((model) => !(info?.installed ?? []).some((entry) => entry.id === model.id)),
   ];
   const compactModel = loaded[0] ?? null;
+  const observedRuntimes = snapshot?.runtimes ?? [];
+  const onlineRuntimeCount = observedRuntimes.filter((entry) => entry.state !== 'stopped').length;
+  const loadedModelCount = observedRuntimes.reduce(
+    (total, entry) => total + entry.loaded.length,
+    0,
+  );
   const togglePower = () => {
     if (info?.state === 'managed-running') {
       if (
@@ -973,8 +1082,8 @@ export default function App() {
         )
       )
         return;
-      void action(() => window.obpulse.stop());
-    } else if (info?.state === 'stopped') void action(() => window.obpulse.start());
+      void action(() => window.obpulse.stop(info.id));
+    } else if (info?.state === 'stopped') void action(() => window.obpulse.start(info.id));
   };
   const takeControl = () => {
     if (
@@ -983,7 +1092,8 @@ export default function App() {
       )
     )
       return;
-    void action(() => window.obpulse.takeControl());
+    if (!info) return;
+    void action(() => window.obpulse.takeControl(info.id));
   };
   const releaseControl = () => {
     if (
@@ -992,7 +1102,34 @@ export default function App() {
       )
     )
       return;
-    void action(() => window.obpulse.releaseControl());
+    if (!info) return;
+    void action(() => window.obpulse.releaseControl(info.id));
+  };
+  const runRuntimeAction = (runtimeSnapshot: RuntimeSnapshot, intent: RuntimePrimaryAction) => {
+    if (
+      intent === 'take-control' &&
+      !window.confirm(
+        `Give OB-Pulse control of ${runtimeSnapshot.displayName} for this session? Stopping it later may interrupt other applications.`,
+      )
+    )
+      return;
+    if (
+      intent === 'stop' &&
+      runtimeSnapshot.controlAuthority === 'delegated' &&
+      !window.confirm(
+        `Stop the delegated ${runtimeSnapshot.displayName} server? This may interrupt active requests in other applications.`,
+      )
+    )
+      return;
+    void action(() =>
+      intent === 'start'
+        ? window.obpulse.start(runtimeSnapshot.id)
+        : intent === 'stop'
+          ? window.obpulse.stop(runtimeSnapshot.id)
+          : intent === 'take-control'
+            ? window.obpulse.takeControl(runtimeSnapshot.id)
+            : window.obpulse.releaseControl(runtimeSnapshot.id),
+    );
   };
   const updatePreferences = async (next: WidgetPreferences) => {
     setBusy(true);
@@ -1012,15 +1149,13 @@ export default function App() {
     setError(null);
     try {
       const saved = await window.obpulse.setRuntimePreferences(next);
-      const [current, available, catalog] = await Promise.all([
+      const [current, catalog] = await Promise.all([
         window.obpulse.snapshot(),
-        window.obpulse.runtimes(),
         window.obpulse.runtimeCatalog(),
       ]);
       setRuntimePreferences(saved);
       setSnapshot(current);
       setRuntime(current.selectedRuntime);
-      setRuntimes(available);
       setRuntimeCatalog(catalog);
     } catch (preferencesError) {
       setError(
@@ -1091,6 +1226,10 @@ export default function App() {
                     (running ? 'No loaded model reported' : 'Runtime offline')}
                 </strong>
                 {loaded.length > 1 && <small>+{loaded.length - 1} additional loaded</small>}
+                <small>
+                  {onlineRuntimeCount} runtime{onlineRuntimeCount === 1 ? '' : 's'} online ·{' '}
+                  {loadedModelCount} model{loadedModelCount === 1 ? '' : 's'} loaded
+                </small>
               </div>
             </section>
             <HistoryPanel history={history} runtime={runtime} snapshot={snapshot} />
@@ -1143,24 +1282,20 @@ export default function App() {
           </div>
         ) : (
           <div className="expanded-content">
+            <RuntimeControlCenter
+              runtimes={observedRuntimes}
+              selectedRuntime={runtime}
+              busy={busy}
+              onSelect={changeRuntime}
+              onAction={runRuntimeAction}
+            />
+
             <section className="expanded-toolbar">
               <div>
-                <span className="eyebrow">RUNTIME</span>
-                <select
-                  aria-label="Active runtime"
-                  value={runtime}
-                  disabled={busy}
-                  onChange={(event) => changeRuntime(event.target.value as RuntimeId)}
-                >
-                  {(runtimes.length
-                    ? runtimes
-                    : [{ id: 'ollama' as RuntimeId, name: 'Ollama' }]
-                  ).map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
+                <span className="eyebrow">SELECTED RUNTIME</span>
+                <strong className="selected-runtime-name">
+                  {info?.displayName ?? 'Loading runtime…'}
+                </strong>
               </div>
               <PowerControl
                 snapshot={snapshot}
