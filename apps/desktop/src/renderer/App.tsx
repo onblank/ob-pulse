@@ -16,7 +16,7 @@ import type {
   WidgetPreferences,
 } from '@obpulse/contracts';
 import logo from './assets/brand/ob-pulse-logo.svg';
-import onblankLogo from './assets/brand/powered-by-onblank.svg';
+import onblankLogo from './assets/brand/onblank-logo.png';
 
 type WindowMode = 'compact' | 'expanded';
 

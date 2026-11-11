@@ -22,5 +22,6 @@ its UI controls remain disabled because reachability never grants process or mod
 MLX-LM is disabled by default and may only be enabled explicitly through runtime visibility. Its
 `/v1/models` entries are available models and must never be presented as loaded observations.
 
-Brand files in `src/renderer/assets/brand` are local placeholders and must be replaced with approved
-onBlank artwork before release. App packaging is prepared, not yet signed/tested on target OSes.
+Brand files live in `src/renderer/assets/brand`. `onblank-logo.png` is the owner-provided corporate
+mark; the OB-Pulse product logo remains provisional pending approved product artwork. App packaging
+is prepared, not yet signed/tested on target OSes.
