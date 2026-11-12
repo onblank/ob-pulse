@@ -87,7 +87,7 @@ export interface GpuSample {
   readonly utilizationPercent: number | null;
   readonly memoryUsedBytes: number | null;
   readonly memoryTotalBytes: number | null;
-  readonly source: 'nvidia-smi';
+  readonly source: 'nvidia-smi' | 'amdgpu-sysfs';
 }
 export interface OwnedProcessSample {
   readonly pid: number;

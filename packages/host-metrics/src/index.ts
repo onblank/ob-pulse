@@ -1,6 +1,7 @@
 import os from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { readFile, readdir, realpath } from 'node:fs/promises';
 import type { GpuSample, HostMetricsPort, HostSample } from '@obpulse/contracts';
 import { percent } from '@obpulse/domain';
 const execFileAsync = promisify(execFile);
@@ -33,6 +34,11 @@ export function parseNvidiaGpuCsv(output: string): GpuSample[] {
     });
 }
 async function readGpus(): Promise<GpuSample[]> {
+  const nvidia = await readNvidiaGpus();
+  const amd = await readAmdGpus();
+  return [...nvidia, ...amd.map((gpu, offset) => ({ ...gpu, index: nvidia.length + offset }))];
+}
+async function readNvidiaGpus(): Promise<GpuSample[]> {
   try {
     const { stdout } = await execFileAsync(
       'nvidia-smi',
@@ -46,6 +52,52 @@ async function readGpus(): Promise<GpuSample[]> {
   } catch {
     return [];
   }
+}
+export function parseAmdGpuSample(
+  index: number,
+  busy: string | null,
+  usedText: string,
+  totalText: string,
+): GpuSample | null {
+  const used = number(usedText);
+  const total = number(totalText);
+  if (used === null || total === null || total <= 0 || used > total) return null;
+  const utilization = busy === null ? null : number(busy);
+  return {
+    index,
+    name: `AMD GPU (card${index})`,
+    utilizationPercent: utilization !== null && utilization <= 100 ? utilization : null,
+    memoryUsedBytes: used,
+    memoryTotalBytes: total,
+    source: 'amdgpu-sysfs',
+  };
+}
+async function readAmdGpus(): Promise<GpuSample[]> {
+  if (process.platform !== 'linux') return [];
+  let cards: string[];
+  try {
+    cards = (await readdir('/sys/class/drm')).filter((entry) => /^card\d+$/.test(entry));
+  } catch {
+    return [];
+  }
+  const results = await Promise.all(
+    cards.map(async (card) => {
+      const base = `/sys/class/drm/${card}/device`;
+      try {
+        const driver = await realpath(`${base}/driver`);
+        if (!driver.endsWith('/amdgpu')) return null;
+        const [used, total, busy] = await Promise.all([
+          readFile(`${base}/mem_info_vram_used`, 'utf8'),
+          readFile(`${base}/mem_info_vram_total`, 'utf8'),
+          readFile(`${base}/gpu_busy_percent`, 'utf8').catch(() => null),
+        ]);
+        return parseAmdGpuSample(Number(card.slice(4)), busy, used, total);
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results.filter((sample): sample is GpuSample => sample !== null);
 }
 interface CpuTicks {
   idle: number;
