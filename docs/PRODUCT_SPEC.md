@@ -84,7 +84,7 @@ A background/tray process is not a promise of monitoring when the **application 
   unavailable devices show no reading. These are host-device values, not model attribution.
 - On Linux, AMDGPU host utilization and used/total VRAM come from the kernel's `gpu_busy_percent`
   and `mem_info_vram_{used,total}` device files when readable.
-- Available host GPU utilization is graphed per device for the latest hour in process memory;
+- Available host GPU utilization and VRAM use are graphed per device for the latest hour in process memory;
   model residency remains a separate chart with different semantics.
 - Report provider-resident model bytes separately from VRAM utilization.
 - Prefill/read and decode/write token/s from provider timing or opted-in client adapter;
