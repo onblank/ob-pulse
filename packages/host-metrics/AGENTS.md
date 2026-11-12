@@ -2,6 +2,7 @@
 
 Read `../../AGENTS.md` and, if available, workspace-level `../../../AGENTS.md`.
 
-Scope: OS host-wide CPU/RAM samples only. Do not represent host CPU/RAM as model-specific usage; no GPU claims without reliable API.
+Scope: OS host-wide CPU/RAM and bounded NVIDIA GPU samples via nvidia-smi. Do not represent
+host CPU/RAM/GPU as model-specific usage. Unavailable hardware or probes yield no GPU samples.
 
 The repository's privacy, ownership, process lifecycle, truthful-metrics and Clean Architecture policies remain authoritative.

@@ -78,7 +78,16 @@ export interface HostSample {
   readonly memoryTotalBytes: number;
   readonly memoryUsedPercent: number;
   readonly cpuLogicalCores: number;
+  readonly gpus: readonly GpuSample[];
   readonly source: 'host';
+}
+export interface GpuSample {
+  readonly index: number;
+  readonly name: string;
+  readonly utilizationPercent: number | null;
+  readonly memoryUsedBytes: number | null;
+  readonly memoryTotalBytes: number | null;
+  readonly source: 'nvidia-smi';
 }
 export interface OwnedProcessSample {
   readonly pid: number;
@@ -222,7 +231,7 @@ export interface RuntimePort {
   benchmark(modelId: string): Promise<BenchmarkRecord>;
 }
 export interface HostMetricsPort {
-  sample(): HostSample;
+  sample(): HostSample | Promise<HostSample>;
 }
 export interface ProcessMetricsPort {
   sample(pid: number): Promise<OwnedProcessSample | null>;
