@@ -31,6 +31,7 @@ import {
   runtimePrimaryAction,
   type RuntimePrimaryAction,
 } from './runtime-control';
+import { gpuKey, recentGpuDevices } from './gpu-history';
 
 const DISABLED_BRIDGE: InstrumentationBridgeStatus = {
   enabled: false,
@@ -99,6 +100,7 @@ function MetricChart({
   values,
   color,
   unavailable,
+  note,
 }: {
   label: string;
   value: string;
@@ -106,6 +108,7 @@ function MetricChart({
   values: readonly (number | null)[];
   color: string;
   unavailable?: string;
+  note?: string;
 }) {
   return (
     <div className="history-row">
@@ -116,9 +119,10 @@ function MetricChart({
         </strong>
       </div>
       <Sparkline values={values} color={color} />
-      {values.every((entry) => entry == null) && unavailable && (
+      {values.every((entry) => entry == null) && unavailable && !note && (
         <span className="history-unavailable">{unavailable}</span>
       )}
+      {note && <span className="history-unavailable">{note}</span>}
     </div>
   );
 }
@@ -127,10 +131,12 @@ function HistoryPanel({
   history,
   runtime,
   snapshot,
+  showHostVram = false,
 }: {
   history: MetricHistoryWindow | null;
   runtime: RuntimeId;
   snapshot: DashboardSnapshot | null;
+  showHostVram?: boolean;
 }) {
   const samples = history?.samples ?? [];
   const runtimeSamples = samples.filter((sample) => sample.runtimeId === runtime);
@@ -139,6 +145,8 @@ function HistoryPanel({
   const ram = runtimeValues((sample) => sample.hostMemoryUsedPercent);
   const vram = runtimeValues((sample) => sample.gpuResidentBytes);
   const output = runtimeValues((sample) => sample.outputTokensPerSecond);
+  const currentGpus = snapshot?.host.gpus ?? [];
+  const recentGpus = recentGpuDevices(currentGpus, runtimeSamples);
   const loadedVram = snapshot?.runtime.loaded
     .map((model) => model.gpuResidentBytes)
     .filter((value): value is number => value != null);
@@ -161,23 +169,43 @@ function HistoryPanel({
         values={ram}
         color="#7f8cff"
       />
-      {(snapshot?.host.gpus ?? []).map((gpu) => {
-        const values = runtimeValues(
+      {recentGpus.map((gpu) => {
+        const live = currentGpus.find((entry) => gpuKey(entry) === gpuKey(gpu));
+        const utilization = runtimeValues(
           (sample) =>
             sample.hostGpus.find(
               (entry) => entry.source === gpu.source && entry.index === gpu.index,
             )?.utilizationPercent ?? null,
         );
+        const vramUsed = runtimeValues(
+          (sample) =>
+            sample.hostGpus.find(
+              (entry) => entry.source === gpu.source && entry.index === gpu.index,
+            )?.memoryUsedBytes ?? null,
+        );
         return (
-          <MetricChart
-            key={`${gpu.source}:${gpu.index}`}
-            label={`${gpu.name} utilization`}
-            value={pct(gpu.utilizationPercent)}
-            unit=""
-            values={values}
-            color="#67c9ed"
-            unavailable="GPU utilization is unavailable"
-          />
+          <div key={gpuKey(gpu)}>
+            <MetricChart
+              label={`${gpu.name} utilization`}
+              value={pct(live?.utilizationPercent ?? null)}
+              unit=""
+              values={utilization}
+              color="#67c9ed"
+              unavailable="GPU utilization is unavailable"
+              note={live ? undefined : 'Reading unavailable · recent history retained'}
+            />
+            {showHostVram && (
+              <MetricChart
+                label={`${gpu.name} VRAM used`}
+                value={gib(live?.memoryUsedBytes ?? null)}
+                unit={`/ ${gib(gpu.memoryTotalBytes)}`}
+                values={vramUsed}
+                color="#ba9af7"
+                unavailable="GPU VRAM usage is unavailable"
+                note={live ? undefined : 'Reading unavailable · recent history retained'}
+              />
+            )}
+          </div>
         );
       })}
       <MetricChart
@@ -1327,7 +1355,12 @@ export default function App() {
 
             <div className="expanded-grid">
               <div className="expanded-primary">
-                <HistoryPanel history={history} runtime={runtime} snapshot={snapshot} />
+                <HistoryPanel
+                  history={history}
+                  runtime={runtime}
+                  snapshot={snapshot}
+                  showHostVram
+                />
                 <section className="resource-grid">
                   <div>
                     <span>Host CPU</span>

@@ -327,8 +327,9 @@ describe('one-hour in-memory metric history', () => {
     const dashboard = dashboardAt('2026-10-14T00:00:00.000Z');
     history.capture({ ...dashboard, host: { ...dashboard.host, gpus: [gpu] } });
     gpu.utilizationPercent = 1;
+    gpu.memoryUsedBytes = 256;
     expect(history.window(Date.parse(dashboard.host.sampledAt)).samples[0]?.hostGpus).toMatchObject(
-      [{ utilizationPercent: 42, source: 'nvidia-smi', index: 0 }],
+      [{ utilizationPercent: 42, memoryUsedBytes: 1024, source: 'nvidia-smi', index: 0 }],
     );
   });
   it('evicts expired and excess samples without persistence', () => {
