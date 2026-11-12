@@ -1323,6 +1323,17 @@ export default function App() {
                       {gib(snapshot?.host.memoryTotalBytes ?? null)}
                     </small>
                   </div>
+                  {(snapshot?.host.gpus.length ? snapshot.host.gpus : [null]).map((gpu, index) => (
+                    <div key={gpu?.index ?? index}>
+                      <span>{gpu ? `GPU ${gpu.index} · ${gpu.name}` : 'Host GPU'}</span>
+                      <strong>{pct(gpu?.utilizationPercent ?? null)}</strong>
+                      <small>
+                        {gpu
+                          ? `${gib(gpu.memoryUsedBytes)} / ${gib(gpu.memoryTotalBytes)} VRAM · NVIDIA`
+                          : 'No supported GPU reading available'}
+                      </small>
+                    </div>
+                  ))}
                   <div>
                     <span>Last output test</span>
                     <strong>{fmt(snapshot?.latestBenchmark?.writeTokensPerSecond ?? null)}</strong>

@@ -228,7 +228,7 @@ export class MonitorService {
     if (!runtime) throw new Error('Selected runtime snapshot is unavailable');
     return {
       selectedRuntime: this.selected,
-      host: this.host.sample(),
+      host: await this.host.sample(),
       latestBenchmark: runtime.latestBenchmark,
       runtime,
       runtimes,
