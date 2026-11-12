@@ -44,6 +44,11 @@ Current local verification as of 2026-11-12:
 - Manual macOS end-to-end smoke confirmed the tray, compact runtime selector and power action,
   expanded runtime cards/model operations, settings and return paths work with no observed defects.
   Confirmation recorded from the maintainer on 2026-11-12. Windows/Linux GUI smoke remains pending.
+- The instrumentation integration smoke sends authenticated loopback session/request/compaction
+  events through the HTTP bridge into the session store; checks context reset, measured tps/TTFT,
+  content rejection and clearing on disable. 11 related tests pass. This macOS host has no
+  `nvidia-smi` and no Linux AMDGPU sysfs, so no host GPU sample is expected; probe parser and
+  unavailable readings remain covered by tests.
 
 Still required before an official release:
 
