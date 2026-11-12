@@ -48,6 +48,7 @@
   safe manifest-driven actions; selection scopes per-runtime history and benchmarks.
 - Host NVIDIA GPU utilization and VRAM use are read per device through a bounded `nvidia-smi`
   probe where available. Other vendors and per-model GPU attribution remain pending.
+- Available host GPU utilization is included in the bounded, volatile one-hour history per device.
 
 ## 1.0 — public release
 

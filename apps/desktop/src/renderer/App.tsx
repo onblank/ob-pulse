@@ -161,6 +161,25 @@ function HistoryPanel({
         values={ram}
         color="#7f8cff"
       />
+      {(snapshot?.host.gpus ?? []).map((gpu) => {
+        const values = runtimeValues(
+          (sample) =>
+            sample.hostGpus.find(
+              (entry) => entry.source === gpu.source && entry.index === gpu.index,
+            )?.utilizationPercent ?? null,
+        );
+        return (
+          <MetricChart
+            key={`${gpu.source}:${gpu.index}`}
+            label={`${gpu.name} utilization`}
+            value={pct(gpu.utilizationPercent)}
+            unit=""
+            values={values}
+            color="#67c9ed"
+            unavailable="GPU utilization is unavailable"
+          />
+        );
+      })}
       <MetricChart
         label="VRAM resident"
         value={gib(currentVram ?? null)}

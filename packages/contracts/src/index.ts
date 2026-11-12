@@ -121,6 +121,7 @@ export interface MetricHistorySample {
   readonly runtimeId: RuntimeId;
   readonly modelId: string | null;
   readonly hostMemoryUsedPercent: number;
+  readonly hostGpus: readonly GpuSample[];
   readonly gpuResidentBytes: number | null;
   readonly outputTokensPerSecond: number | null;
   readonly outputTokensSource: 'benchmark' | null;
