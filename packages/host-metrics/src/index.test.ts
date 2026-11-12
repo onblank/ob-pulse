@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseNvidiaGpuCsv } from './index';
+import { parseAmdGpuSample, parseNvidiaGpuCsv } from './index';
 
 describe('NVIDIA host GPU readings', () => {
   it('keeps devices separate and treats unavailable utilization as unknown', () => {
@@ -27,5 +27,22 @@ describe('NVIDIA host GPU readings', () => {
 
   it('rejects invalid memory reports', () => {
     expect(parseNvidiaGpuCsv('RTX 4090, 30, 999, 100')).toEqual([]);
+  });
+});
+
+describe('AMD Linux GPU readings', () => {
+  it('accepts byte values and preserves unknown utilization', () => {
+    expect(parseAmdGpuSample(2, null, '1024\n', '2048\n')).toEqual({
+      index: 2,
+      name: 'AMD GPU (card2)',
+      utilizationPercent: null,
+      memoryUsedBytes: 1024,
+      memoryTotalBytes: 2048,
+      source: 'amdgpu-sysfs',
+    });
+  });
+  it('rejects invalid VRAM and utilization readings', () => {
+    expect(parseAmdGpuSample(0, '101', '1', '2')?.utilizationPercent).toBeNull();
+    expect(parseAmdGpuSample(0, '50', '3', '2')).toBeNull();
   });
 });
