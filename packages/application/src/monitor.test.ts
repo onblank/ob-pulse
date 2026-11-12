@@ -40,6 +40,7 @@ const manifest: RuntimeAdapterManifest = {
   },
 };
 const hostSample: HostSample = {
+  gpus: [],
   sampledAt: '2026-10-14T00:00:00Z',
   cpuUtilizationPercent: null,
   memoryUsedBytes: 200,

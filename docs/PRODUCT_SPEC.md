@@ -80,6 +80,8 @@ A background/tray process is not a promise of monitoring when the **application 
   Windows, macOS or Linux. Windows CPU requires two valid observations. It must not imply descendant,
   loaded-model or external-service attribution.
 - GPU load/VRAM percentages only where a platform-specific probe provides a trustworthy numerator and denominator.
+- NVIDIA host GPU utilization and used/total VRAM come from `nvidia-smi` per device when present;
+  unavailable devices show no reading. These are host-device values, not model attribution.
 - Report provider-resident model bytes separately from VRAM utilization.
 - Prefill/read and decode/write token/s from provider timing or opted-in client adapter;
   label as `last request`, `rolling average`, `benchmark` or `unavailable` explicitly.
