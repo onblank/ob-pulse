@@ -127,10 +127,12 @@ function HistoryPanel({
   history,
   runtime,
   snapshot,
+  showHostVram = false,
 }: {
   history: MetricHistoryWindow | null;
   runtime: RuntimeId;
   snapshot: DashboardSnapshot | null;
+  showHostVram?: boolean;
 }) {
   const samples = history?.samples ?? [];
   const runtimeSamples = samples.filter((sample) => sample.runtimeId === runtime);
@@ -162,22 +164,39 @@ function HistoryPanel({
         color="#7f8cff"
       />
       {(snapshot?.host.gpus ?? []).map((gpu) => {
-        const values = runtimeValues(
+        const utilization = runtimeValues(
           (sample) =>
             sample.hostGpus.find(
               (entry) => entry.source === gpu.source && entry.index === gpu.index,
             )?.utilizationPercent ?? null,
         );
+        const vramUsed = runtimeValues(
+          (sample) =>
+            sample.hostGpus.find(
+              (entry) => entry.source === gpu.source && entry.index === gpu.index,
+            )?.memoryUsedBytes ?? null,
+        );
         return (
-          <MetricChart
-            key={`${gpu.source}:${gpu.index}`}
-            label={`${gpu.name} utilization`}
-            value={pct(gpu.utilizationPercent)}
-            unit=""
-            values={values}
-            color="#67c9ed"
-            unavailable="GPU utilization is unavailable"
-          />
+          <div key={`${gpu.source}:${gpu.index}`}>
+            <MetricChart
+              label={`${gpu.name} utilization`}
+              value={pct(gpu.utilizationPercent)}
+              unit=""
+              values={utilization}
+              color="#67c9ed"
+              unavailable="GPU utilization is unavailable"
+            />
+            {showHostVram && (
+              <MetricChart
+                label={`${gpu.name} VRAM used`}
+                value={gib(gpu.memoryUsedBytes)}
+                unit={`/ ${gib(gpu.memoryTotalBytes)}`}
+                values={vramUsed}
+                color="#ba9af7"
+                unavailable="GPU VRAM usage is unavailable"
+              />
+            )}
+          </div>
         );
       })}
       <MetricChart
@@ -1327,7 +1346,12 @@ export default function App() {
 
             <div className="expanded-grid">
               <div className="expanded-primary">
-                <HistoryPanel history={history} runtime={runtime} snapshot={snapshot} />
+                <HistoryPanel
+                  history={history}
+                  runtime={runtime}
+                  snapshot={snapshot}
+                  showHostVram
+                />
                 <section className="resource-grid">
                   <div>
                     <span>Host CPU</span>
