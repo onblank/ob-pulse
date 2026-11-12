@@ -214,6 +214,36 @@ main {
   white-space: nowrap;
 }
 
+.compact-runtime-label {
+  color: var(--muted);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.compact-runtime-selector {
+  width: min(100%, 205px);
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--white);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.compact-runtime-selector:disabled {
+  opacity: 0.7;
+}
+
+.compact-runtime-selector:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
 .take-control,
 .release-control {
   align-self: flex-start;
@@ -552,28 +582,6 @@ main {
   color: var(--lime);
 }
 
-.expanded-toolbar {
-  min-height: 84px;
-  padding: 12px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: #1e2a3c;
-}
-
-.expanded-toolbar > div:first-child {
-  min-width: 180px;
-}
-
-.selected-runtime-name {
-  margin-top: 3px;
-  display: block;
-  font-size: 18px;
-}
-
 select {
   max-width: 260px;
   padding: 4px 26px 4px 0;
@@ -587,15 +595,6 @@ select {
 
 select option {
   background: #202c3e;
-}
-
-.expanded-toolbar .power-button {
-  width: 54px;
-  height: 54px;
-}
-
-.expanded-toolbar .power-symbol {
-  font-size: 27px;
 }
 
 .access-panel {
@@ -1437,7 +1436,6 @@ input:focus-visible {
   :is(
     .loaded-model,
     .history-card,
-    .expanded-toolbar,
     .runtime-center,
     .runtime-card,
     .settings-heading,
