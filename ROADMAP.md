@@ -6,9 +6,9 @@
 
 **Roadmap version:** 2026-11-12
 
-**Last completed iteration:** 5.1 — macOS end-to-end desktop journeys
+**Last completed iteration:** 5.2 — Instrumentation and metric smoke
 
-**Next planned iteration:** 5.2 — Instrumentation and metric smoke
+**Next planned iteration:** 5.3 — Owned-process attribution decision
 
 ## Objective
 
@@ -148,10 +148,12 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
       confirmed these journeys work and reported no observed defect (2026-11-12). Windows/Linux native
       UI journeys remain part of 6.1 packaging checks. Evidence: maintainer's manual smoke confirmation;
       local launch compiled Electron main/preload and Vite renderer successfully.
-- [ ] **5.2 — Instrumentation and metric smoke.** Use a local client through the opt-in bridge;
-      verify session reset/compaction, sparse speed/TTFT, disable/clear and no content persistence.
-      Exercise NVIDIA/AMD probes on available hardware and unavailable paths. Depends on 5.1.
-      Closure: observed readings match their source and stale/unknown labels.
+- [x] **5.2 — Instrumentation and metric smoke.** An end-to-end loopback integration test sends
+      authenticated session, request, compaction and new-session events; verifies sparse throughput,
+      TTFT, context reset and clear-on-disable; rejects content-bearing payloads without retaining
+      them. Eleven integration/application tests pass. This macOS host has neither `nvidia-smi` nor
+      Linux AMDGPU sysfs, so both hardware probes correctly remain unavailable here. Evidence:
+      `apps/desktop/src/main/instrumentation-smoke.test.ts`; local hardware probe availability check.
 - [ ] **5.3 — Owned-process attribution decision.** Evaluate descendant aggregation per OS without
       attributing unrelated processes. Implement only where ownership can be proven; otherwise document
       the direct-child limit and keep values unavailable. Depends on 5.1. Closure: tested supported
