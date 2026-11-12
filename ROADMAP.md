@@ -6,9 +6,9 @@
 
 **Roadmap version:** 2026-11-12
 
-**Last completed iteration:** 4.5 — Compact runtime selection ([PR #72](https://github.com/onblank/ob-pulse/pull/72), [promotion #73](https://github.com/onblank/ob-pulse/pull/73))
+**Last completed iteration:** 5.1 — macOS end-to-end desktop journeys
 
-**Next planned iteration:** 5.1 — End-to-end desktop journeys
+**Next planned iteration:** 5.2 — Instrumentation and metric smoke
 
 ## Objective
 
@@ -143,10 +143,11 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
 
 **Goal:** prove assembled behavior on real systems and make unsupported metrics explicit.
 
-- [ ] **5.1 — End-to-end desktop journeys.** On macOS exercise tray, compact selector, power,
-      expanded cards/model operations, settings and return paths with Ollama/LM Studio. On Windows and
-      Linux exercise equivalent flows in a real target or native CI. Depends on phases 1–4. Closure:
-      actual behavior, error/reconnect states and quit cleanup are recorded; observed defects are fixed.
+- [x] **5.1 — macOS end-to-end desktop journeys.** On macOS exercise tray, compact selector, power,
+      expanded cards/model operations, settings and return paths with Ollama/LM Studio. The maintainer
+      confirmed these journeys work and reported no observed defect (2026-11-12). Windows/Linux native
+      UI journeys remain part of 6.1 packaging checks. Evidence: maintainer's manual smoke confirmation;
+      local launch compiled Electron main/preload and Vite renderer successfully.
 - [ ] **5.2 — Instrumentation and metric smoke.** Use a local client through the opt-in bridge;
       verify session reset/compaction, sparse speed/TTFT, disable/clear and no content persistence.
       Exercise NVIDIA/AMD probes on available hardware and unavailable paths. Depends on 5.1.
@@ -200,5 +201,5 @@ process behavior in 5.2–5.4, then run 5.5. Packaging 6.1 follows that gate; si
 can be prepared in parallel but cannot close before artifacts exist. Publication 6.3 follows
 6.1–6.2. Revisit deferred candidates only when the user changes scope.
 
-Next agent: inspect this file and `git status`, take **5.1**, create a task branch from current
+Next agent: inspect this file and `git status`, take **5.2**, create a task branch from current
 `dev`, record evidence and update its checkbox only after validated promotion to `main`.
