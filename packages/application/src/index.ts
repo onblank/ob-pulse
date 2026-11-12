@@ -48,6 +48,7 @@ export class InMemoryMetricHistory {
         runtimeId: runtime.id,
         modelId: runtime.loaded[0]?.id ?? null,
         hostMemoryUsedPercent: snapshot.host.memoryUsedPercent,
+        hostGpus: snapshot.host.gpus.map((gpu) => ({ ...gpu })),
         gpuResidentBytes:
           residentValues.length > 0
             ? residentValues.reduce((total, value) => total + value, 0)

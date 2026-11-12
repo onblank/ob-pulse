@@ -87,7 +87,7 @@ export interface GpuSample {
   readonly utilizationPercent: number | null;
   readonly memoryUsedBytes: number | null;
   readonly memoryTotalBytes: number | null;
-  readonly source: 'nvidia-smi';
+  readonly source: 'nvidia-smi' | 'amdgpu-sysfs';
 }
 export interface OwnedProcessSample {
   readonly pid: number;
@@ -121,6 +121,7 @@ export interface MetricHistorySample {
   readonly runtimeId: RuntimeId;
   readonly modelId: string | null;
   readonly hostMemoryUsedPercent: number;
+  readonly hostGpus: readonly GpuSample[];
   readonly gpuResidentBytes: number | null;
   readonly outputTokensPerSecond: number | null;
   readonly outputTokensSource: 'benchmark' | null;
