@@ -314,6 +314,23 @@ function dashboardAt(
 }
 
 describe('one-hour in-memory metric history', () => {
+  it('captures host GPU devices by source and index without retaining a mutable snapshot', () => {
+    const history = new InMemoryMetricHistory();
+    const gpu = {
+      index: 0,
+      name: 'RTX 4090',
+      utilizationPercent: 42,
+      memoryUsedBytes: 1024,
+      memoryTotalBytes: 2048,
+      source: 'nvidia-smi' as const,
+    };
+    const dashboard = dashboardAt('2026-10-14T00:00:00.000Z');
+    history.capture({ ...dashboard, host: { ...dashboard.host, gpus: [gpu] } });
+    gpu.utilizationPercent = 1;
+    expect(history.window(Date.parse(dashboard.host.sampledAt)).samples[0]?.hostGpus).toMatchObject(
+      [{ utilizationPercent: 42, source: 'nvidia-smi', index: 0 }],
+    );
+  });
   it('evicts expired and excess samples without persistence', () => {
     const history = new InMemoryMetricHistory(60_000, 3000, 2);
     history.capture(dashboardAt('2026-10-14T00:00:00.000Z'));

@@ -1,20 +1,22 @@
 # Metrics accuracy contract
 
-| Datum                           | Source                                              | Scope                 | Availability                                         |
-| ------------------------------- | --------------------------------------------------- | --------------------- | ---------------------------------------------------- |
-| Host RAM bytes/percent          | `os.totalmem()` + `os.freemem()`                    | entire device         | initial scaffold                                     |
-| Host CPU percent                | deltas of `os.cpus()` ticks                         | entire device         | initial scaffold                                     |
-| Owned-process resident bytes    | `ps` RSS / .NET `Process.WorkingSet64`              | direct owned child    | managed Ollama on Windows/macOS/Linux                |
-| Owned-process CPU percent       | `ps` / cumulative .NET processor-time delta         | direct owned child    | managed Ollama; second sample on Windows             |
-| Loaded model file size          | Ollama `GET /api/ps` `size`                         | loaded model          | initial scaffold                                     |
-| Loaded model GPU-resident bytes | Ollama `size_vram`                                  | reported residency    | initial scaffold, not true instantaneous utilization |
-| Model context _capacity_        | Ollama `context_length`                             | loaded model          | initial scaffold                                     |
-| Context **used** / percentage   | authenticated client event with explicit session ID | client session        | opt-in bridge; `null` until observed                 |
-| Prefill/read tokens/sec         | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
-| Decode/write tokens/sec         | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
-| First-token latency             | client event or LM Studio v1 benchmark stats        | request/benchmark     | opt-in event or explicit LM Studio test              |
-| Model CPU and GPU utilization   | runtime/OS-specific process instrumentation         | model/runtime process | planned/unsupported                                  |
-| GPU max capacity                | OS-specific reliable hardware API                   | physical GPU          | planned/unsupported                                  |
+| Datum                            | Source                                              | Scope                 | Availability                                         |
+| -------------------------------- | --------------------------------------------------- | --------------------- | ---------------------------------------------------- |
+| Host RAM bytes/percent           | `os.totalmem()` + `os.freemem()`                    | entire device         | initial scaffold                                     |
+| Host CPU percent                 | deltas of `os.cpus()` ticks                         | entire device         | initial scaffold                                     |
+| Host NVIDIA GPU utilization/VRAM | bounded `nvidia-smi` probe                          | physical GPU          | supported devices; unavailable otherwise             |
+| Host AMD GPU utilization/VRAM    | Linux AMDGPU sysfs device counters                  | physical GPU          | supported devices; unavailable otherwise             |
+| Owned-process resident bytes     | `ps` RSS / .NET `Process.WorkingSet64`              | direct owned child    | managed Ollama on Windows/macOS/Linux                |
+| Owned-process CPU percent        | `ps` / cumulative .NET processor-time delta         | direct owned child    | managed Ollama; second sample on Windows             |
+| Loaded model file size           | Ollama `GET /api/ps` `size`                         | loaded model          | initial scaffold                                     |
+| Loaded model GPU-resident bytes  | Ollama `size_vram`                                  | reported residency    | initial scaffold, not true instantaneous utilization |
+| Model context _capacity_         | Ollama `context_length`                             | loaded model          | initial scaffold                                     |
+| Context **used** / percentage    | authenticated client event with explicit session ID | client session        | opt-in bridge; `null` until observed                 |
+| Prefill/read tokens/sec          | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
+| Decode/write tokens/sec          | token count / evaluation duration in final response | instrumented request  | benchmark or opt-in client event                     |
+| First-token latency              | client event or LM Studio v1 benchmark stats        | request/benchmark     | opt-in event or explicit LM Studio test              |
+| Model CPU and GPU utilization    | runtime/OS-specific process instrumentation         | model/runtime process | planned/unsupported                                  |
+| GPU VRAM capacity                | `nvidia-smi` or Linux AMDGPU sysfs per device       | physical GPU          | supported devices; unavailable otherwise             |
 
 **Units**: tps = token count × 1e9 / nanoseconds; zero/null/negative duration yields `null`.
 **Sampling**: host and every enabled runtime are observed concurrently every 3 seconds while the
@@ -22,7 +24,8 @@ application process is alive, including when its window is hidden in the tray. E
 bounded to 2.5 seconds and failures remain runtime-local. No sampling occurs after the application
 quits. The in-memory window retains at most the latest hour per runtime and has no restart
 persistence. Host RAM is repeated only as that runtime's aligned series; loaded-model GPU-resident
-bytes are provider-reported residency, not GPU load; decode/write tps is a runtime-scoped sparse
+bytes are provider-reported residency, not GPU load; host GPU utilization is kept as a separate
+one-hour per-device series while the device is present; decode/write tps is a runtime-scoped sparse
 point recorded once per explicit benchmark.
 Owned-process CPU is core-equivalent and may exceed 100% when the direct child uses more than one
 logical processor. On Windows the first valid observation has no prior cumulative-CPU baseline, so
