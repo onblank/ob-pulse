@@ -1,6 +1,6 @@
 # Verification report
 
-Current local verification as of 2026-11-11:
+Current local verification as of 2026-11-12:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
 - Formatting, ESLint, TypeScript checks for all twelve packages, 78 tests and
@@ -41,6 +41,9 @@ Current local verification as of 2026-11-11:
   `windows-latest` CI job runs the same live self-PID probe and package typecheck natively.
 - The macOS development app launches with the four statically registered adapters; its compact,
   multi-runtime monitor and dedicated settings surfaces build successfully.
+- Manual macOS end-to-end smoke confirmed the tray, compact runtime selector and power action,
+  expanded runtime cards/model operations, settings and return paths work with no observed defects.
+  Confirmation recorded from the maintainer on 2026-11-12. Windows/Linux GUI smoke remains pending.
 
 Still required before an official release:
 
