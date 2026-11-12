@@ -27,6 +27,8 @@ persistence. Host RAM is repeated only as that runtime's aligned series; loaded-
 bytes are provider-reported residency, not GPU load; host GPU utilization and used VRAM are kept as
 separate one-hour per-device series while the device is present; decode/write tps is a runtime-scoped sparse
 point recorded once per explicit benchmark.
+If a host GPU stops reporting, its curve remains visible until its final sample expires from the
+rolling window. Its current value shows unavailable; historical points are not presented as live.
 Owned-process CPU is core-equivalent and may exceed 100% when the direct child uses more than one
 logical processor. On Windows the first valid observation has no prior cumulative-CPU baseline, so
 CPU is `null` while resident memory is already available.
