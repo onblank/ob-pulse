@@ -19,12 +19,13 @@ surface rendered at the expanded size. The compact surface is fixed-size; expand
 resizable. The window header provides pin, settings, expand/compact and hide controls. Opening
 settings from the compact gadget expands the window first; compacting always returns to monitoring.
 
-The compact gadget shows the runtime-safe power action, loaded model and one-hour RAM, reported GPU
-residency and benchmark output-speed charts, plus total online-runtime and loaded-model counts. The
+The compact gadget shows an enabled-runtime selector, the selected runtime's safe power action,
+loaded model and one-hour RAM, reported GPU residency and benchmark output-speed charts, plus total
+online-runtime and loaded-model counts. The
 expanded monitor begins with a control-center card for every enabled runtime. Each card isolates
 health, authority, model counts, owned-process readings and a manifest-authorized primary action;
-selecting it scopes the detail panel below. The detail contains runtime/model controls, model
-load/unload and benchmark actions, history and resource KPIs. Settings contains
+selecting it scopes the detail panel below. The cards own server power actions; the detail contains
+model load/unload and benchmark actions, history and resource KPIs. Settings contains
 appearance/position, runtime visibility, credentials, instrumentation controls/history and adapter
 capability/permission detail. Widget settings persist a tray/corner position, one of four bounded
 opacity levels and an accessible high-contrast mode. Window placement is best-effort on display

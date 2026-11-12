@@ -234,13 +234,19 @@ function HistoryPanel({
 
 function PowerControl({
   snapshot,
+  runtimes,
+  selectedRuntime,
   busy,
+  onSelectRuntime,
   onToggle,
   onTakeControl,
   onReleaseControl,
 }: {
   snapshot: DashboardSnapshot | null;
+  runtimes: readonly RuntimeCatalogEntry[];
+  selectedRuntime: RuntimeId;
   busy: boolean;
+  onSelectRuntime: (runtime: RuntimeId) => void;
   onToggle: () => void;
   onTakeControl: () => void;
   onReleaseControl: () => void;
@@ -254,7 +260,7 @@ function PowerControl({
   const external = state === 'external-running';
   const canTakeControl = external && !!capabilities?.takeControl;
   const canReleaseControl = state === 'managed-running' && !!capabilities?.releaseControl;
-  const enabled = !busy && (canStart || canStop);
+  const enabled = !busy && !runtime?.error && (canStart || canStop);
   const stateLabel = external
     ? 'Server managed externally'
     : state === 'managed-running'
@@ -286,7 +292,22 @@ function PowerControl({
         <span className="power-symbol">⏻</span>
       </button>
       <div className="power-copy">
-        <strong>{runtime?.displayName ?? 'Local runtime'}</strong>
+        <label className="compact-runtime-label" htmlFor="compact-runtime-selector">
+          Runtime
+        </label>
+        <select
+          id="compact-runtime-selector"
+          className="compact-runtime-selector"
+          value={selectedRuntime}
+          disabled={busy || runtimes.length < 2}
+          onChange={(event) => onSelectRuntime(event.target.value as RuntimeId)}
+        >
+          {runtimes.map((entry) => (
+            <option key={entry.id} value={entry.id}>
+              {entry.name}
+            </option>
+          ))}
+        </select>
         <span className={running ? 'state online' : 'state'}>{stateLabel}</span>
         {canTakeControl && (
           <button className="take-control" disabled={busy} onClick={onTakeControl}>
@@ -1259,7 +1280,10 @@ export default function App() {
           <div className="compact-content">
             <PowerControl
               snapshot={snapshot}
+              runtimes={runtimeCatalog.filter((entry) => entry.enabled)}
+              selectedRuntime={runtime}
               busy={busy}
+              onSelectRuntime={changeRuntime}
               onToggle={togglePower}
               onTakeControl={takeControl}
               onReleaseControl={releaseControl}
@@ -1336,22 +1360,6 @@ export default function App() {
               onSelect={changeRuntime}
               onAction={runRuntimeAction}
             />
-
-            <section className="expanded-toolbar">
-              <div>
-                <span className="eyebrow">SELECTED RUNTIME</span>
-                <strong className="selected-runtime-name">
-                  {info?.displayName ?? 'Loading runtime…'}
-                </strong>
-              </div>
-              <PowerControl
-                snapshot={snapshot}
-                busy={busy}
-                onToggle={togglePower}
-                onTakeControl={takeControl}
-                onReleaseControl={releaseControl}
-              />
-            </section>
 
             <div className="expanded-grid">
               <div className="expanded-primary">
