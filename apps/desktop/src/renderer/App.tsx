@@ -31,6 +31,7 @@ import {
   runtimePrimaryAction,
   type RuntimePrimaryAction,
 } from './runtime-control';
+import { gpuKey, recentGpuDevices } from './gpu-history';
 
 const DISABLED_BRIDGE: InstrumentationBridgeStatus = {
   enabled: false,
@@ -99,6 +100,7 @@ function MetricChart({
   values,
   color,
   unavailable,
+  note,
 }: {
   label: string;
   value: string;
@@ -106,6 +108,7 @@ function MetricChart({
   values: readonly (number | null)[];
   color: string;
   unavailable?: string;
+  note?: string;
 }) {
   return (
     <div className="history-row">
@@ -116,9 +119,10 @@ function MetricChart({
         </strong>
       </div>
       <Sparkline values={values} color={color} />
-      {values.every((entry) => entry == null) && unavailable && (
+      {values.every((entry) => entry == null) && unavailable && !note && (
         <span className="history-unavailable">{unavailable}</span>
       )}
+      {note && <span className="history-unavailable">{note}</span>}
     </div>
   );
 }
@@ -139,6 +143,8 @@ function HistoryPanel({
   const ram = runtimeValues((sample) => sample.hostMemoryUsedPercent);
   const vram = runtimeValues((sample) => sample.gpuResidentBytes);
   const output = runtimeValues((sample) => sample.outputTokensPerSecond);
+  const currentGpus = snapshot?.host.gpus ?? [];
+  const recentGpus = recentGpuDevices(currentGpus, runtimeSamples);
   const loadedVram = snapshot?.runtime.loaded
     .map((model) => model.gpuResidentBytes)
     .filter((value): value is number => value != null);
@@ -161,7 +167,8 @@ function HistoryPanel({
         values={ram}
         color="#7f8cff"
       />
-      {(snapshot?.host.gpus ?? []).map((gpu) => {
+      {recentGpus.map((gpu) => {
+        const live = currentGpus.find((entry) => gpuKey(entry) === gpuKey(gpu));
         const values = runtimeValues(
           (sample) =>
             sample.hostGpus.find(
@@ -170,13 +177,14 @@ function HistoryPanel({
         );
         return (
           <MetricChart
-            key={`${gpu.source}:${gpu.index}`}
+            key={gpuKey(gpu)}
             label={`${gpu.name} utilization`}
-            value={pct(gpu.utilizationPercent)}
+            value={pct(live?.utilizationPercent ?? null)}
             unit=""
             values={values}
             color="#67c9ed"
             unavailable="GPU utilization is unavailable"
+            note={live ? undefined : 'Reading unavailable · recent history retained'}
           />
         );
       })}

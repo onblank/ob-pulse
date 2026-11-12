@@ -50,6 +50,8 @@
   probe where available. Linux AMDGPU utilization and VRAM use are read through documented sysfs
   device counters. macOS GPU monitoring and per-model GPU attribution remain pending.
 - Available host GPU utilization is included in the bounded, volatile one-hour history per device.
+- Recently observed GPU curves remain visible with an unavailable-live-reading notice when a
+  device probe stops reporting, until their samples expire from the one-hour window.
 
 ## 1.0 — public release
 
