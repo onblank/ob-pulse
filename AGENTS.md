@@ -88,3 +88,7 @@ status but must never retrieve the token.
 
 Write domain tests first, then contracts/use case, then adapter, then IPC/renderer, then release tests.
 Run `pnpm check` (where dependencies are available), update scope AGENTS and docs with new decisions.
+Before a substantial iteration, read the canonical root `ROADMAP.md`. Select the first open item
+whose dependencies are met unless the user chooses another. Update its status and PR/promotion
+evidence in the implementation PR; its checkbox becomes authoritative when merged into `dev`.
+Complete the separate promotion to `main` before starting another iteration.
