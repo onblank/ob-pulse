@@ -1329,7 +1329,7 @@ export default function App() {
                       <strong>{pct(gpu?.utilizationPercent ?? null)}</strong>
                       <small>
                         {gpu
-                          ? `${gib(gpu.memoryUsedBytes)} / ${gib(gpu.memoryTotalBytes)} VRAM · NVIDIA`
+                          ? `${gib(gpu.memoryUsedBytes)} / ${gib(gpu.memoryTotalBytes)} VRAM · ${gpu.source === 'nvidia-smi' ? 'NVIDIA' : 'AMD Linux'}`
                           : 'No supported GPU reading available'}
                       </small>
                     </div>
