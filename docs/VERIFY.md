@@ -39,6 +39,12 @@ Current local verification as of 2026-11-12:
   semantics, a live self-PID probe on macOS/Linux, absent Ollama ownership and the application rule
   that only a managed runtime with an owned PID receives a process sample. A dedicated
   `windows-latest` CI job runs the same live self-PID probe and package typecheck natively.
+- Iteration 5.3 keeps process metrics scoped to the one PID Pulse launched on every platform. The
+  self-PID probe is exercised on macOS locally and on Ubuntu/Windows CI; parsing rejects multiple
+  process rows. Descendant aggregation is intentionally unsupported: macOS/Linux parent-PID
+  snapshots are not durable ownership, Linux cgroups would require a new managed containment path,
+  and Windows Job Objects are not assigned by the current spawn path. Runtime helper/model processes
+  may therefore be absent from displayed CPU/RAM; no descendant values are inferred.
 - The macOS development app launches with the four statically registered adapters; its compact,
   multi-runtime monitor and dedicated settings surfaces build successfully.
 - Manual macOS end-to-end smoke confirmed the tray, compact runtime selector and power action,

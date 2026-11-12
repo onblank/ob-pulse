@@ -62,7 +62,8 @@ adapter cannot prove a safe provider control plane.
 - Host total CPU / host RAM are not the selected model CPU / RAM.
 - Process CPU/RAM is sampled only from the direct child PID retained by an adapter for a service
   that OB-Pulse started. It excludes descendants and is not model-specific. CPU is core-equivalent
-  and may exceed 100% for multithreaded work; RAM is resident bytes.
+  and may exceed 100% for multithreaded work; RAM is resident bytes. This can undercount runtimes
+  that delegate model work to helper processes.
 - External Ollama, LM Studio, llama.cpp and a failed/unsupported process probe report process metrics as
   unavailable. OB-Pulse never discovers a process by name, port or service.
 - Ollama `/api/ps` reports loaded models, `size`, `size_vram`, `context_length`; it does not report live requests/sessions.
@@ -88,6 +89,18 @@ valid observations before deriving CPU; its first sample still exposes resident 
 time guards the CPU baseline against PID reuse. `MonitorService` requests a sample only for an
 enabled runtime that reports `managed-running` and supplies its owned PID. Process samples appear on
 their runtime card/detail and are neither persisted nor misattributed to external services.
+
+**Descendant attribution decision (5.3)**: do not aggregate descendants on macOS, Linux or Windows.
+Recursively enumerating PPID/child-PID snapshots would add process discovery and still leave races
+when a child exits, reparents or its PID is reused. Apple's process-list APIs expose PIDs, not a
+durable ownership group ([process-list API family](https://developer.apple.com/documentation/endpointsecurity/es_proc_check_type_listpids)).
+Linux cgroup v2 can scope resource accounting to a managed group, but Pulse does not currently create
+and retain a delegated cgroup for each launched runtime ([kernel cgroup v2 documentation](https://docs.kernel.org/admin-guide/cgroup-v2.html)).
+Windows Job Objects provide group accounting when a process is assigned; the current Node spawn path
+does not assign the runtime to a Job Object at creation ([Microsoft Job Objects](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects)).
+Adding these OS-specific containment mechanisms would change lifecycle and packaging boundaries and
+is not justified for v1. Direct-child samples remain truthful and bounded; descendants and
+model-level resource use remain unavailable.
 
 **Widget preferences**: Electron main validates and atomically stores a small
 `widget-preferences.json` file under Electron's machine-local `userData` directory. The renderer can

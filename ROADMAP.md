@@ -6,9 +6,9 @@
 
 **Roadmap version:** 2026-11-12
 
-**Last completed iteration:** 5.2 — Instrumentation and metric smoke
+**Last completed iteration:** 5.3 — Owned-process attribution decision
 
-**Next planned iteration:** 5.3 — Owned-process attribution decision
+**Next planned iteration:** 5.4 — macOS GPU feasibility decision
 
 ## Objective
 
@@ -154,10 +154,13 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
       them. Eleven integration/application tests pass. This macOS host has neither `nvidia-smi` nor
       Linux AMDGPU sysfs, so both hardware probes correctly remain unavailable here. Evidence:
       `apps/desktop/src/main/instrumentation-smoke.test.ts`; local hardware probe availability check.
-- [ ] **5.3 — Owned-process attribution decision.** Evaluate descendant aggregation per OS without
-      attributing unrelated processes. Implement only where ownership can be proven; otherwise document
-      the direct-child limit and keep values unavailable. Depends on 5.1. Closure: tested supported
-      platforms and explicit unsupported behavior.
+- [x] **5.3 — Owned-process attribution decision.** Descendant aggregation is not enabled on any OS.
+      macOS/Linux PID-parent snapshots can race with exit, reparenting and PID reuse; Windows Job
+      Objects offer group accounting, but Pulse does not currently assign spawned processes to a job
+      at creation. Keep direct-child CPU/RAM only and document that it can undercount helper/model
+      processes. Existing self-PID probes run in macOS development, Linux CI and Windows CI; parser
+      tests reject multiple rows. Evidence: `docs/VERIFY.md`, `docs/ARCHITECTURE.md`.
+      [Implementation PR](https://github.com/onblank/ob-pulse/pull/80); promotion PR: pending.
 - [ ] **5.4 — macOS GPU feasibility decision.** Evaluate a non-privileged, stable, trustworthy local
       GPU utilization/VRAM source. Implement if semantics hold; otherwise document the limitation and
       keep readings unavailable. Depends on 5.2. Closure: evidence-backed decision, no invented zero
@@ -203,5 +206,5 @@ process behavior in 5.2–5.4, then run 5.5. Packaging 6.1 follows that gate; si
 can be prepared in parallel but cannot close before artifacts exist. Publication 6.3 follows
 6.1–6.2. Revisit deferred candidates only when the user changes scope.
 
-Next agent: inspect this file and `git status`, take **5.2**, create a task branch from current
+Next agent: inspect this file and `git status`, take **5.4**, create a task branch from current
 `dev`, record evidence and update its checkbox only after validated promotion to `main`.
