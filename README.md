@@ -77,6 +77,9 @@ Packages for end users will be hosted in GitHub Releases after the packaging mat
 
 ## Governance
 
+The canonical [development roadmap](ROADMAP.md) tracks phases, iteration status, acceptance
+criteria and the next handoff. Agents update it with each iteration.
+
 Read [`AGENTS.md`](AGENTS.md) and each scoped `AGENTS.md` before editing. The central onBlank workspace file `../AGENTS.md` must also be reviewed by the maintainer for cross-product/security/licensing changes; it is not in this ZIP.
 
 - Branches: task branch from `dev` → reviewed PR into protected `dev` → reviewed promotion into protected `main`.
