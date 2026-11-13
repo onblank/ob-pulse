@@ -14,6 +14,7 @@ import type {
   RuntimeId,
   ServerState,
 } from '@obpulse/contracts';
+import { RUNTIME_IDS } from '@obpulse/contracts';
 
 const capabilities: Capabilities = {
   listInstalled: true,
@@ -196,6 +197,42 @@ describe('runtime monitoring', () => {
     await expect(service.start('ollama')).rejects.toThrow('Runtime is disabled');
   });
 
+  it('blocks every explicit control command for a disabled runtime before reaching its adapter', async () => {
+    const ollama = stubRuntime('ollama', 'external-running');
+    const lmstudio = stubRuntime('lmstudio', 'stopped');
+    const startServer = vi.spyOn(ollama, 'startServer');
+    const stopServer = vi.spyOn(ollama, 'stopServer');
+    const takeControl = vi.spyOn(ollama, 'takeControl');
+    const releaseControl = vi.spyOn(ollama, 'releaseControl');
+    const enabledLoad = vi.spyOn(lmstudio, 'loadModel');
+    const enabledUnload = vi.spyOn(lmstudio, 'unloadModel');
+    const enabledBenchmark = vi.spyOn(lmstudio, 'benchmark');
+    const service = new MonitorService(
+      new Map<RuntimeId, RuntimePort>([
+        ['ollama', ollama],
+        ['lmstudio', lmstudio],
+      ]),
+      host,
+      processes,
+    );
+    service.setEnabledRuntimes(['lmstudio']);
+
+    await expect(service.start('ollama')).rejects.toThrow('Runtime is disabled');
+    await expect(service.stop('ollama')).rejects.toThrow('Runtime is disabled');
+    await expect(service.takeControl('ollama')).rejects.toThrow('Runtime is disabled');
+    await expect(service.releaseControl('ollama')).rejects.toThrow('Runtime is disabled');
+    await service.load(model.id);
+    await service.unload(model.id);
+    await expect(service.benchmark(model.id)).resolves.toEqual(benchmark);
+    expect(startServer).not.toHaveBeenCalled();
+    expect(stopServer).not.toHaveBeenCalled();
+    expect(takeControl).not.toHaveBeenCalled();
+    expect(releaseControl).not.toHaveBeenCalled();
+    expect(enabledLoad).toHaveBeenCalledWith(model.id);
+    expect(enabledUnload).toHaveBeenCalledWith(model.id);
+    expect(enabledBenchmark).toHaveBeenCalledWith(model.id);
+  });
+
   it('observes enabled runtimes together and isolates adapter failures', async () => {
     const broken = stubRuntime('lmstudio', 'external-running');
     broken.state = async () => {
@@ -342,6 +379,32 @@ describe('one-hour in-memory metric history', () => {
       '2026-10-14T00:00:30.000Z',
       '2026-10-14T00:01:01.000Z',
     ]);
+  });
+
+  it('enforces the default rolling-hour retention and total sample cap', () => {
+    const history = new InMemoryMetricHistory();
+    const dashboard = dashboardAt('2026-10-14T00:00:00.000Z');
+    const runtimes = RUNTIME_IDS.map((id) => ({
+      ...dashboard.runtime,
+      id,
+      displayName: id,
+    }));
+    const multiRuntimeDashboard = { ...dashboard, runtimes };
+    for (let index = 0; index < 1202; index++) history.capture(multiRuntimeDashboard);
+
+    const bounded = history.window(Date.parse(dashboard.host.sampledAt));
+    expect(bounded.retentionMs).toBe(60 * 60 * 1000);
+    expect(bounded.sampleIntervalMs).toBe(3000);
+    expect(bounded.samples).toHaveLength(1201 * RUNTIME_IDS.length);
+
+    const expiring = new InMemoryMetricHistory();
+    expiring.capture(dashboard);
+    expect(
+      expiring.window(Date.parse(dashboard.host.sampledAt) + 60 * 60 * 1000).samples,
+    ).toHaveLength(1);
+    expect(
+      expiring.window(Date.parse(dashboard.host.sampledAt) + 60 * 60 * 1000 + 1).samples,
+    ).toHaveLength(0);
   });
 
   it('records benchmark throughput once and preserves unavailable gaps', () => {
