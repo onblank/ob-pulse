@@ -6,9 +6,9 @@
 
 **Roadmap version:** 2026-11-13
 
-**Last completed iteration:** 5.4 — macOS GPU feasibility decision
+**Last completed iteration:** 5.5 — Integrated safety/regression gate
 
-**Next planned iteration:** 5.5 — Integrated safety/regression gate
+**Next planned iteration:** 6.1 — Native packaging matrix
 
 ## Objective
 
@@ -57,14 +57,14 @@ reviewable evidence, not code tests. If a required check cannot run, keep the it
 issue contradicts the phase goal. Owner action is required for signing credentials, final brand
 approval and public release.
 
-| Phase | Outcome                                      | Status                           |
-| ----- | -------------------------------------------- | -------------------------------- |
-| 1     | Local-first foundation and desktop shell     | Complete                         |
-| 2     | Safe runtime and model control               | Complete for v1 scope            |
-| 3     | Truthful telemetry and one-hour history      | Complete for implemented sources |
-| 4     | Compact, expanded and settings surfaces      | Complete in code                 |
-| 5     | End-to-end validation and platform decisions | Next                             |
-| 6     | Native distribution and public v1            | Planned                          |
+| Phase | Outcome                                      | Status                                              |
+| ----- | -------------------------------------------- | --------------------------------------------------- |
+| 1     | Local-first foundation and desktop shell     | Complete                                            |
+| 2     | Safe runtime and model control               | Complete for v1 scope                               |
+| 3     | Truthful telemetry and one-hour history      | Complete for implemented sources                    |
+| 4     | Compact, expanded and settings surfaces      | Complete in code                                    |
+| 5     | End-to-end validation and platform decisions | Complete; native GUI packaging smoke remains in 6.1 |
+| 6     | Native distribution and public v1            | Planned                                             |
 
 ## [x] Phase 1 — Foundation and desktop shell
 
@@ -168,14 +168,20 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
       stability contract and expose unified-memory allocation without a dedicated-VRAM denominator.
       Public Metal counters measure profiled app work, not host-wide load. Keep macOS host GPU values
       unavailable. Evidence: `docs/VERIFY.md`; local `powermetrics`, `ioreg`, `system_profiler` probes.
-      [Implementation PR](https://github.com/onblank/ob-pulse/pull/82); promotion PR: pending.
-- [ ] **5.5 — Integrated safety/regression gate.** Verify authority transitions, disabled adapters,
-      malformed provider responses, credential refusal, bridge auth, one-hour caps, keyboard/focus and
-      cross-platform CI. Depends on 5.1–5.4. Closure: `pnpm check` and relevant native smoke pass with
-      known limitations recorded.
+      [Implementation PR](https://github.com/onblank/ob-pulse/pull/82); [promotion PR](https://github.com/onblank/ob-pulse/pull/83).
+- [x] **5.5 — Integrated safety/regression gate.** Rechecked authority transitions, failure-isolated
+      malformed provider responses, OS-protected credential refusal, bridge authentication/content
+      rejection, one-hour telemetry retention and count caps, disabled-runtime command routing, and
+      renderer keyboard focus indication. CI covers the full check on Linux and owned-process probe
+      on Windows; macOS app navigation was manually confirmed in 5.1. `pnpm check` passes with 90 tests.
+      Native Windows/Linux GUI/install/upgrade smoke remains in 6.1. Evidence: `docs/VERIFY.md`,
+      `apps/desktop/src/renderer/focus-style.test.ts`, `packages/application/src/monitor.test.ts`,
+      `packages/application/src/instrumentation.test.ts`.
+      [Implementation PR](https://github.com/onblank/ob-pulse/pull/84); promotion PR: pending.
 
 **Exit:** users can complete observe/control/inspect journeys on target systems; unsupported cases
-are documented from observed behavior.
+are documented from observed behavior. macOS journeys and cross-platform runtime/CI gates are
+validated; native Windows/Linux install and GUI journeys remain explicitly in 6.1.
 
 ## [ ] Phase 6 — Installable v1 and release
 
@@ -205,10 +211,9 @@ are documented from observed behavior.
 
 ## Dependency order and next handoff
 
-Phases 1–4 are the implemented baseline. Complete 5.1 before interpreting manual metrics and
-process behavior in 5.2–5.4, then run 5.5. Packaging 6.1 follows that gate; signing/brand work
+Phases 1–5 are the validated baseline. Packaging 6.1 follows the regression gate; signing/brand work
 can be prepared in parallel but cannot close before artifacts exist. Publication 6.3 follows
 6.1–6.2. Revisit deferred candidates only when the user changes scope.
 
-Next agent: inspect this file and `git status`, take **5.5**, create a task branch from current
+Next agent: inspect this file and `git status`, take **6.1**, create a task branch from current
 `dev`, record evidence and update its checkbox only after validated promotion to `main`.
