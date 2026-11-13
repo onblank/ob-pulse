@@ -12,6 +12,9 @@ on:
       - 'package.json'
 permissions:
   contents: read
+concurrency:
+  group: native-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   package-and-install:
     strategy:
@@ -76,7 +79,6 @@ jobs:
         with:
           name: native-smoke-${{ runner.os }}
           path: |
-            ${{ runner.temp }}/native-baseline/*
             apps/desktop/release/*.exe
             apps/desktop/release/*.dmg
             apps/desktop/release/*.AppImage
