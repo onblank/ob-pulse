@@ -11,13 +11,9 @@ if (!baselineArgument || !currentArgument) {
 }
 const baselineDir = path.resolve(baselineArgument);
 const currentDir = path.resolve(currentArgument);
-const temporaryRoot = await mkdir(path.join(os.tmpdir(), 'obpulse-native-smoke'), {
-  recursive: true,
-});
-const workDir =
-  typeof temporaryRoot === 'string'
-    ? temporaryRoot
-    : path.join(os.tmpdir(), 'obpulse-native-smoke');
+// Keep the ordinary DOS path from os.tmpdir(); fs.mkdir may return a Windows \\?\ extended
+// path, which NSIS and child processes treat as an unsupported current directory.
+const workDir = path.join(os.tmpdir(), 'obpulse-native-smoke');
 
 async function files(directory, suffix) {
   return (await readdir(directory)).filter((name) =>
