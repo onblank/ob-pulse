@@ -1,6 +1,6 @@
 # Verification report
 
-Current local verification as of 2026-11-12:
+Current local verification as of 2026-11-13:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
 - Formatting, ESLint, TypeScript checks for all twelve packages, 78 tests and
@@ -64,6 +64,16 @@ Current local verification as of 2026-11-12:
   measured passes/commands in an app GPU trace, not system-wide utilization ([counter statistics](https://developer.apple.com/documentation/xcode/analyzing-apple-gpu-performance-using-counter-statistics)).
   No source met Pulse's stability and metric-semantics criteria; macOS host GPU readings stay
   unavailable. No privileged command or GPU workload was run.
+- Iteration 5.5 closes the assembled safety/regression gate. Added regression coverage for disabled
+  adapter commands reaching no disabled provider, default host-history one-hour and total-sample
+  bounds, default instrumentation one-hour/7,200-request retention, and visible keyboard focus styles
+  for buttons, selectors and inputs. Existing tests cover LM Studio authority transitions, malformed
+  responses, OS credential-storage refusal, bridge bearer authentication/content rejection, adapter
+  failure isolation and panel navigation. `pnpm check` passes: 90 tests across 18 files, all 12
+  package typechecks, ESLint, formatting and Electron production builds. GitHub CI provides full
+  validation on Ubuntu and native owned-process probing on Windows. The app's macOS navigation smoke
+  was confirmed by the maintainer on 2026-11-12; native Windows/Linux GUI and installer smoke remains
+  explicitly scheduled in roadmap iteration 6.1.
 
 Still required before an official release:
 

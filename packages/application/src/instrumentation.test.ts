@@ -158,6 +158,40 @@ describe('instrumented client sessions', () => {
     expect(store.snapshot().requestHistory.samples).toEqual([]);
   });
 
+  it('enforces the default one-hour request-history cap', () => {
+    let nowMs = Date.parse('2026-10-21T08:00:00.000Z');
+    const store = new InstrumentationSessionStore({ now: () => nowMs });
+    store.ingest(started);
+    for (let index = 0; index < 7201; index++) {
+      const at = new Date(Date.parse(started.at) + index + 1).toISOString();
+      store.ingest({
+        ...common,
+        event_id: `bounded-request-${index}`,
+        at,
+        type: 'request.completed',
+        data: {
+          prompt_tokens: null,
+          completion_tokens: null,
+          prompt_eval_duration_ns: null,
+          completion_eval_duration_ns: null,
+          context_used_tokens: null,
+          time_to_first_token_ms: null,
+        },
+      });
+      nowMs++;
+    }
+
+    const bounded = store.snapshot().requestHistory;
+    expect(bounded.retentionMs).toBe(60 * 60 * 1000);
+    expect(bounded.maxSamples).toBe(7200);
+    expect(bounded.samples).toHaveLength(7200);
+    expect(bounded.samples[0]?.sampleId).toBe('bounded-request-1');
+    expect(bounded.samples.at(-1)?.sampleId).toBe('bounded-request-7200');
+
+    nowMs += 60 * 60 * 1000 + 1;
+    expect(store.snapshot().requestHistory.samples).toEqual([]);
+  });
+
   it('clears sessions, replay state and request history together', () => {
     const store = new InstrumentationSessionStore();
     store.ingest(started);
