@@ -74,6 +74,14 @@ Current local verification as of 2026-11-13:
   validation on Ubuntu and native owned-process probing on Windows. The app's macOS navigation smoke
   was confirmed by the maintainer on 2026-11-12; native Windows/Linux GUI and installer smoke remains
   explicitly scheduled in roadmap iteration 6.1.
+- Iteration 6.1 implementation adds a native package workflow for Windows NSIS `.exe`, universal
+  macOS `.dmg`, and Linux `.AppImage`/`.deb`. The workflow builds an unsigned same-source `0.0.1`
+  baseline and the current package on each native runner, installs both in sequence, checks local
+  user-data continuity across the upgrade, launches the renderer and all four adapters without
+  requiring a local runtime, and verifies close-to-tray behavior. Linux also launches both
+  AppImages and upgrades the installed DEB. The smoke is CI-only and runs for relevant pull requests
+  or manual dispatch. **Native job results and artifacts are pending; this is not yet evidence that
+  6.1 is complete.**
 
 Still required before an official release:
 

@@ -177,7 +177,7 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
       Native Windows/Linux GUI/install/upgrade smoke remains in 6.1. Evidence: `docs/VERIFY.md`,
       `apps/desktop/src/renderer/focus-style.test.ts`, `packages/application/src/monitor.test.ts`,
       `packages/application/src/instrumentation.test.ts`.
-      [Implementation PR](https://github.com/onblank/ob-pulse/pull/84); promotion PR: pending.
+      [Implementation PR](https://github.com/onblank/ob-pulse/pull/84); [promotion PR](https://github.com/onblank/ob-pulse/pull/85).
 
 **Exit:** users can complete observe/control/inspect journeys on target systems; unsupported cases
 are documented from observed behavior. macOS journeys and cross-platform runtime/CI gates are
@@ -189,7 +189,12 @@ validated; native Windows/Linux install and GUI journeys remain explicitly in 6.
 
 - [ ] **6.1 — Packaging matrix.** Windows `.exe`, macOS universal `.dmg`, Linux `.AppImage`/`.deb`;
       clean install, upgrade, quit/tray, discovery and offline-launch checks on each OS. Depends on
-      phase 5. Closure: artifacts and results for every target.
+      phase 5. An unsigned CI smoke installs a same-source `0.0.1` baseline, upgrades it to the
+      current build, checks that local user data survives, verifies the tray remains after closing
+      the widget, and launches with the four runtime adapters available while no service is required.
+      Linux additionally launches both AppImage artifacts and upgrades the DEB package. Closure:
+      successful native jobs and retained artifacts/results for every target. Current status:
+      implementation in progress; do not mark complete until all three native jobs pass.
 - [ ] **6.2 — Signing, identity and supply chain.** Owner approves final mark/trademark; Windows
       signing and macOS Developer ID signing/notarization; release checksums and reproducibility
       expectations verified. Depends on 6.1. Owner provides credentials/brand approval.
