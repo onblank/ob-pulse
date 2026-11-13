@@ -210,7 +210,7 @@ full manual control-flow journeys remain unverified.
 ## Deferred candidates, not v1 commitments
 
 - Opt-in SQLite history beyond one hour only if users need it, with retention/off controls and
-  metrics-only export. One-hour volatile history remains the default.
+  metrics-only export. One-hour volatile history remains the default. Create a dashboard view with historical data and KPIs when SQLite implemented. This dashboard view have to be a new button as config is and have to be available just in extended view.
 - Additional lifecycle/model management only through a reviewed provider-native control plane.
   Ollama external-server handover is unsupported with the current adapter; generic process kills
   are prohibited. llama.cpp and MLX-LM remain observers until separately designed.
