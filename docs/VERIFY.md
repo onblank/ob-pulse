@@ -49,7 +49,9 @@ Current local verification as of 2026-11-13:
   multi-runtime monitor and dedicated settings surfaces build successfully.
 - Manual macOS end-to-end smoke confirmed the tray, compact runtime selector and power action,
   expanded runtime cards/model operations, settings and return paths work with no observed defects.
-  Confirmation recorded from the maintainer on 2026-11-12. Windows/Linux GUI smoke remains pending.
+  Confirmation recorded from the maintainer on 2026-11-12. Native startup and window/tray lifecycle
+  smoke on Windows and Linux is covered by iteration 6.1; full manual control-flow journeys remain
+  unverified on those platforms.
 - The instrumentation integration smoke sends authenticated loopback session/request/compaction
   events through the HTTP bridge into the session store; checks context reset, measured tps/TTFT,
   content rejection and clearing on disable. 11 related tests pass. This macOS host has no
@@ -73,18 +75,19 @@ Current local verification as of 2026-11-13:
   package typechecks, ESLint, formatting and Electron production builds. GitHub CI provides full
   validation on Ubuntu and native owned-process probing on Windows. The app's macOS navigation smoke
   was confirmed by the maintainer on 2026-11-12; native Windows/Linux GUI and installer smoke remains
-  explicitly scheduled in roadmap iteration 6.1.
-- Iteration 6.1 implementation adds a native package workflow for Windows NSIS `.exe`, universal
-  macOS `.dmg`, and Linux `.AppImage`/`.deb`. The workflow builds an unsigned same-source `0.0.1`
-  baseline and the current package on each native runner, installs both in sequence, checks local
-  user-data continuity across the upgrade, launches the renderer and all four adapters without
-  requiring a local runtime, and verifies close-to-tray behavior. Linux also launches both
-  AppImages and upgrades the installed DEB. The smoke is CI-only and runs for relevant pull requests
-  or manual dispatch. **Native job results and artifacts are pending; this is not yet evidence that
-  6.1 is complete.**
+  native Windows/Linux UI-control journeys remain unverified; the package lifecycle smoke is now
+  recorded in iteration 6.1.
+- Iteration 6.1 passed on native GitHub Actions runners with unsigned Windows NSIS `.exe`, universal
+  macOS `.dmg`, and Linux `.AppImage`/`.deb` builds. Each platform installed/launched a same-source
+  `0.0.1` baseline, checked renderer readiness, four-runtime discovery and close-to-tray behavior,
+  then ran the current build and verified local user-data continuity. Linux launched both AppImage
+  builds and installed/upgraded the DEB. All three jobs passed in [workflow run #43458682550](https://github.com/onblank/ob-pulse/actions/runs/43458682550).
+  GitHub retains the current artifacts for seven days: `native-smoke-Windows` (224 MB),
+  `native-smoke-macOS` (456 MB) and `native-smoke-Linux` (451 MB). The baseline packages are used
+  for tests and are not retained. This smoke checks packaged startup and tray/window lifecycle; it
+  does not replace manual interaction checks for each platform.
 
 Still required before an official release:
 
 - Manual end-to-end client instrumentation smoke testing through the packaged desktop UI.
-- Native packaging/install/upgrade/quit/tray tests on Windows, macOS and Linux.
 - Signing/notarization, official brand review and installer checksum verification.
