@@ -4,11 +4,11 @@
 > `docs/PRODUCT_SPEC.md` defines product behavior; `docs/ARCHITECTURE.md` and `docs/METRICS.md`
 > define technical boundaries. Checkboxes describe validated state, not merely code that exists.
 
-**Roadmap version:** 2026-11-12
+**Roadmap version:** 2026-11-13
 
-**Last completed iteration:** 5.3 — Owned-process attribution decision
+**Last completed iteration:** 5.4 — macOS GPU feasibility decision
 
-**Next planned iteration:** 5.4 — macOS GPU feasibility decision
+**Next planned iteration:** 5.5 — Integrated safety/regression gate
 
 ## Objective
 
@@ -160,11 +160,15 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
       at creation. Keep direct-child CPU/RAM only and document that it can undercount helper/model
       processes. Existing self-PID probes run in macOS development, Linux CI and Windows CI; parser
       tests reject multiple rows. Evidence: `docs/VERIFY.md`, `docs/ARCHITECTURE.md`.
-      [Implementation PR](https://github.com/onblank/ob-pulse/pull/80); promotion PR: pending.
-- [ ] **5.4 — macOS GPU feasibility decision.** Evaluate a non-privileged, stable, trustworthy local
-      GPU utilization/VRAM source. Implement if semantics hold; otherwise document the limitation and
-      keep readings unavailable. Depends on 5.2. Closure: evidence-backed decision, no invented zero
-      or model attribution.
+      [Implementation PR](https://github.com/onblank/ob-pulse/pull/80); [promotion PR](https://github.com/onblank/ob-pulse/pull/81).
+- [x] **5.4 — macOS GPU feasibility decision.** No suitable system-wide utilization plus memory
+      source is available within the no-privilege, stable API boundary. On macOS 26.5.2 / Apple M5,
+      `powermetrics` requires superuser and reports estimated power rather than GPU utilization/VRAM;
+      `ioreg` exposes AGX `PerformanceStatistics` but these undocumented driver properties have no
+      stability contract and expose unified-memory allocation without a dedicated-VRAM denominator.
+      Public Metal counters measure profiled app work, not host-wide load. Keep macOS host GPU values
+      unavailable. Evidence: `docs/VERIFY.md`; local `powermetrics`, `ioreg`, `system_profiler` probes.
+      [Implementation PR](https://github.com/onblank/ob-pulse/pull/82); promotion PR: pending.
 - [ ] **5.5 — Integrated safety/regression gate.** Verify authority transitions, disabled adapters,
       malformed provider responses, credential refusal, bridge auth, one-hour caps, keyboard/focus and
       cross-platform CI. Depends on 5.1–5.4. Closure: `pnpm check` and relevant native smoke pass with
@@ -206,5 +210,5 @@ process behavior in 5.2–5.4, then run 5.5. Packaging 6.1 follows that gate; si
 can be prepared in parallel but cannot close before artifacts exist. Publication 6.3 follows
 6.1–6.2. Revisit deferred candidates only when the user changes scope.
 
-Next agent: inspect this file and `git status`, take **5.4**, create a task branch from current
+Next agent: inspect this file and `git status`, take **5.5**, create a task branch from current
 `dev`, record evidence and update its checkbox only after validated promotion to `main`.

@@ -55,6 +55,15 @@ Current local verification as of 2026-11-12:
   content rejection and clearing on disable. 11 related tests pass. This macOS host has no
   `nvidia-smi` and no Linux AMDGPU sysfs, so no host GPU sample is expected; probe parser and
   unavailable readings remain covered by tests.
+- Iteration 5.4 evaluated macOS GPU feasibility on macOS 26.5.2 arm64 / Apple M5 (10-core GPU).
+  `powermetrics -n 1 -i 1000 -s gpu_power` returned “must be invoked as the superuser”; its local
+  help/man page describes estimated subsystem power, not GPU utilization or VRAM. Unprivileged
+  `ioreg -r -d 1 -c IOAccelerator` exposed AGX `PerformanceStatistics` (`Device Utilization %`,
+  allocation/in-use system-memory fields), but these driver fields are undocumented and the memory
+  values do not provide dedicated VRAM capacity. Apple documents Metal performance counters for
+  measured passes/commands in an app GPU trace, not system-wide utilization ([counter statistics](https://developer.apple.com/documentation/xcode/analyzing-apple-gpu-performance-using-counter-statistics)).
+  No source met Pulse's stability and metric-semantics criteria; macOS host GPU readings stay
+  unavailable. No privileged command or GPU workload was run.
 
 Still required before an official release:
 
