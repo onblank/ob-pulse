@@ -10,6 +10,7 @@ import {
   screen,
 } from 'electron';
 import type { Rectangle } from 'electron';
+import { readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HISTORY_SAMPLE_INTERVAL_MS, MonitorService } from '@obpulse/application';
@@ -315,6 +316,70 @@ function refreshMenu() {
     ]),
   );
 }
+async function runPackageSmoke(): Promise<void> {
+  const argument = process.argv.find((value) => value.startsWith('--obpulse-package-smoke='));
+  if (!argument) return;
+  const mode = argument.slice('--obpulse-package-smoke='.length);
+  const markerPath = path.join(app.getPath('userData'), 'native-package-upgrade-smoke.json');
+  const fail = (message: string) => {
+    console.error(`[native-package-smoke] ${message}`);
+    process.exitCode = 1;
+    app.quit();
+  };
+  try {
+    if (!['baseline', 'upgrade', 'launch'].includes(mode))
+      throw new Error(`Unsupported smoke mode: ${mode}`);
+    const expectedRuntimeIds = [...RUNTIME_IDS].sort();
+    service.setEnabledRuntimes(RUNTIME_IDS);
+    const catalogIds = service
+      .runtimeCatalog()
+      .map((runtime) => runtime.id)
+      .sort();
+    if (JSON.stringify(catalogIds) !== JSON.stringify(expectedRuntimeIds))
+      throw new Error(`Runtime discovery mismatch: ${catalogIds.join(', ')}`);
+    if (!mainWindow || !tray || tray.isDestroyed())
+      throw new Error('Window or system tray did not initialize');
+
+    const rendererReady = async () =>
+      mainWindow?.webContents.executeJavaScript(
+        "Boolean(document.querySelector('#root')?.childElementCount) && typeof window.obpulse === 'object'",
+      );
+    const startedAt = Date.now();
+    while (!(await rendererReady())) {
+      if (Date.now() - startedAt > 30_000) throw new Error('Renderer did not become ready');
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    // Resolve a full snapshot with no required remote service. Adapters only probe their
+    // configured loopback endpoints; this guards against startup depending on network access.
+    const snapshot = await service.snapshot();
+    if (snapshot.runtimes.length !== expectedRuntimeIds.length)
+      throw new Error(`Expected four runtime observations, received ${snapshot.runtimes.length}`);
+
+    mainWindow.close();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isVisible())
+      throw new Error('Closing the widget did not leave the app hidden in its tray');
+    if (!tray || tray.isDestroyed()) throw new Error('System tray did not survive window close');
+
+    if (mode === 'baseline') {
+      await writeFile(
+        markerPath,
+        JSON.stringify({ version: 1, createdAt: new Date().toISOString() }),
+        {
+          flag: 'wx',
+        },
+      );
+    } else if (mode === 'upgrade') {
+      const marker = JSON.parse(await readFile(markerPath, 'utf8')) as { version?: unknown };
+      if (marker.version !== 1) throw new Error('User data marker did not survive app upgrade');
+      await unlink(markerPath);
+    }
+    console.log(`[native-package-smoke] ${mode} passed`);
+    app.quit();
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+}
 function createWindow() {
   const dimensions = WINDOW_SIZES.compact;
   mainWindow = new BrowserWindow({
@@ -381,6 +446,7 @@ app
     tray.on('click', (_event, bounds) => toggleWindow(bounds));
     refreshMenu();
     startSampler();
+    void runPackageSmoke();
   })
   .catch((error) => {
     console.error('OB-Pulse initialization failed', error);

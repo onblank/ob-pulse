@@ -1,0 +1,3 @@
+extends: ./electron-builder.yml
+extraMetadata:
+  version: 0.0.1

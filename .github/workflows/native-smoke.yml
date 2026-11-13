@@ -1,20 +1,32 @@
 name: Native packaging smoke
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/native-smoke.yml'
+      - 'apps/desktop/**'
+      - 'packages/**'
+      - 'scripts/native-package-smoke.mjs'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
 permissions:
   contents: read
+concurrency:
+  group: native-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
-  package:
+  package-and-install:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            command: package:win
+            target: win
           - os: macos-latest
-            command: package:mac
+            target: mac
           - os: ubuntu-latest
-            command: package:linux
+            target: linux
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -26,16 +38,43 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@12.6.0 --activate
-      - name: Install
+      - name: Install Linux desktop smoke dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Install workspace
+        run: pnpm install --frozen-lockfile
+      - name: Build baseline installer (version 0.0.1)
+        if: runner.os != 'Windows'
+        shell: bash
         run: |
-          if [ -f pnpm-lock.yaml ]; then
-            pnpm install --frozen-lockfile
-          else
-            pnpm install --no-frozen-lockfile
-          fi
-      - name: Build unsigned smoke artifact
-        run: pnpm ${{ matrix.command }}
-      - name: Upload smoke artifact
+          pnpm --filter @obpulse/desktop build
+          pnpm --filter @obpulse/desktop exec electron-builder --${{ matrix.target }} --config electron-builder-baseline.yml
+          mkdir -p "$RUNNER_TEMP/native-baseline"
+          cp -R apps/desktop/release/. "$RUNNER_TEMP/native-baseline/"
+      - name: Build baseline installer (version 0.0.1)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pnpm --filter @obpulse/desktop build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --filter @obpulse/desktop exec electron-builder --win --config electron-builder-baseline.yml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/native-baseline" | Out-Null
+          Copy-Item apps/desktop/release/* "$env:RUNNER_TEMP/native-baseline/" -Recurse
+      - name: Build current installer and run install/upgrade smoke
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          pnpm package:${{ matrix.target }}
+          node scripts/native-package-smoke.mjs "$RUNNER_TEMP/native-baseline" apps/desktop/release
+      - name: Build current installer and run install/upgrade smoke
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          pnpm package:win
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/native-package-smoke.mjs "$env:RUNNER_TEMP/native-baseline" apps/desktop/release
+      - name: Upload baseline and current unsigned artifacts
         uses: actions/upload-artifact@v4
         with:
           name: native-smoke-${{ runner.os }}
@@ -45,3 +84,4 @@ jobs:
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
           if-no-files-found: error
+          retention-days: 7

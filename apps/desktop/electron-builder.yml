@@ -18,6 +18,8 @@ win:
     - target: nsis
       arch: [x64]
 linux:
+  executableName: ob-pulse
+  maintainer: 'onBlank Systems'
   category: Development
   target:
     - target: AppImage

@@ -6,9 +6,9 @@
 
 **Roadmap version:** 2026-11-13
 
-**Last completed iteration:** 5.5 — Integrated safety/regression gate
+**Last completed iteration:** 6.1 — Native packaging matrix
 
-**Next planned iteration:** 6.1 — Native packaging matrix
+**Next planned iteration:** 6.2 — Signing, identity and supply chain
 
 ## Objective
 
@@ -57,14 +57,14 @@ reviewable evidence, not code tests. If a required check cannot run, keep the it
 issue contradicts the phase goal. Owner action is required for signing credentials, final brand
 approval and public release.
 
-| Phase | Outcome                                      | Status                                              |
-| ----- | -------------------------------------------- | --------------------------------------------------- |
-| 1     | Local-first foundation and desktop shell     | Complete                                            |
-| 2     | Safe runtime and model control               | Complete for v1 scope                               |
-| 3     | Truthful telemetry and one-hour history      | Complete for implemented sources                    |
-| 4     | Compact, expanded and settings surfaces      | Complete in code                                    |
-| 5     | End-to-end validation and platform decisions | Complete; native GUI packaging smoke remains in 6.1 |
-| 6     | Native distribution and public v1            | Planned                                             |
+| Phase | Outcome                                      | Status                                                                                                                 |
+| ----- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 1     | Local-first foundation and desktop shell     | Complete                                                                                                               |
+| 2     | Safe runtime and model control               | Complete for v1 scope                                                                                                  |
+| 3     | Truthful telemetry and one-hour history      | Complete for implemented sources                                                                                       |
+| 4     | Compact, expanded and settings surfaces      | Complete in code                                                                                                       |
+| 5     | End-to-end validation and platform decisions | Complete; packaged startup and tray smoke validated in 6.1; full Windows/Linux control-flow journeys remain unverified |
+| 6     | Native distribution and public v1            | Planned                                                                                                                |
 
 ## [x] Phase 1 — Foundation and desktop shell
 
@@ -145,8 +145,9 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
 
 - [x] **5.1 — macOS end-to-end desktop journeys.** On macOS exercise tray, compact selector, power,
       expanded cards/model operations, settings and return paths with Ollama/LM Studio. The maintainer
-      confirmed these journeys work and reported no observed defect (2026-11-12). Windows/Linux native
-      UI journeys remain part of 6.1 packaging checks. Evidence: maintainer's manual smoke confirmation;
+      confirmed these journeys work and reported no observed defect (2026-11-12). Iteration 6.1
+      validates native Windows/Linux launch and tray/window lifecycle; full manual control-flow
+      journeys remain unverified. Evidence: maintainer's manual smoke confirmation;
       local launch compiled Electron main/preload and Vite renderer successfully.
 - [x] **5.2 — Instrumentation and metric smoke.** An end-to-end loopback integration test sends
       authenticated session, request, compaction and new-session events; verifies sparse throughput,
@@ -174,22 +175,29 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
       rejection, one-hour telemetry retention and count caps, disabled-runtime command routing, and
       renderer keyboard focus indication. CI covers the full check on Linux and owned-process probe
       on Windows; macOS app navigation was manually confirmed in 5.1. `pnpm check` passes with 90 tests.
-      Native Windows/Linux GUI/install/upgrade smoke remains in 6.1. Evidence: `docs/VERIFY.md`,
+      Native Windows/Linux install/upgrade and basic window/tray smoke is covered in 6.1; manual
+      control-flow journeys remain unverified. Evidence: `docs/VERIFY.md`,
       `apps/desktop/src/renderer/focus-style.test.ts`, `packages/application/src/monitor.test.ts`,
       `packages/application/src/instrumentation.test.ts`.
-      [Implementation PR](https://github.com/onblank/ob-pulse/pull/84); promotion PR: pending.
+      [Implementation PR](https://github.com/onblank/ob-pulse/pull/84); [promotion PR](https://github.com/onblank/ob-pulse/pull/85).
 
 **Exit:** users can complete observe/control/inspect journeys on target systems; unsupported cases
 are documented from observed behavior. macOS journeys and cross-platform runtime/CI gates are
-validated; native Windows/Linux install and GUI journeys remain explicitly in 6.1.
+validated; native Windows/Linux install, launch and basic window/tray lifecycle passed in 6.1;
+full manual control-flow journeys remain unverified.
 
 ## [ ] Phase 6 — Installable v1 and release
 
 **Goal:** trustworthy native installers usable without development tooling.
 
-- [ ] **6.1 — Packaging matrix.** Windows `.exe`, macOS universal `.dmg`, Linux `.AppImage`/`.deb`;
+- [x] **6.1 — Packaging matrix.** Windows `.exe`, macOS universal `.dmg`, Linux `.AppImage`/`.deb`;
       clean install, upgrade, quit/tray, discovery and offline-launch checks on each OS. Depends on
-      phase 5. Closure: artifacts and results for every target.
+      phase 5. An unsigned CI smoke installs a same-source `0.0.1` baseline, upgrades it to the
+      current build, checks that local user data survives, verifies the tray remains after closing
+      the widget, and launches with the four runtime adapters available while no service is required.
+      Linux additionally launches both AppImage artifacts and upgrades the DEB package. Closure:
+      all three native jobs passed; current unsigned artifacts are retained for seven days. Evidence:
+      [implementation PR #87](https://github.com/onblank/ob-pulse/pull/87), [native run #43458682550](https://github.com/onblank/ob-pulse/actions/runs/43458682550).
 - [ ] **6.2 — Signing, identity and supply chain.** Owner approves final mark/trademark; Windows
       signing and macOS Developer ID signing/notarization; release checksums and reproducibility
       expectations verified. Depends on 6.1. Owner provides credentials/brand approval.
@@ -215,5 +223,6 @@ Phases 1–5 are the validated baseline. Packaging 6.1 follows the regression ga
 can be prepared in parallel but cannot close before artifacts exist. Publication 6.3 follows
 6.1–6.2. Revisit deferred candidates only when the user changes scope.
 
-Next agent: inspect this file and `git status`, take **6.1**, create a task branch from current
-`dev`, record evidence and update its checkbox only after validated promotion to `main`.
+Next agent: verify that implementation PR #87 and its promotion to `main` have merged before starting
+another iteration. Then review **6.2** and its owner-provided identity/credential prerequisites; do
+not sign or notarize installers without the required owner approval and credentials.
