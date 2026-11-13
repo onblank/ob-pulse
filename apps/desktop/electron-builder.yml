@@ -18,6 +18,7 @@ win:
     - target: nsis
       arch: [x64]
 linux:
+  executableName: ob-pulse
   category: Development
   target:
     - target: AppImage

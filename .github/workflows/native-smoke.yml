@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           pnpm --filter @obpulse/desktop build
-          pnpm --filter @obpulse/desktop exec electron-builder --${{ matrix.target }} -c.extraMetadata.version=0.0.1
+          pnpm --filter @obpulse/desktop exec electron-builder --${{ matrix.target }} --config electron-builder-baseline.yml
           mkdir -p "$RUNNER_TEMP/native-baseline"
           cp -R apps/desktop/release/. "$RUNNER_TEMP/native-baseline/"
       - name: Build baseline installer (version 0.0.1)
@@ -53,7 +53,9 @@ jobs:
         shell: pwsh
         run: |
           pnpm --filter @obpulse/desktop build
-          pnpm --filter @obpulse/desktop exec electron-builder --win -c.extraMetadata.version=0.0.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm --filter @obpulse/desktop exec electron-builder --win --config electron-builder-baseline.yml
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP/native-baseline" | Out-Null
           Copy-Item apps/desktop/release/* "$env:RUNNER_TEMP/native-baseline/" -Recurse
       - name: Build current installer and run install/upgrade smoke
@@ -67,6 +69,7 @@ jobs:
         shell: pwsh
         run: |
           pnpm package:win
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node scripts/native-package-smoke.mjs "$env:RUNNER_TEMP/native-baseline" apps/desktop/release
       - name: Upload baseline and current unsigned artifacts
         uses: actions/upload-artifact@v4
