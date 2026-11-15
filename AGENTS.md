@@ -30,7 +30,7 @@ The scaffold includes a minimal local policy, not a replacement for the authorit
 4. Never claim metrics to be more precise than the adapter can prove. `null` means unobserved/not supported; `0` means measured zero.
 5. Model context is scoped to a **client session**, not to loaded model/host. A reset needs an observed client session boundary or explicit user command; compaction has explicit semantics.
 6. Reading/prefill tps and writing/decode tps require provider response timing or instrumented per-request events. Polling `/api/ps` cannot reveal live prompt throughput of unrelated clients.
-7. Separate **server management**, **loaded-model management**, and **observation**. Stop only a process OB-Pulse spawned or a server whose control the user explicitly delegated through a reviewed provider control plane. Never use generic PID/name/port kills against user or other-app services.
+7. Separate **server management**, **loaded-model management**, and **observation**. Stop processes OB-Pulse spawned, or a unique runtime process the user explicitly adopted with **Take control**. Adoption must resolve the loopback listener to one PID, retain a process identity, revalidate before termination and offer **Release control**. Never kill by process name alone or affect ambiguous/unrelated processes.
 8. Never let a UI model-unload action delete downloaded weights. Installation/removal of model binaries needs separate confirmation.
 9. No shell interpolation for runtime commands, no renderer subprocess access. OS process lifecycle stays behind adapters and typed IPC.
 10. UI remains in background/tray; no invasive floating overlays by default. Always-on-top is optional.
@@ -75,13 +75,12 @@ Do not start, kill, load or benchmark anything automatically at app boot.
 This is an early implementation. Do not claim model-specific CPU/GPU telemetry, passive external-client token
 streams, database history, updater or signed installers have shipped unless implemented and tested. Explicitly
 authenticated clients may report content-free session/request/compaction events only while the user-enabled
-loopback bridge is active. The app can control **Ollama it started itself**; for already-running Ollama it
-attaches in observation mode. On explicit start, Pulse can start headless LM Studio `llmster` only after
-confirming no daemon exists, then stop only the daemon PID returned to that start request. Pre-existing
-LM Studio daemons and GUIs remain external. A reachable LM Studio server can enter explicit,
-session-scoped delegated control through the official `lms server` CLI; delegation never grants GUI or
-daemon ownership. Control may be released without stopping a server or daemon; after release Pulse
-must return to observer authority and must not stop it on quit.
+loopback bridge is active. Pulse may explicitly adopt a uniquely identified external Ollama or LM
+Studio process after user confirmation. Stop or app quit terminates only that adopted process tree;
+**Release control** leaves it running. On explicit start, Pulse can start headless LM Studio `llmster`
+only after confirming no daemon exists, then stop only the daemon PID returned to that start request.
+All unadopted daemons, servers and GUIs remain external and untouched. After release Pulse returns to
+observer authority and must not stop the released process on quit.
 LM Studio API-token support may accept a token through narrow IPC, but only Electron main may retain
 it, and only as OS-encrypted machine-local storage. The renderer may query configured/unavailable
 status but must never retrieve the token.

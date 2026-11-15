@@ -56,11 +56,27 @@ describe('runtime control-center primary action', () => {
     expect(runtimePrimaryAction(runtime({ state: 'managed-running' }))).toBe('stop');
   });
 
+  it('keeps release separate from Stop for process-owned runtimes', () => {
+    expect(
+      runtimePrimaryAction(
+        runtime({
+          state: 'managed-running',
+          controlAuthority: 'process-owned',
+          manifest: {
+            ...runtime({}).manifest,
+            capabilities: { ...runtime({}).manifest.capabilities, releaseControl: true },
+          },
+        }),
+      ),
+    ).toBe('stop');
+  });
+
   it('prefers non-disruptive release over stopping a managed provider toggle', () => {
     expect(
       runtimePrimaryAction(
         runtime({
           state: 'managed-running',
+          controlAuthority: 'session-managed',
           manifest: {
             ...runtime({}).manifest,
             capabilities: { ...runtime({}).manifest.capabilities, releaseControl: true },

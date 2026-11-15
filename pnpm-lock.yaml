@@ -280,6 +280,8 @@ importers:
         specifier: workspace:*
         version: link:../contracts
 
+  packages/process-control: {}
+
   packages/runtime-llamacpp:
     dependencies:
       '@obpulse/contracts':
@@ -294,6 +296,9 @@ importers:
       '@obpulse/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@obpulse/process-control':
+        specifier: workspace:*
+        version: link:../process-control
 
   packages/runtime-mlxlm:
     dependencies:
@@ -312,6 +317,9 @@ importers:
       '@obpulse/domain':
         specifier: workspace:*
         version: link:../domain
+      '@obpulse/process-control':
+        specifier: workspace:*
+        version: link:../process-control
 
   packages/runtime-openai-compatible:
     dependencies:

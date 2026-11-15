@@ -11,6 +11,7 @@
     "build:main": "vite build --config vite.main.config.ts",
     "build:preload": "vite build --config vite.preload.config.ts",
     "build:renderer": "vite build --config vite.renderer.config.ts",
+    "render:tray-icons": "node scripts/render-tray-icons.mjs",
     "build": "pnpm build:main && pnpm build:preload && pnpm build:renderer",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "package:mac": "pnpm build && electron-builder --mac",

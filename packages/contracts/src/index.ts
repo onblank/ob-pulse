@@ -36,14 +36,15 @@ export interface Capabilities {
   readonly unloadModel: boolean;
   readonly benchmark: boolean;
 }
-export type ServerControlScope = 'none' | 'owned-process-only' | 'provider-server-toggle';
+export type ServerControlScope =
+  'none' | 'owned-process-only' | 'provider-server-toggle' | 'explicit-process-takeover';
 export type RuntimeCredentialMode = 'none' | 'os-protected-write-only';
 export const RUNTIME_ADAPTER_CONTRACT_VERSION = '1.0.0' as const;
 export interface RuntimePermissions {
   readonly networkScope: 'loopback-only';
   readonly serverControl: ServerControlScope;
   readonly credentialMode: RuntimeCredentialMode;
-  readonly externalProcessTermination: false;
+  readonly externalProcessTermination: boolean;
   readonly modelFileDeletion: false;
   readonly inferenceContentAccess: false;
 }
