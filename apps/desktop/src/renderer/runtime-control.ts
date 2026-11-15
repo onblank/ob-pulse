@@ -5,6 +5,8 @@ export type RuntimePrimaryAction = 'start' | 'stop' | 'take-control' | 'release-
 export function runtimePrimaryAction(runtime: RuntimeSnapshot): RuntimePrimaryAction | null {
   if (runtime.error) return null;
   const capabilities = runtime.manifest.capabilities;
+  if (runtime.state === 'stopped' && runtime.controlAuthority === 'process-owned')
+    return capabilities.stopServer ? 'stop' : null;
   if (runtime.state === 'stopped') return capabilities.startServer ? 'start' : null;
   if (runtime.state === 'external-running') return capabilities.takeControl ? 'take-control' : null;
   if (capabilities.releaseControl) return 'release-control';
