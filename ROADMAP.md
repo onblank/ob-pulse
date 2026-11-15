@@ -200,7 +200,10 @@ full manual control-flow journeys remain unverified.
       [implementation PR #87](https://github.com/onblank/ob-pulse/pull/87), [native run #43458682550](https://github.com/onblank/ob-pulse/actions/runs/43458682550).
 - [ ] **6.2 — Signing, identity and supply chain.** Owner approves final mark/trademark; Windows
       signing and macOS Developer ID signing/notarization; release checksums and reproducibility
-      expectations verified. Depends on 6.1. Owner provides credentials/brand approval.
+      expectations verified. Depends on 6.1. Pipeline gates, immutable action pins, deterministic
+      manifest/checksum verification and provenance attestation are implemented. Closure still
+      requires owner-approved final artwork, configured credentials and a successful signed
+      Windows/macOS release build. No release has been published by this iteration.
 - [ ] **6.3 — Public release gate.** Security/privacy review, installation guide, supported
       hardware/runtime matrix, rollback instructions and release CI. Depends on 6.1–6.2. Closure:
       owner approves publication and verified versioned downloads exist.

@@ -11,27 +11,29 @@ on:
         type: string
 
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   release-please:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
       - name: Request organization-owned release token
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3
         with:
           app-id: ${{ vars.ONBLANK_RELEASE_APP_ID }}
           private-key: ${{ secrets.ONBLANK_RELEASE_APP_PRIVATE_KEY }}
       - id: release
         name: Run Release Please
-        uses: googleapis/release-please-action@v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
           token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
@@ -50,17 +52,26 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            command: package:win
+            command: package:release:win
           - os: macos-latest
-            command: package:mac
+            command: package:release:mac
           - os: ubuntu-latest
             command: package:linux
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
-      - uses: actions/setup-node@v4
+      - name: Require an existing version tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$ ]]
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
       - name: Enable pinned pnpm
@@ -79,10 +90,73 @@ jobs:
           actual="$(node -p "require('./package.json').version")"
           expected="${RELEASE_TAG#v}"
           test "$actual" = "$expected" || (echo "Version mismatch $actual != $expected" >&2; exit 1)
+      - name: Verify release identity and signing credentials are configured
+        shell: bash
+        env:
+          BRAND_APPROVED: ${{ vars.OBPULSE_PRODUCT_BRAND_APPROVED }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WIN_CSC_LINK }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          MAC_CERTIFICATE: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ vars.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ vars.APPLE_API_ISSUER }}
+        run: |
+          test "$BRAND_APPROVED" = "true" || { echo "Owner must approve the product mark via OBPULSE_PRODUCT_BRAND_APPROVED=true." >&2; exit 1; }
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            test -n "$WINDOWS_CERTIFICATE" && test -n "$WINDOWS_CERTIFICATE_PASSWORD" || { echo "Windows signing credentials are not configured." >&2; exit 1; }
+          fi
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            test -n "$MAC_CERTIFICATE" && test -n "$MAC_CERTIFICATE_PASSWORD" && test -n "$APPLE_API_KEY" && test -n "$APPLE_API_KEY_ID" && test -n "$APPLE_API_ISSUER" || { echo "macOS Developer ID or notarization credentials are not configured." >&2; exit 1; }
+          fi
+      - name: Prepare Apple notarization key
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ vars.APPLE_API_KEY_ID }}
+        run: |
+          set -euo pipefail
+          key_path="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s' "$APPLE_API_KEY_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          echo "APPLE_API_KEY=$key_path" >> "$GITHUB_ENV"
       - name: Build native installer
+        env:
+          CSC_LINK: ${{ runner.os == 'macOS' && secrets.MAC_CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+          WIN_CSC_LINK: ${{ runner.os == 'Windows' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ runner.os == 'Windows' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY_ID: ${{ runner.os == 'macOS' && vars.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ runner.os == 'macOS' && vars.APPLE_API_ISSUER || '' }}
         run: pnpm ${{ matrix.command }}
+      - name: Verify Windows Authenticode signature
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $packages = Get-ChildItem apps/desktop/release/*.exe
+          if (-not $packages) { throw 'No Windows installer was produced.' }
+          foreach ($package in $packages) {
+            $signature = Get-AuthenticodeSignature $package.FullName
+            if ($signature.Status -ne 'Valid') { throw "Invalid Authenticode signature for $($package.Name): $($signature.Status)" }
+          }
+      - name: Verify macOS signature and notarization
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg=(apps/desktop/release/*.dmg)
+          test -f "${dmg[0]}"
+          mount_point="$(mktemp -d)"
+          hdiutil attach "${dmg[0]}" -mountpoint "$mount_point" -nobrowse -quiet
+          trap 'hdiutil detach "$mount_point" -quiet || true; rmdir "$mount_point"' EXIT
+          app=("$mount_point"/*.app)
+          test -d "${app[0]}"
+          codesign --verify --deep --strict --verbose=2 "${app[0]}"
+          spctl --assess --type execute --verbose=2 "${app[0]}"
+          xcrun stapler validate "${dmg[0]}"
       - name: Upload native build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: native-${{ runner.os }}
           path: |
@@ -99,17 +173,37 @@ jobs:
           ((github.event_name == 'push' && needs.release-please.outputs.release_created == 'true') ||
            (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')) }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
+      - name: Require an existing version tag
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.+][0-9A-Za-z.-]+)?$ ]]
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: artifacts
-      - name: Collect all assets and SHA-256 checksums
+      - name: Collect, manifest and verify all native assets
         shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || needs.release-please.outputs.tag_name }}
         run: |
-          mkdir -p release-assets
-          find artifacts -type f -exec cp {} release-assets/ \;
-          cd release-assets
-          sha256sum * > SHA256SUMS
+          source_commit="$(git rev-parse "$RELEASE_TAG^{commit}")"
+          node scripts/release-assets.mjs collect artifacts release-assets "$RELEASE_TAG" "$source_commit" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          node scripts/release-assets.mjs verify release-assets "$RELEASE_TAG"
+      - name: Attest release assets provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: release-assets/*
       - name: Upload files to existing GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
