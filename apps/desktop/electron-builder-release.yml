@@ -1,0 +1,6 @@
+extends: ./electron-builder.yml
+mac:
+  forceCodeSigning: true
+  notarize: true
+win:
+  forceCodeSigning: true

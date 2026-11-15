@@ -19,7 +19,9 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "package:mac": "pnpm --filter @obpulse/desktop package:mac",
     "package:win": "pnpm --filter @obpulse/desktop package:win",
-    "package:linux": "pnpm --filter @obpulse/desktop package:linux"
+    "package:linux": "pnpm --filter @obpulse/desktop package:linux",
+    "package:release:mac": "pnpm --filter @obpulse/desktop package:release:mac",
+    "package:release:win": "pnpm --filter @obpulse/desktop package:release:win"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
