@@ -22,9 +22,10 @@ const WINDOWS_TREE_SCRIPT = [
   '$current=$all | Where-Object { $_.ProcessId -eq $target } | Select-Object -First 1',
   'if($null -eq $current -or [string]$current.CreationDate.ToUniversalTime().Ticks -ne $env:OBPULSE_CREATED_AT){ throw "Runtime process identity changed" }',
   '$byParent=@{}; foreach($p in $all){ $key=[string]$p.ParentProcessId; if(-not $byParent.ContainsKey($key)){ $byParent[$key]=@() }; $byParent[$key]+=$p }',
-  '$root=$target; $cursor=$all | Where-Object { $_.ProcessId -eq $target } | Select-Object -First 1',
-  'while($null -ne $cursor -and $cursor.ParentProcessId -gt 1){ $parent=$all | Where-Object { $_.ProcessId -eq $cursor.ParentProcessId } | Select-Object -First 1; if($null -eq $parent){ break }; if($parent.ExecutablePath -match $env:OBPULSE_APP_PATTERN){ $root=[int]$parent.ProcessId }; $cursor=$parent }',
-  '$ids=New-Object System.Collections.Generic.List[int]; $queue=New-Object System.Collections.Queue; $queue.Enqueue($root)',
+  '$roots=New-Object System.Collections.Generic.List[int]; $root=$target; $foundAncestor=$false; $cursor=$current',
+  'while($null -ne $cursor -and $cursor.ParentProcessId -gt 1){ $parent=$all | Where-Object { $_.ProcessId -eq $cursor.ParentProcessId } | Select-Object -First 1; if($null -eq $parent){ break }; if($parent.ExecutablePath -match $env:OBPULSE_APP_PATTERN){ $root=[int]$parent.ProcessId; $foundAncestor=$true }; $cursor=$parent }',
+  'if($foundAncestor){ $roots.Add($root) } else { $roots.Add($target); $appRoots=New-Object System.Collections.Generic.List[int]; foreach($candidate in $all){ if($candidate.ExecutablePath -notmatch $env:OBPULSE_APP_PATTERN){ continue }; $ancestor=$candidate; $hasMatchingParent=$false; while($ancestor.ParentProcessId -gt 1){ $parent=$all | Where-Object { $_.ProcessId -eq $ancestor.ParentProcessId } | Select-Object -First 1; if($null -eq $parent){ break }; if($parent.ExecutablePath -match $env:OBPULSE_APP_PATTERN){ $hasMatchingParent=$true; break }; $ancestor=$parent }; if(-not $hasMatchingParent){ $appRoots.Add([int]$candidate.ProcessId) } }; $appRoots=@($appRoots | Select-Object -Unique); if($appRoots.Count -gt 1){ throw "Multiple runtime app instances; refusing ambiguous process takeover" }; if($appRoots.Count -eq 1 -and $appRoots[0] -ne $target){ $roots.Add([int]$appRoots[0]) } }',
+  '$ids=New-Object System.Collections.Generic.List[int]; $queue=New-Object System.Collections.Queue; foreach($root in $roots){ $queue.Enqueue($root) }',
   'while($queue.Count -gt 0){ $id=[int]$queue.Dequeue(); if($ids.Contains($id)){ continue }; $ids.Add($id); foreach($child in $byParent[[string]$id]){ $queue.Enqueue([int]$child.ProcessId) } }',
   'foreach($id in $ids){ Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }',
 ].join(';');
@@ -166,7 +167,7 @@ export class NodeProcessControl implements ProcessControlPort {
     const target = entries.find((entry) => entry.pid === identity.pid);
     if (!target || target.createdAt !== identity.createdAt)
       throw new Error('Runtime process identity changed; Pulse stopped no process');
-    let rootPid = identity.pid;
+    let rootPid: number | null = null;
     let parent = entries.find((entry) => entry.pid === identity.pid)?.parent;
     while (parent && parent !== 1) {
       const candidate = entries.find((entry) => entry.pid === parent);
@@ -174,19 +175,40 @@ export class NodeProcessControl implements ProcessControlPort {
       if (appPattern.test(candidate.command)) rootPid = candidate.pid;
       parent = candidate.parent;
     }
-    const tree = new Set([rootPid]);
-    let changed = true;
-    while (changed) {
-      changed = false;
+    const rootPids = new Set([rootPid ?? identity.pid]);
+    if (rootPid === null) {
+      const matchingRoots = entries.filter((entry) => {
+        if (!appPattern.test(entry.command)) return false;
+        let ancestor = entry.parent;
+        while (ancestor && ancestor !== 1) {
+          const parentEntry = entries.find((candidate) => candidate.pid === ancestor);
+          if (!parentEntry) break;
+          if (appPattern.test(parentEntry.command)) return false;
+          ancestor = parentEntry.parent;
+        }
+        return true;
+      });
+      if (matchingRoots.length > 1)
+        throw new Error('Multiple runtime app instances; refusing ambiguous process takeover');
+      if (matchingRoots[0] && matchingRoots[0].pid !== identity.pid)
+        rootPids.add(matchingRoots[0].pid);
+    }
+    const depths = new Map<number, number>();
+    const queue = [...rootPids];
+    for (const pid of rootPids) depths.set(pid, 0);
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const parentPid = queue[cursor]!;
+      const childDepth = depths.get(parentPid)! + 1;
       for (const entry of entries) {
-        if (tree.has(entry.parent) && !tree.has(entry.pid)) {
-          tree.add(entry.pid);
-          changed = true;
+        if (entry.parent === parentPid && !depths.has(entry.pid)) {
+          depths.set(entry.pid, childDepth);
+          queue.push(entry.pid);
         }
       }
     }
-    const descendants = [...tree].filter((pid) => pid !== rootPid).reverse();
-    const toTerminate = [...descendants, rootPid];
+    const toTerminate = [...depths.keys()].sort(
+      (left, right) => depths.get(right)! - depths.get(left)!,
+    );
     for (const pid of toTerminate) {
       const entry = entries.find((candidate) => candidate.pid === pid);
       if (!entry) continue;
