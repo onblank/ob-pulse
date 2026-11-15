@@ -18,11 +18,12 @@ No process manager or launch-daemon/service setting is changed.
 `ollama serve` binary must be installed/available; inability to spawn is presented as an error.
 LM Studio server start uses the resolved machine-local `lms` executable with fixed loopback
 arguments and no shell. Pulse may stop a server it enabled or a reachable server whose control the
-user explicitly delegates for the current Pulse session. Delegation is released without stopping
-that server on app exit. Pulse can also explicitly release session-owned or delegated server
-control without invoking the lifecycle CLI, leaving the server running in observation-only mode.
-The CLI may wake the LM Studio app, but Pulse neither closes that app nor invokes `daemon down`; no
-LM Studio process PID is attributed to Pulse. `lms` installation and removal remain external.
+user explicitly delegates for the current Pulse session. This stops the server toggle only; the
+LM Studio desktop app can remain open. Delegation is released without stopping that server on app
+exit. Pulse can also explicitly release session-owned or delegated server control without invoking
+the lifecycle CLI, leaving the server running in observation-only mode. The CLI may wake the LM
+Studio app, but Pulse neither closes that app nor invokes `daemon down`; no LM Studio process PID is
+attributed to Pulse. `lms` installation and removal remain external.
 LM Studio model load/unload uses only its native v1 loopback API. An unload is refused when a model
 has multiple loaded instances because the current UI selects the model key, not a specific instance.
 LM Studio bearer tokens can be configured through write-only IPC and are attached to every native

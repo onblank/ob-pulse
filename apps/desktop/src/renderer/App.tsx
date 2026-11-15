@@ -286,7 +286,11 @@ function PowerControl({
             ? canTakeControl
               ? 'Take explicit control before stopping this external server'
               : 'This runtime server was started outside OB-Pulse and cannot be stopped here'
-            : ''
+            : canStop && runtime?.id === 'lmstudio'
+              ? 'Stops the LM Studio server. The LM Studio app stays open.'
+              : canStop && runtime?.id === 'ollama'
+                ? 'Stops only the Ollama server process started by OB-Pulse; any Ollama app stays open.'
+                : ''
         }
       >
         <span className="power-symbol">⏻</span>
