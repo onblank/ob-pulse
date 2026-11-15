@@ -7,7 +7,7 @@ No clarification blocked this scaffold. Decisions recorded for owner approval be
 | D-001 | Provisional name **OB-Pulse**, repo `onblank/ob-pulse`                             | suggested, owner to confirm                            |
 | D-002 | Independent pnpm/Turbo + Electron 44 + React + TS                                  | scaffolded                                             |
 | D-003 | Local loopback only; no cloud dependency, auth or app telemetry                    | enforced in scaffold architecture                      |
-| D-004 | Own only spawned processes; allow explicit provider-native server handover         | Ollama ownership + LM Studio delegation implemented    |
+| D-004 | Own spawned processes or explicitly adopt a verified loopback runtime process      | Takeover implemented; cross-platform validation open   |
 | D-005 | Context usage/speed from client integrations or explicit benchmark, never invented | documented + benchmark implemented                     |
 | D-006 | Default compact widget + tray, always-on-top opt-in                                | scaffolded                                             |
 | D-007 | Code Apache-2.0, protected trademarks, local bundled art                           | corporate mark supplied; product art still provisional |

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { ProcessControlPort } from '@obpulse/process-control';
 import {
   LmsCliLifecycle,
   LMStudioRuntime,
@@ -59,6 +60,20 @@ function lifecycleHarness(
     }),
   };
   return { fetcher, lifecycle };
+}
+
+function processControlHarness() {
+  const identity = {
+    pid: 456,
+    createdAt: 'now',
+    executable: '/Applications/LM Studio.app/llmster',
+  };
+  const processControl: ProcessControlPort = {
+    findListeningProcess: vi.fn(async () => identity),
+    inspect: vi.fn(async () => identity),
+    terminateTree: vi.fn(async () => undefined),
+  };
+  return { identity, processControl };
 }
 
 describe('LM Studio v1 runtime', () => {
@@ -135,9 +150,9 @@ describe('LM Studio v1 runtime', () => {
       contractVersion: '1.0.0',
       permissions: {
         networkScope: 'loopback-only',
-        serverControl: 'provider-server-toggle',
+        serverControl: 'explicit-process-takeover',
         credentialMode: 'os-protected-write-only',
-        externalProcessTermination: false,
+        externalProcessTermination: true,
         modelFileDeletion: false,
         inferenceContentAccess: false,
       },
@@ -220,51 +235,59 @@ describe('LM Studio v1 runtime', () => {
 
   it('starts and stops only the loopback server it enabled', async () => {
     const harness = lifecycleHarness();
-    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+    const control = processControlHarness();
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle, control.processControl);
 
     await expect(runtime.state()).resolves.toBe('stopped');
     await runtime.startServer();
 
     expect(harness.lifecycle.startServer).toHaveBeenCalledOnce();
     await expect(runtime.state()).resolves.toBe('managed-running');
-    expect(runtime.controlAuthority()).toBe('session-managed');
-    expect(runtime.ownedProcessId()).toBeNull();
+    expect(runtime.controlAuthority()).toBe('process-owned');
+    expect(runtime.ownedProcessId()).toBe(control.identity.pid);
     expect(runtime.manifest.capabilities).toMatchObject({ startServer: true, stopServer: true });
 
     await runtime.stopServer();
 
-    expect(harness.lifecycle.stopServer).toHaveBeenCalledOnce();
+    expect(control.processControl.terminateTree).toHaveBeenCalledOnce();
+    expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
     expect(runtime.ownedProcessId()).toBeNull();
-    await expect(runtime.state()).resolves.toBe('stopped');
   });
 
   it('takes explicit session control of an existing server before stopping it', async () => {
     const harness = lifecycleHarness({ serverRunning: true });
-    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+    const control = processControlHarness();
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle, control.processControl);
 
     await runtime.startServer();
 
     await expect(runtime.state()).resolves.toBe('external-running');
     expect(runtime.controlAuthority()).toBe('observer');
     expect(harness.lifecycle.startServer).not.toHaveBeenCalled();
-    await expect(runtime.stopServer()).rejects.toThrow('has not been delegated');
+    await expect(runtime.stopServer()).rejects.toThrow('does not own or adopt');
 
     await runtime.takeControl();
 
-    expect(runtime.controlAuthority()).toBe('delegated');
+    expect(runtime.controlAuthority()).toBe('process-owned');
     await expect(runtime.state()).resolves.toBe('managed-running');
     await runtime.stopServer();
-    expect(harness.lifecycle.stopServer).toHaveBeenCalledOnce();
+    expect(control.processControl.terminateTree).toHaveBeenCalledWith(
+      control.identity,
+      /lm studio\.app|(?:^|[\\/])lm studio(?:\.exe)?$|^lm studio(?:\.exe)?$|(?:^|[\\/])llmster(?:\s|$)/i,
+    );
+    expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
     expect(runtime.controlAuthority()).toBe('observer');
   });
 
-  it('releases delegated control on quit without stopping an external server', async () => {
+  it('closes an adopted process tree on quit when control was not released', async () => {
     const harness = lifecycleHarness({ serverRunning: true });
-    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+    const control = processControlHarness();
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle, control.processControl);
 
     await runtime.takeControl();
     await runtime.shutdownOwned();
 
+    expect(control.processControl.terminateTree).toHaveBeenCalledOnce();
     expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
     expect(runtime.controlAuthority()).toBe('observer');
     await expect(runtime.state()).resolves.toBe('external-running');
@@ -272,7 +295,8 @@ describe('LM Studio v1 runtime', () => {
 
   it('releases session control without stopping the LM Studio server', async () => {
     const harness = lifecycleHarness();
-    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle);
+    const control = processControlHarness();
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle, control.processControl);
 
     await runtime.startServer();
     await runtime.releaseControl();
@@ -280,7 +304,7 @@ describe('LM Studio v1 runtime', () => {
     expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
     expect(runtime.controlAuthority()).toBe('observer');
     await expect(runtime.state()).resolves.toBe('external-running');
-    await expect(runtime.stopServer()).rejects.toThrow('has not been delegated');
+    await expect(runtime.stopServer()).rejects.toThrow('does not own or adopt');
     await runtime.shutdownOwned();
     expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
   });

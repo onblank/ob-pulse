@@ -175,11 +175,8 @@ function applyWidgetPreferences(): void {
 }
 async function createTrayIcon() {
   const isMacOS = process.platform === 'darwin';
-  const assetName = isMacOS ? 'tray-template.svg' : 'tray-color.svg';
-  const svg = await readFile(path.resolve(here, `../../assets/${assetName}`), 'utf8');
-  const image = nativeImage.createFromDataURL(
-    `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`,
-  );
+  const assetName = isMacOS ? 'tray-template.png' : 'tray-color.png';
+  const image = nativeImage.createFromPath(path.resolve(here, `../../assets/${assetName}`));
   if (image.isEmpty()) throw new Error(`Could not load the ${process.platform} tray icon`);
   if (isMacOS) image.setTemplateImage(true);
   return isMacOS ? image : image.resize({ width: 32, height: 32, quality: 'best' });

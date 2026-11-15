@@ -4,11 +4,11 @@
 > `docs/PRODUCT_SPEC.md` defines product behavior; `docs/ARCHITECTURE.md` and `docs/METRICS.md`
 > define technical boundaries. Checkboxes describe validated state, not merely code that exists.
 
-**Roadmap version:** 2026-11-13
+**Roadmap version:** 2026-11-15
 
 **Last completed iteration:** 6.1 — Native packaging matrix
 
-**Next planned iteration:** 6.2 — Signing, identity and supply chain
+**Next planned iteration:** 2.5 — Owned runtime shutdown and native tray assets
 
 ## Objective
 
@@ -21,11 +21,13 @@ history. Settings holds configuration, permissions, credentials and instrumentat
 The v1 target works without an account, cloud service or database. It distinguishes observed from
 managed runtimes, loaded from available models, device metrics from model metrics, and explicit
 benchmark/client measurements from unknown traffic. Missing values remain unavailable. Pulse does
-not capture inference content or stop external processes by PID, name or port.
+not capture inference content or stop an external process without explicit takeover, unique listener
+resolution and process identity validation.
 
 The plan prioritizes a reliable daily experience for Ollama and LM Studio, truthful observation
-for other supported runtimes, bounded one-hour history and installable desktop builds. Additional
-management requires a proven provider control plane. Persistent history, remote monitoring,
+for other supported runtimes, bounded one-hour history and installable desktop builds. External
+process control requires explicit takeover, unique loopback listener discovery and process identity
+revalidation. Persistent history, remote monitoring,
 automatic inference interception and product/Gateway integration are outside v1.
 
 ## How agents use this roadmap
@@ -60,11 +62,11 @@ approval and public release.
 | Phase | Outcome                                      | Status                                                                                                                 |
 | ----- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | 1     | Local-first foundation and desktop shell     | Complete                                                                                                               |
-| 2     | Safe runtime and model control               | Complete for v1 scope                                                                                                  |
+| 2     | Safe runtime and model control               | Complete for v1 scope; explicit process takeover validation remains open (2.5)                                         |
 | 3     | Truthful telemetry and one-hour history      | Complete for implemented sources                                                                                       |
 | 4     | Compact, expanded and settings surfaces      | Complete in code                                                                                                       |
 | 5     | End-to-end validation and platform decisions | Complete; packaged startup and tray smoke validated in 6.1; full Windows/Linux control-flow journeys remain unverified |
-| 6     | Native distribution and public v1            | Planned                                                                                                                |
+| 6     | Native distribution and public v1            | Planned; resume with 6.2 after the owner-requested 2.5 correction                                                      |
 
 ## [x] Phase 1 — Foundation and desktop shell
 
@@ -86,23 +88,25 @@ on quit. Native packaged-app smoke remains in phase 5.
 **Goal:** observe enabled runtimes together and offer only authorized actions.
 
 - [x] **2.1 — Ollama managed lifecycle and models.** Detect/list, start/stop only the Pulse-owned
-      child, explicit load/unload and benchmark. External Ollama remains observation-only.
-- [x] **2.2 — LM Studio server and models.** Session-owned server toggle, explicit delegated
-      handover/release, native load/unload and benchmark, OS-protected local API token. GUI/daemon
-      ownership remains external. Evidence: adapter implementation and `docs/ARCHITECTURE.md`.
+      child, explicit load/unload and benchmark. External Ollama was observation-only at closure.
+- [x] **2.2 — LM Studio server and models.** Session-owned server toggle, delegated server
+      handover/release, native load/unload and benchmark, OS-protected local API token. External
+      GUI/daemon ownership remained outside that iteration. Evidence: adapter implementation and
+      `docs/ARCHITECTURE.md`.
 - [x] **2.3 — Read-only additional runtimes.** llama.cpp observer and opt-in MLX-LM catalog
       observer, without implied authority. Evidence: [PR #49](https://github.com/onblank/ob-pulse/pull/49),
       [PR #52](https://github.com/onblank/ob-pulse/pull/52).
 - [x] **2.4 — Capability and control center.** Versioned manifests, enabled-runtime settings,
       concurrent bounded failure-isolated polling, runtime-scoped actions and history. Evidence:
       [PR #43](https://github.com/onblank/ob-pulse/pull/43), [PR #61](https://github.com/onblank/ob-pulse/pull/61).
-- [ ] **2.5 — LM Studio owned headless lifecycle and tray polish.** Start `llmster` only when no
-      daemon exists, retain its provider-reported PID, stop only the same process, and leave
-      pre-existing daemon/GUI instances external. Use a monochrome macOS template tray mark and
-      compact branded color marks on Windows/Linux. Closure: checks pass and the maintainer confirms
-      stop leaves no Pulse-started LM Studio daemon or unexpected GUI window.
+- [ ] **2.5 — Owned runtime shutdown and native tray assets.** Start `llmster` only when no daemon
+      exists; explicitly adopt only a uniquely identified LM Studio/Ollama listener; close the
+      adopted application process tree on Stop/quit and leave it alive on Release. Bundle valid PNG
+      tray assets: monochrome template on macOS and compact brand color on Windows/Linux. Closure:
+      CI process-control smoke passes on all OSes and the maintainer confirms Start/Take control,
+      Stop, Release and quit behavior against real LM Studio and Ollama instances.
 
-**Exit:** external servers cannot be generically killed; unsupported actions stay disabled; one
+**Exit:** unadopted external servers cannot be stopped; unsupported actions stay disabled; one
 adapter failure does not erase healthy cards. Current adapters and CI meet this v1 scope.
 
 ## [x] Phase 3 — Truthful telemetry and one-hour history

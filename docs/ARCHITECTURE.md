@@ -36,35 +36,39 @@ and returns both the selected detail and the complete runtime list. Each observa
 application-layer bound and its own error state; model or provider failure does not discard healthy
 cards. Concurrent UI/sampler consumers share the same in-flight poll. Commands carry a validated
 runtime ID, remain blocked for disabled adapters and still delegate lifecycle authority to the
-adapter. The renderer never controls by discovered PID, name or port.
+adapter. The renderer never discovers or terminates processes; explicit takeover and PID identity
+checks stay in the adapter/process-control boundary.
 
 **Lifecycle**: `disconnected`, `external-running`, `managed-running`. `startServer()` spawns `ollama serve`
-only when API isn't already responding; `stopServer()` only kills the process created by this app.
-When Ollama was started by LaunchAgent/Brew/another app, the button must not terminate it.
+only when API isn't already responding. External Ollama remains observer-only until Take control
+resolves the fixed loopback port to exactly one PID and captures its process identity. Stop and app
+quit may terminate that process tree only while the identity still matches; Release returns it to
+external observation without stopping it.
 For LM Studio, an explicit start checks `lms daemon status --json` and starts headless `llmster` with
 `lms daemon up --json` only when no daemon is already running. It records the returned PID and starts
 the local server on `127.0.0.1:1234`. Stop and app quit call `lms daemon down` only after a fresh
-status confirms that same PID. A pre-existing daemon remains external; Pulse may start/stop only a
-server toggle it enabled. A reachable external server still requires a user-confirmed,
-session-scoped `takeControl()` handover, which authorizes only `lms server stop` and is released
-without stopping the server when Pulse quits. An explicit `releaseControl()` leaves any server or
-daemon running. Pulse does not close a pre-existing LM Studio GUI or daemon. A multi-instance model
+status confirms that same PID. A pre-existing daemon remains external until user-confirmed
+`takeControl()` resolves the loopback listener to one PID and captures its identity. Stop or app quit
+terminates the adopted process tree after revalidation. `releaseControl()` leaves any adopted
+process running. A multi-instance model
 is not unloaded until the UI can identify the intended runtime instance explicitly.
 
 **Control authority** is explicit and typed: `observer`, `session-managed`, `delegated`,
-`service-managed` or `process-owned`. Current Ollama uses `observer`/`process-owned`; current LM
-Studio uses `observer`/`session-managed`/`delegated`. Capability metadata hides handover where the
-adapter cannot prove a safe provider control plane.
+`service-managed` or `process-owned`. Current Ollama and LM Studio use `observer`/`process-owned`
+for spawned or explicitly adopted processes; LM Studio also uses `session-managed` for a server
+toggle on an already-running daemon. Capability metadata hides handover where process identity
+cannot be proven.
 
 **Metric boundaries**:
 
 - Host total CPU / host RAM are not the selected model CPU / RAM.
-- Process CPU/RAM is sampled only from the direct child PID retained by an adapter for a service
-  that OB-Pulse started. It excludes descendants and is not model-specific. CPU is core-equivalent
+- Process CPU/RAM is sampled only from the listener/child PID retained by an adapter for a service
+  that OB-Pulse started or the user explicitly adopted. It excludes descendants and is not model-specific. CPU is core-equivalent
   and may exceed 100% for multithreaded work; RAM is resident bytes. This can undercount runtimes
   that delegate model work to helper processes.
-- External Ollama, LM Studio, llama.cpp and a failed/unsupported process probe report process metrics as
-  unavailable. OB-Pulse never discovers a process by name, port or service.
+- Unadopted external Ollama/LM Studio, llama.cpp and a failed/unsupported process probe report
+  process metrics as unavailable. Lifecycle takeover resolves a listener by fixed port only after
+  explicit user confirmation; metrics sampling itself never discovers processes.
 - Ollama `/api/ps` reports loaded models, `size`, `size_vram`, `context_length`; it does not report live requests/sessions.
 - A per-request final response reports prompt/response token counts and evaluation durations; these may calculate tps **only for that request**.
 - LM Studio's native v1 benchmark reports decode tokens/sec and first-token latency directly. Its

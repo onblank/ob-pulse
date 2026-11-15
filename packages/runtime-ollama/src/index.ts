@@ -12,6 +12,11 @@ import type {
 } from '@obpulse/contracts';
 import { RUNTIME_ADAPTER_CONTRACT_VERSION } from '@obpulse/contracts';
 import { tokensPerSecond } from '@obpulse/domain';
+import {
+  NodeProcessControl,
+  type ProcessControlPort,
+  type ProcessIdentity,
+} from '@obpulse/process-control';
 const BASE = 'http://127.0.0.1:11434';
 type Dict = Record<string, unknown>;
 function isObject(v: unknown): v is Dict {
@@ -74,8 +79,8 @@ const CAPABILITIES: Capabilities = {
   listLoaded: true,
   startServer: true,
   stopServer: true,
-  takeControl: false,
-  releaseControl: false,
+  takeControl: true,
+  releaseControl: true,
   loadModel: true,
   unloadModel: true,
   benchmark: true,
@@ -86,9 +91,9 @@ const MANIFEST: RuntimeAdapterManifest = {
   capabilities: CAPABILITIES,
   permissions: {
     networkScope: 'loopback-only',
-    serverControl: 'owned-process-only',
+    serverControl: 'explicit-process-takeover',
     credentialMode: 'none',
-    externalProcessTermination: false,
+    externalProcessTermination: true,
     modelFileDeletion: false,
     inferenceContentAccess: false,
   },
@@ -98,11 +103,13 @@ export class OllamaRuntime implements RuntimePort {
   readonly displayName = 'Ollama';
   readonly manifest = MANIFEST;
   private child: ChildProcess | null = null;
+  private childIdentity: ProcessIdentity | null = null;
+  private adoptedProcess: ProcessIdentity | null = null;
+  constructor(private readonly processControl: ProcessControlPort = new NodeProcessControl()) {}
   ownedProcessId(): number | null {
     const child = this.child;
-    return child && child.exitCode === null && !child.killed && child.pid != null
-      ? child.pid
-      : null;
+    if (child && child.exitCode === null && !child.killed && child.pid != null) return child.pid;
+    return this.adoptedProcess?.pid ?? null;
   }
   controlAuthority(): ControlAuthority {
     return this.ownedProcessId() == null ? 'observer' : 'process-owned';
@@ -117,12 +124,21 @@ export class OllamaRuntime implements RuntimePort {
   }
   async state(): Promise<ServerState> {
     if (!(await this.probe())) {
-      this.child = null;
+      if (this.child?.exitCode !== null || this.child?.killed) {
+        this.child = null;
+        this.childIdentity = null;
+      }
+      if (this.adoptedProcess) {
+        const current = await this.processControl
+          .inspect(this.adoptedProcess.pid)
+          .catch(() => null);
+        if (!current || current.createdAt !== this.adoptedProcess.createdAt)
+          this.adoptedProcess = null;
+      }
+      if (this.ownedProcessId() !== null) return 'stopped';
       return 'stopped';
     }
-    return this.child && this.child.exitCode === null && !this.child.killed
-      ? 'managed-running'
-      : 'external-running';
+    return this.ownedProcessId() !== null ? 'managed-running' : 'external-running';
   }
   async listInstalled(): Promise<ModelRecord[]> {
     return parseList(await request('/api/tags'), false);
@@ -142,6 +158,13 @@ export class OllamaRuntime implements RuntimePort {
       child.once('error', reject);
     });
     this.child = child;
+    try {
+      this.childIdentity = await this.processControl.inspect(child.pid!);
+    } catch (error) {
+      child.kill();
+      this.child = null;
+      throw error;
+    }
     // Consume pipes to avoid child blocking due to full output buffers, without storing prompts/logs.
     child.stdout?.resume();
     child.stderr?.resume();
@@ -152,28 +175,70 @@ export class OllamaRuntime implements RuntimePort {
     }
     child.kill();
     this.child = null;
+    this.childIdentity = null;
     throw new Error('Ollama did not become reachable on 127.0.0.1:11434');
   }
   stopManagedImmediately(): void {
     if (this.child && this.child.exitCode === null && !this.child.killed) this.child.kill();
     this.child = null;
+    this.childIdentity = null;
   }
   async stopServer(): Promise<void> {
+    if (this.adoptedProcess) {
+      const identity = this.adoptedProcess;
+      await this.processControl.terminateTree(
+        identity,
+        /ollama\.app|(?:^|[\\/])ollama(?:\.exe)?(?:\s|$)|^ollama(?:\.exe)?$/i,
+      );
+      this.adoptedProcess = null;
+      return;
+    }
     const child = this.child;
     if (!child || child.exitCode !== null || child.killed)
       throw new Error('Cannot stop Ollama: OB-Pulse does not own this server');
-    const killed = child.kill();
-    if (!killed) throw new Error('Could not signal owned Ollama process');
+    if (this.childIdentity)
+      await this.processControl.terminateTree(
+        this.childIdentity,
+        /ollama\.app|(?:^|[\\/])ollama(?:\.exe)?(?:\s|$)|^ollama(?:\.exe)?$/i,
+      );
+    else if (!child.kill()) throw new Error('Could not signal owned Ollama process');
     this.child = null;
+    this.childIdentity = null;
   }
   async takeControl(): Promise<void> {
-    throw new Error('Cannot take control of an external Ollama server safely');
+    if (this.ownedProcessId() !== null) return;
+    const identity = await this.processControl.findListeningProcess(11434);
+    if (!/ollama/i.test(identity.executable))
+      throw new Error('The loopback server process is not identifiable as Ollama');
+    this.adoptedProcess = identity;
   }
   async releaseControl(): Promise<void> {
-    throw new Error('Cannot release control of an OB-Pulse-owned Ollama process safely');
+    if (this.adoptedProcess) {
+      this.adoptedProcess = null;
+      return;
+    }
+    if (this.child && this.child.exitCode === null && !this.child.killed) {
+      this.child = null;
+      this.childIdentity = null;
+      return;
+    }
+    throw new Error('Cannot release control: Pulse does not own an Ollama process');
   }
   async shutdownOwned(): Promise<void> {
-    this.stopManagedImmediately();
+    if (this.adoptedProcess) {
+      await this.processControl.terminateTree(
+        this.adoptedProcess,
+        /ollama\.app|(?:^|[\\/])ollama(?:\.exe)?(?:\s|$)|^ollama(?:\.exe)?$/i,
+      );
+      this.adoptedProcess = null;
+    } else if (this.childIdentity) {
+      await this.processControl.terminateTree(
+        this.childIdentity,
+        /ollama\.app|(?:^|[\\/])ollama(?:\.exe)?(?:\s|$)/i,
+      );
+      this.child = null;
+      this.childIdentity = null;
+    } else this.stopManagedImmediately();
   }
   private async modelCommand(modelId: string, keepAlive: string | number): Promise<void> {
     if (!modelId || modelId.length > 240 || containsControlCharacter(modelId))
