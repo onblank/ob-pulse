@@ -2,13 +2,20 @@
 
 Current local verification as of 2026-11-15:
 
+- Iteration 2.5 ownership follow-up: full `vitest run` passes 94 tests locally. The new process-control
+  probe terminates an adopted child process while preserving a parallel process with the same
+  marker. CI now runs that probe on macOS, Linux and Windows; native package/install/tray smoke also
+  passes on all three. Real macOS LM Studio passed Start→Take control→Release→Take control→Stop
+  and Start→shutdownOwned. Real Ollama passed Start→Release→Take control→Stop and
+  Start→shutdownOwned. Both servers were unreachable after Stop/quit cleanup and process checks
+  found no residual owned engine processes. Real GUI journeys on Windows/Linux remain open in 5.7.
+
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
 - Previous full-suite baseline: formatting, ESLint, TypeScript checks for all packages, 78 tests and
   Electron main/preload/renderer production builds passed before the runtime takeover change.
-- This change: macOS `pnpm dev` startup completed without the tray icon initialization error;
-  TypeScript checks for process-control, Ollama, LM Studio and desktop, ESLint for changed code,
-  formatting and the three Electron production bundles passed. Cross-platform process-tree control
-  still requires the pending native CI/manual validation in roadmap item 2.5.
+- Tray and ownership changes: macOS `pnpm dev` startup completed without the tray icon initialization
+  error. TypeScript, ESLint and formatting checks passed; the Electron production bundles passed in
+  CI. Iteration 2.5 process-tree and real-engine validation is recorded above.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
   throughput calculations and warning/overflow state.
