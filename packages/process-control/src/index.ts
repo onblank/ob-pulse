@@ -22,9 +22,8 @@ const WINDOWS_TREE_SCRIPT = [
   '$p.Refresh()',
   'if([string]$p.StartTime.ToUniversalTime().Ticks -ne $env:OBPULSE_CREATED_AT -or $p.MainModule.FileName -ne $env:OBPULSE_EXECUTABLE){ throw "Runtime process identity changed" }',
   '$taskkill=Join-Path $env:SystemRoot "System32\\taskkill.exe"',
-  '$taskkillOutput = & $taskkill /PID $targetPid /T /F 2>&1 | Out-String',
-  '$taskkillExitCode = $LASTEXITCODE',
-  'if($taskkillExitCode -ne 0){ throw "taskkill failed ($taskkillExitCode): $taskkillOutput" }',
+  '$kill = Start-Process -FilePath $taskkill -ArgumentList @("/PID", [string]$targetPid, "/T", "/F") -NoNewWindow -Wait -PassThru',
+  'if($kill.ExitCode -ne 0){ throw "taskkill failed ($($kill.ExitCode)) for verified process tree" }',
 ].join(';');
 
 function powershell(): string {
