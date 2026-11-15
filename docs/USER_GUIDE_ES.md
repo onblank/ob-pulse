@@ -46,8 +46,11 @@ LM Studio en `127.0.0.1:1234`.
   ver su detalle; los errores, modelos y acciones pertenecen únicamente a ese proveedor.
 - Cada tarjeta ofrece solo una acción permitida y segura: iniciar, detener un proceso propio, tomar
   control explícito o liberarlo. Los runtimes de solo observación no muestran controles falsos.
-- Detener LM Studio apaga su servidor local, pero deja abierta su aplicación gráfica. En Ollama,
-  Pulse detiene únicamente el proceso de servidor que inició; no cierra una app iniciada por fuera.
+- Al iniciar LM Studio desde Pulse se usa `llmster` sin abrir la interfaz gráfica; Stop cierra ese
+  daemon solo si Pulse lo inició en esta sesión. Si ya había un daemon o servidor activo, Pulse no
+  lo cierra salvo que concedas control explícito del toggle del servidor, que tampoco cierra la GUI.
+- En Ollama, Pulse detiene únicamente el proceso de servidor que inició; no cierra una app iniciada
+  por fuera.
 - El engranaje abre configuración. Si estás en el gadget compacto, OB-Pulse amplía primero la
   ventana. Apariencia, runtimes visibles, credenciales, instrumentación y permisos viven allí.
 - Al salir de configuración vuelves al monitor ampliado; al contraer vuelves siempre al gadget.

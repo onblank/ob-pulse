@@ -58,6 +58,14 @@ export interface LMStudioLifecycle {
   serverRunning(): Promise<boolean>;
   startServer(): Promise<void>;
   stopServer(): Promise<void>;
+  daemonStatus?(): Promise<LMStudioDaemonStatus>;
+  startDaemon?(): Promise<LMStudioDaemonStatus>;
+  stopDaemon?(): Promise<void>;
+}
+
+export interface LMStudioDaemonStatus {
+  running: boolean;
+  pid: number | null;
 }
 
 class LMStudioHttpError extends Error {
@@ -133,6 +141,31 @@ export function parseServerStatus(stdout: string): boolean {
   throw new Error('Malformed LM Studio server status');
 }
 
+export function parseDaemonStatus(stdout: string): LMStudioDaemonStatus {
+  const lines = stdout
+    .replace(/^\uFEFF/, '')
+    .trim()
+    .split(/\r?\n/)
+    .reverse();
+  for (const line of lines) {
+    try {
+      const parsed: unknown = JSON.parse(line);
+      if (!obj(parsed)) continue;
+      if (parsed.status === 'not-running') return { running: false, pid: null };
+      if (parsed.status === 'running' && parsed.isDaemon === true) {
+        const pid = parsed.pid;
+        return {
+          running: true,
+          pid: typeof pid === 'number' && Number.isSafeInteger(pid) && pid > 0 ? pid : null,
+        };
+      }
+    } catch {
+      // Continue to a possible final JSON line after trusted CLI progress output.
+    }
+  }
+  throw new Error('Malformed LM Studio daemon status');
+}
+
 const executeCommand: CommandExecutor = async (executable, args, timeoutMs) => {
   const { stdout } = await execFileAsync(executable, [...args], {
     encoding: 'utf8',
@@ -164,6 +197,21 @@ export class LmsCliLifecycle implements LMStudioLifecycle {
   async stopServer(): Promise<void> {
     await this.run(['server', 'stop']);
   }
+
+  async daemonStatus(): Promise<LMStudioDaemonStatus> {
+    return parseDaemonStatus((await this.run(['daemon', 'status', '--json'])).stdout);
+  }
+
+  async startDaemon(): Promise<LMStudioDaemonStatus> {
+    const status = parseDaemonStatus((await this.run(['daemon', 'up', '--json'])).stdout);
+    if (!status.running || status.pid === null)
+      throw new Error('LM Studio did not report an owned llmster process');
+    return status;
+  }
+
+  async stopDaemon(): Promise<void> {
+    await this.run(['daemon', 'down']);
+  }
 }
 
 export class LMStudioRuntime implements RuntimePort {
@@ -172,6 +220,8 @@ export class LMStudioRuntime implements RuntimePort {
   readonly manifest = MANIFEST;
 
   private ownsServer = false;
+  private ownsDaemon = false;
+  private ownedDaemonPid: number | null = null;
   private delegatedControl = false;
   private apiToken: string | null = null;
 
@@ -181,10 +231,11 @@ export class LMStudioRuntime implements RuntimePort {
   ) {}
 
   ownedProcessId(): number | null {
-    return null;
+    return this.ownsDaemon ? this.ownedDaemonPid : null;
   }
 
   controlAuthority(): ControlAuthority {
+    if (this.ownsDaemon) return 'process-owned';
     if (this.ownsServer) return 'session-managed';
     if (this.delegatedControl) return 'delegated';
     return 'observer';
@@ -236,9 +287,36 @@ export class LMStudioRuntime implements RuntimePort {
     }
   }
 
+  private async stopOwnedDaemon(): Promise<void> {
+    if (!this.ownsDaemon || this.ownedDaemonPid === null) return;
+    if (!this.lifecycle.daemonStatus || !this.lifecycle.stopDaemon)
+      throw new Error('Cannot verify ownership of the LM Studio daemon');
+    const daemon = await this.lifecycle.daemonStatus();
+    if (!daemon.running || daemon.pid !== this.ownedDaemonPid) {
+      this.ownsDaemon = false;
+      this.ownedDaemonPid = null;
+      this.ownsServer = false;
+      throw new Error('LM Studio daemon ownership changed; Pulse stopped no process');
+    }
+    await this.lifecycle.stopDaemon();
+    this.ownsDaemon = false;
+    this.ownedDaemonPid = null;
+    this.ownsServer = false;
+  }
+
   async state(): Promise<ServerState> {
+    if (this.ownsDaemon && this.lifecycle.daemonStatus) {
+      const daemon = await this.lifecycle.daemonStatus();
+      if (!daemon.running || daemon.pid !== this.ownedDaemonPid) {
+        this.ownsDaemon = false;
+        this.ownedDaemonPid = null;
+        this.ownsServer = false;
+      }
+    }
     if (await this.probe())
-      return this.ownsServer || this.delegatedControl ? 'managed-running' : 'external-running';
+      return this.ownsDaemon || this.ownsServer || this.delegatedControl
+        ? 'managed-running'
+        : 'external-running';
     if (!this.ownsServer && !this.delegatedControl) return 'stopped';
     if (await this.lifecycle.serverRunning()) return 'managed-running';
     this.ownsServer = false;
@@ -272,7 +350,30 @@ export class LMStudioRuntime implements RuntimePort {
 
   async startServer(): Promise<void> {
     if (await this.probe()) return;
-    if (await this.lifecycle.serverRunning()) return;
+    const daemonStatus = this.lifecycle.daemonStatus;
+    const startDaemon = this.lifecycle.startDaemon;
+    const stopDaemon = this.lifecycle.stopDaemon;
+    const canOwnDaemon =
+      daemonStatus !== undefined && startDaemon !== undefined && stopDaemon !== undefined;
+    let startedDaemon = false;
+    if (canOwnDaemon) {
+      const daemon = await daemonStatus.call(this.lifecycle);
+      if (this.ownsDaemon && daemon.pid !== this.ownedDaemonPid) {
+        this.ownsDaemon = false;
+        this.ownedDaemonPid = null;
+        this.ownsServer = false;
+      }
+      if (!daemon.running) {
+        const started = await startDaemon.call(this.lifecycle);
+        if (!started.running || started.pid === null)
+          throw new Error('LM Studio did not report an owned llmster process');
+        this.ownsDaemon = true;
+        this.ownedDaemonPid = started.pid;
+        startedDaemon = true;
+      }
+    } else if (await this.lifecycle.serverRunning()) {
+      return;
+    }
     try {
       await this.lifecycle.startServer();
       this.ownsServer = true;
@@ -283,11 +384,13 @@ export class LMStudioRuntime implements RuntimePort {
       }
       throw new Error('LM Studio did not become reachable on 127.0.0.1:1234');
     } catch (error) {
-      if (this.ownsServer) {
+      if (startedDaemon && stopDaemon) {
         try {
-          await this.lifecycle.stopServer();
+          await stopDaemon.call(this.lifecycle);
+          this.ownsDaemon = false;
+          this.ownedDaemonPid = null;
         } catch {
-          // Preserve the original start failure.
+          // Keep ownership so the normal quit cleanup can retry the daemon shutdown.
         }
       }
       this.ownsServer = false;
@@ -297,9 +400,13 @@ export class LMStudioRuntime implements RuntimePort {
   }
 
   async stopServer(): Promise<void> {
-    if (!this.ownsServer && !this.delegatedControl)
+    if (!this.ownsServer && !this.ownsDaemon && !this.delegatedControl)
       throw new Error('Cannot stop LM Studio: control has not been delegated to OB-Pulse');
-    await this.lifecycle.stopServer();
+    if (this.ownsDaemon) {
+      await this.stopOwnedDaemon();
+    } else {
+      await this.lifecycle.stopServer();
+    }
     this.ownsServer = false;
     this.delegatedControl = false;
   }
@@ -312,14 +419,18 @@ export class LMStudioRuntime implements RuntimePort {
   }
 
   async releaseControl(): Promise<void> {
-    if (!this.ownsServer && !this.delegatedControl)
+    if (!this.ownsServer && !this.ownsDaemon && !this.delegatedControl)
       throw new Error('Cannot release LM Studio control: OB-Pulse is only observing this server');
     this.ownsServer = false;
+    this.ownsDaemon = false;
+    this.ownedDaemonPid = null;
     this.delegatedControl = false;
   }
 
   async shutdownOwned(): Promise<void> {
-    if (this.ownsServer) {
+    if (this.ownsDaemon) {
+      await this.stopOwnedDaemon();
+    } else if (this.ownsServer) {
       await this.lifecycle.stopServer();
       this.ownsServer = false;
     }
