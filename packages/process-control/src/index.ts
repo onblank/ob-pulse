@@ -21,7 +21,7 @@ const WINDOWS_TREE_SCRIPT = [
   '$p=[System.Diagnostics.Process]::GetProcessById($targetPid)',
   '$p.Refresh()',
   'if([string]$p.StartTime.ToUniversalTime().Ticks -ne $env:OBPULSE_CREATED_AT -or $p.MainModule.FileName -ne $env:OBPULSE_EXECUTABLE){ throw "Runtime process identity changed" }',
-  '$taskkill=Join-Path $env:SystemRoot "System32\taskkill.exe"',
+  '$taskkill=Join-Path $env:SystemRoot "System32\\taskkill.exe"',
   '& $taskkill /PID $targetPid /T /F',
   'if($LASTEXITCODE -ne 0){ throw "taskkill failed for verified process tree" }',
 ].join(';');
