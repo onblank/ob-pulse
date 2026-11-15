@@ -11,23 +11,19 @@ const WINDOWS_PORT_SCRIPT = [
 const WINDOWS_PROCESS_SCRIPT = [
   "$ErrorActionPreference='Stop'",
   '$targetPid=[int]$env:OBPULSE_PID',
-  '$p=Get-CimInstance Win32_Process -Filter "ProcessId = $targetPid"',
-  'if ($null -eq $p) { exit 3 }',
-  '[Console]::Out.WriteLine("$($p.CreationDate.ToUniversalTime().Ticks)|$($p.ExecutablePath)|$($p.ParentProcessId)")',
+  '$p=[System.Diagnostics.Process]::GetProcessById($targetPid)',
+  '$p.Refresh()',
+  '[Console]::Out.WriteLine("$($p.StartTime.ToUniversalTime().Ticks)|$($p.MainModule.FileName)")',
 ].join(';');
 const WINDOWS_TREE_SCRIPT = [
   "$ErrorActionPreference='Stop'",
   '$targetPid=[int]$env:OBPULSE_PID',
-  '$all=@(Get-CimInstance Win32_Process)',
-  '$current=$all | Where-Object { $_.ProcessId -eq $targetPid } | Select-Object -First 1',
-  'if($null -eq $current -or [string]$current.CreationDate.ToUniversalTime().Ticks -ne $env:OBPULSE_CREATED_AT){ throw "Runtime process identity changed" }',
-  '$byParent=@{}; foreach($p in $all){ $key=[string]$p.ParentProcessId; if(-not $byParent.ContainsKey($key)){ $byParent[$key]=@() }; $byParent[$key]+=$p }',
-  '$roots=New-Object System.Collections.Generic.List[int]; $root=$targetPid; $foundAncestor=$false; $cursor=$current',
-  'while($null -ne $cursor -and $cursor.ParentProcessId -gt 1){ $parent=$all | Where-Object { $_.ProcessId -eq $cursor.ParentProcessId } | Select-Object -First 1; if($null -eq $parent){ break }; if($parent.ExecutablePath -match $env:OBPULSE_APP_PATTERN){ $root=[int]$parent.ProcessId; $foundAncestor=$true }; $cursor=$parent }',
-  'if($foundAncestor){ $roots.Add($root) } else { $roots.Add($targetPid) }',
-  '$ids=New-Object System.Collections.Generic.List[int]; $queue=New-Object System.Collections.Queue; foreach($root in $roots){ $queue.Enqueue($root) }',
-  'while($queue.Count -gt 0){ $processId=[int]$queue.Dequeue(); if($ids.Contains($processId)){ continue }; $ids.Add($processId); foreach($child in $byParent[[string]$processId]){ $queue.Enqueue([int]$child.ProcessId) } }',
-  'foreach($processId in $ids){ Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue }',
+  '$p=[System.Diagnostics.Process]::GetProcessById($targetPid)',
+  '$p.Refresh()',
+  'if([string]$p.StartTime.ToUniversalTime().Ticks -ne $env:OBPULSE_CREATED_AT -or $p.MainModule.FileName -ne $env:OBPULSE_EXECUTABLE){ throw "Runtime process identity changed" }',
+  '$taskkill=Join-Path $env:SystemRoot "System32\taskkill.exe"',
+  '& $taskkill /PID $targetPid /T /F',
+  'if($LASTEXITCODE -ne 0){ throw "taskkill failed for verified process tree" }',
 ].join(';');
 
 function powershell(): string {
@@ -146,7 +142,7 @@ export class NodeProcessControl implements ProcessControlPort {
           WINDIR: root,
           OBPULSE_PID: String(identity.pid),
           OBPULSE_CREATED_AT: identity.createdAt,
-          OBPULSE_APP_PATTERN: appPattern.source,
+          OBPULSE_EXECUTABLE: identity.executable,
         },
       );
       return;
