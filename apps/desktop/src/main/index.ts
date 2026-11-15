@@ -173,6 +173,17 @@ function applyWidgetPreferences(): void {
   }
   positionWindow();
 }
+async function createTrayIcon() {
+  const isMacOS = process.platform === 'darwin';
+  const assetName = isMacOS ? 'tray-template.svg' : 'tray-color.svg';
+  const svg = await readFile(path.resolve(here, `../../assets/${assetName}`), 'utf8');
+  const image = nativeImage.createFromDataURL(
+    `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`,
+  );
+  if (image.isEmpty()) throw new Error(`Could not load the ${process.platform} tray icon`);
+  if (isMacOS) image.setTemplateImage(true);
+  return isMacOS ? image : image.resize({ width: 32, height: 32, quality: 'best' });
+}
 async function captureHistory(): Promise<void> {
   if (sampleInFlight) return;
   sampleInFlight = true;
@@ -440,7 +451,7 @@ app
     registerIPC();
     createWindow();
     if (process.platform === 'darwin') app.dock?.hide();
-    const trayIcon = nativeImage.createFromPath(path.resolve(here, '../../assets/tray.png'));
+    const trayIcon = await createTrayIcon();
     tray = new Tray(trayIcon);
     tray.setToolTip('OB-Pulse — Local AI Monitor');
     tray.on('click', (_event, bounds) => toggleWindow(bounds));

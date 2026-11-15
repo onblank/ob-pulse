@@ -254,9 +254,14 @@ function PowerControl({
   const runtime = snapshot?.runtime;
   const state = runtime?.state ?? 'stopped';
   const capabilities = runtime?.manifest?.capabilities;
-  const running = state !== 'stopped';
-  const canStart = state === 'stopped' && !!capabilities?.startServer;
-  const canStop = state === 'managed-running' && !!capabilities?.stopServer;
+  const ownsProcessWhileServerUnavailable =
+    state === 'stopped' && runtime?.controlAuthority === 'process-owned';
+  const running = state !== 'stopped' || ownsProcessWhileServerUnavailable;
+  const canStart =
+    state === 'stopped' && !ownsProcessWhileServerUnavailable && !!capabilities?.startServer;
+  const canStop =
+    (state === 'managed-running' || ownsProcessWhileServerUnavailable) &&
+    !!capabilities?.stopServer;
   const external = state === 'external-running';
   const canTakeControl = external && !!capabilities?.takeControl;
   const canReleaseControl = state === 'managed-running' && !!capabilities?.releaseControl;
@@ -269,9 +274,13 @@ function PowerControl({
         : runtime?.controlAuthority === 'process-owned'
           ? 'Process owned by OB-Pulse'
           : 'Server started by OB-Pulse'
-      : canStart
-        ? 'Server ready to start'
-        : 'Observation only';
+      : ownsProcessWhileServerUnavailable
+        ? 'Pulse-owned process active · server unavailable'
+        : canStart
+          ? runtime?.id === 'lmstudio'
+            ? 'Headless LM Studio ready to start'
+            : 'Server ready to start'
+          : 'Observation only';
   return (
     <div className="power-control">
       <button
@@ -286,7 +295,13 @@ function PowerControl({
             ? canTakeControl
               ? 'Take explicit control before stopping this external server'
               : 'This runtime server was started outside OB-Pulse and cannot be stopped here'
-            : ''
+            : canStop && runtime?.id === 'lmstudio'
+              ? 'Stops the llmster daemon started by Pulse. A separate LM Studio GUI stays open.'
+              : canStop && runtime?.id === 'ollama'
+                ? 'Stops only the Ollama server process started by OB-Pulse; any Ollama app stays open.'
+                : canStart && runtime?.id === 'lmstudio'
+                  ? 'Starts headless llmster without opening the LM Studio GUI.'
+                  : ''
         }
       >
         <span className="power-symbol">⏻</span>
@@ -1142,7 +1157,10 @@ export default function App() {
     0,
   );
   const togglePower = () => {
-    if (info?.state === 'managed-running') {
+    if (
+      info?.state === 'managed-running' ||
+      (info?.state === 'stopped' && info.controlAuthority === 'process-owned')
+    ) {
       if (
         info.controlAuthority === 'delegated' &&
         !window.confirm(

@@ -89,13 +89,18 @@ on quit. Native packaged-app smoke remains in phase 5.
       child, explicit load/unload and benchmark. External Ollama remains observation-only.
 - [x] **2.2 — LM Studio server and models.** Session-owned server toggle, explicit delegated
       handover/release, native load/unload and benchmark, OS-protected local API token. GUI/daemon
-      ownership remains unsupported. Evidence: adapter tests and `docs/ARCHITECTURE.md`.
+      ownership remains external. Evidence: adapter implementation and `docs/ARCHITECTURE.md`.
 - [x] **2.3 — Read-only additional runtimes.** llama.cpp observer and opt-in MLX-LM catalog
       observer, without implied authority. Evidence: [PR #49](https://github.com/onblank/ob-pulse/pull/49),
       [PR #52](https://github.com/onblank/ob-pulse/pull/52).
 - [x] **2.4 — Capability and control center.** Versioned manifests, enabled-runtime settings,
       concurrent bounded failure-isolated polling, runtime-scoped actions and history. Evidence:
       [PR #43](https://github.com/onblank/ob-pulse/pull/43), [PR #61](https://github.com/onblank/ob-pulse/pull/61).
+- [ ] **2.5 — LM Studio owned headless lifecycle and tray polish.** Start `llmster` only when no
+      daemon exists, retain its provider-reported PID, stop only the same process, and leave
+      pre-existing daemon/GUI instances external. Use a monochrome macOS template tray mark and
+      compact branded color marks on Windows/Linux. Closure: checks pass and the maintainer confirms
+      stop leaves no Pulse-started LM Studio daemon or unexpected GUI window.
 
 **Exit:** external servers cannot be generically killed; unsupported actions stay disabled; one
 adapter failure does not erase healthy cards. Current adapters and CI meet this v1 scope.

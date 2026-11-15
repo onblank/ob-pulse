@@ -20,6 +20,10 @@ apps/desktop/src/renderer/assets/brand/onblank-logo.png
 apps/desktop/src/renderer/assets/brand/ob-pulse-logo.svg
 ```
 
+The system tray uses a 16 px monochrome template image on macOS so the menu bar can adapt it to
+light/dark appearance. Windows and Linux use the compact color mark; Linux tray rendering and
+placement vary by desktop environment.
+
 The corporate PNG was supplied and approved by the repository owner. Separate code license and
 trademark rights still apply. OB-Pulse product artwork and app icon files for `.icns`, `.ico` and
 `.png` require explicit approval before official signing/release.

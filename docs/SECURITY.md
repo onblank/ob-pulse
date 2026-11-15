@@ -34,15 +34,18 @@
   plaintext fallback. Removing a token deletes the encrypted envelope and clears adapter memory.
 - The Ollama binary is launched by `spawn(binary, ['serve'])` without a shell; never evaluate user strings.
 - Ollama server stop applies only to a tracked child PID that OB-Pulse itself created during this process lifetime.
-- LM Studio server start/stop uses the resolved `~/.lmstudio/bin/lms` executable, fixed arguments,
-  loopback port/bind and no shell. Pulse stops only a server toggle it enabled or a reachable toggle
-  the user explicitly delegated for the current session. Delegated control is released without a
-  stop on app exit; Pulse never runs `daemon down`, closes the GUI, claims ownership of its PID or
-  discovers/kills it by process name or port.
+- LM Studio uses only the resolved `~/.lmstudio/bin/lms` executable with fixed arguments and no
+  shell. After an explicit start, Pulse checks `lms daemon status --json`; it starts headless
+  `llmster` only when absent, records the PID returned by `lms daemon up --json`, and uses
+  `lms daemon down` only when a fresh status confirms that same PID. A pre-existing daemon or GUI
+  remains external. Pulse may stop a server toggle it enabled or one explicitly delegated for this
+  session. Delegated control is released without stopping on app exit. Pulse never closes the GUI,
+  discovers/kills by process name or port, or stops an unowned daemon.
 - Explicit LM Studio control release changes only in-memory authority. It does not invoke the CLI,
   stop the server or persist permission beyond the current Pulse process.
-- Process metrics use only that tracked direct child PID, only while its adapter reports
-  `managed-running`. The macOS/Linux probe executes fixed `/bin/ps` arguments; the Windows probe
+- Process metrics use only a tracked owned PID (a direct child or the PID returned by Pulse's
+  session-owned LM Studio daemon start), only while its adapter reports `managed-running`. The
+  macOS/Linux probe executes fixed `/bin/ps` arguments; the Windows probe
   executes the system Windows PowerShell without profiles or interaction and reads only the process
   identified by the validated numeric environment value. Neither path uses a shell, discovers by
   name/port/service or persists PIDs/samples. Windows also verifies process start time before reusing

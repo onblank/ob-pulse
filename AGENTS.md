@@ -76,10 +76,12 @@ This is an early implementation. Do not claim model-specific CPU/GPU telemetry, 
 streams, database history, updater or signed installers have shipped unless implemented and tested. Explicitly
 authenticated clients may report content-free session/request/compaction events only while the user-enabled
 loopback bridge is active. The app can control **Ollama it started itself**; for already-running Ollama it
-attaches in observation mode. A reachable LM Studio server can enter explicit, session-scoped delegated
-control through the official `lms server` CLI; this never grants ownership of its GUI or daemon.
-LM Studio control may be explicitly released without stopping the server; after release Pulse must
-return to observer authority and must not stop that server on quit.
+attaches in observation mode. On explicit start, Pulse can start headless LM Studio `llmster` only after
+confirming no daemon exists, then stop only the daemon PID returned to that start request. Pre-existing
+LM Studio daemons and GUIs remain external. A reachable LM Studio server can enter explicit,
+session-scoped delegated control through the official `lms server` CLI; delegation never grants GUI or
+daemon ownership. Control may be released without stopping a server or daemon; after release Pulse
+must return to observer authority and must not stop it on quit.
 LM Studio API-token support may accept a token through narrow IPC, but only Electron main may retain
 it, and only as OS-encrypted machine-local storage. The renderer may query configured/unavailable
 status but must never retrieve the token.
