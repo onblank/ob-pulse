@@ -10,24 +10,20 @@ const WINDOWS_PORT_SCRIPT = [
 ].join(';');
 const WINDOWS_PROCESS_SCRIPT = [
   "$ErrorActionPreference='Stop'",
-  '$id=[int]$env:OBPULSE_PID',
-  '$p=Get-CimInstance Win32_Process -Filter "ProcessId = $id"',
-  'if ($null -eq $p) { exit 3 }',
-  '[Console]::Out.WriteLine("$($p.CreationDate.ToUniversalTime().Ticks)|$($p.ExecutablePath)|$($p.ParentProcessId)")',
+  '$targetPid=[int]$env:OBPULSE_PID',
+  '$p=[System.Diagnostics.Process]::GetProcessById($targetPid)',
+  '$p.Refresh()',
+  '[Console]::Out.WriteLine("$($p.StartTime.ToUniversalTime().Ticks)|$($p.MainModule.FileName)")',
 ].join(';');
 const WINDOWS_TREE_SCRIPT = [
   "$ErrorActionPreference='Stop'",
-  '$target=[int]$env:OBPULSE_PID',
-  '$all=@(Get-CimInstance Win32_Process)',
-  '$current=$all | Where-Object { $_.ProcessId -eq $target } | Select-Object -First 1',
-  'if($null -eq $current -or [string]$current.CreationDate.ToUniversalTime().Ticks -ne $env:OBPULSE_CREATED_AT){ throw "Runtime process identity changed" }',
-  '$byParent=@{}; foreach($p in $all){ $key=[string]$p.ParentProcessId; if(-not $byParent.ContainsKey($key)){ $byParent[$key]=@() }; $byParent[$key]+=$p }',
-  '$roots=New-Object System.Collections.Generic.List[int]; $root=$target; $foundAncestor=$false; $cursor=$current',
-  'while($null -ne $cursor -and $cursor.ParentProcessId -gt 1){ $parent=$all | Where-Object { $_.ProcessId -eq $cursor.ParentProcessId } | Select-Object -First 1; if($null -eq $parent){ break }; if($parent.ExecutablePath -match $env:OBPULSE_APP_PATTERN){ $root=[int]$parent.ProcessId; $foundAncestor=$true }; $cursor=$parent }',
-  'if($foundAncestor){ $roots.Add($root) } else { $roots.Add($target) }',
-  '$ids=New-Object System.Collections.Generic.List[int]; $queue=New-Object System.Collections.Queue; foreach($root in $roots){ $queue.Enqueue($root) }',
-  'while($queue.Count -gt 0){ $id=[int]$queue.Dequeue(); if($ids.Contains($id)){ continue }; $ids.Add($id); foreach($child in $byParent[[string]$id]){ $queue.Enqueue([int]$child.ProcessId) } }',
-  'foreach($id in $ids){ Stop-Process -Id $id -Force -ErrorAction SilentlyContinue }',
+  '$targetPid=[int]$env:OBPULSE_PID',
+  '$p=[System.Diagnostics.Process]::GetProcessById($targetPid)',
+  '$p.Refresh()',
+  'if([string]$p.StartTime.ToUniversalTime().Ticks -ne $env:OBPULSE_CREATED_AT -or $p.MainModule.FileName -ne $env:OBPULSE_EXECUTABLE){ throw "Runtime process identity changed" }',
+  '$taskkill=Join-Path $env:SystemRoot "System32\\taskkill.exe"',
+  '$kill = Start-Process -FilePath $taskkill -ArgumentList @("/PID", [string]$targetPid, "/T", "/F") -NoNewWindow -Wait -PassThru',
+  'if($kill.ExitCode -ne 0){ throw "taskkill failed ($($kill.ExitCode)) for verified process tree" }',
 ].join(';');
 
 function powershell(): string {
@@ -43,14 +39,20 @@ async function run(
   env?: NodeJS.ProcessEnv,
   maxBuffer = 64 * 1024,
 ): Promise<string> {
-  const result = await execFileAsync(executable, [...args], {
-    encoding: 'utf8',
-    timeout: 5000,
-    maxBuffer,
-    windowsHide: true,
-    env,
-  });
-  return String(result.stdout).trim();
+  try {
+    const result = await execFileAsync(executable, [...args], {
+      encoding: 'utf8',
+      timeout: 60_000,
+      maxBuffer,
+      windowsHide: true,
+      env,
+    });
+    return String(result.stdout).trim();
+  } catch (error) {
+    const details = error as NodeJS.ErrnoException & { stderr?: string };
+    if (details.stderr?.trim()) throw new Error(details.stderr.trim(), { cause: error });
+    throw error;
+  }
 }
 
 export interface ProcessIdentity {
@@ -140,7 +142,7 @@ export class NodeProcessControl implements ProcessControlPort {
           WINDIR: root,
           OBPULSE_PID: String(identity.pid),
           OBPULSE_CREATED_AT: identity.createdAt,
-          OBPULSE_APP_PATTERN: appPattern.source,
+          OBPULSE_EXECUTABLE: identity.executable,
         },
       );
       return;
