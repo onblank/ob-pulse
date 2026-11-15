@@ -277,7 +277,9 @@ function PowerControl({
       : ownsProcessWhileServerUnavailable
         ? 'Pulse-owned process active · server unavailable'
         : canStart
-          ? 'Server ready to start'
+          ? runtime?.id === 'lmstudio'
+            ? 'Headless LM Studio ready to start'
+            : 'Server ready to start'
           : 'Observation only';
   return (
     <div className="power-control">
@@ -297,7 +299,9 @@ function PowerControl({
               ? 'Stops the llmster daemon started by Pulse. A separate LM Studio GUI stays open.'
               : canStop && runtime?.id === 'ollama'
                 ? 'Stops only the Ollama server process started by OB-Pulse; any Ollama app stays open.'
-                : ''
+                : canStart && runtime?.id === 'lmstudio'
+                  ? 'Starts headless llmster without opening the LM Studio GUI.'
+                  : ''
         }
       >
         <span className="power-symbol">⏻</span>
