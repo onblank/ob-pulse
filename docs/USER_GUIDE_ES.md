@@ -13,9 +13,10 @@ desarrollo debe compilar, probar y publicar instaladores de Windows/macOS/Linux.
 
 1. Instala Ollama aparte desde su distribuidor oficial.
 2. Abre OB-Pulse (cuando exista el instalador oficial) y elige Ollama.
-3. Si el servidor está cerrado, el botón grande de encendido permite iniciarlo desde la app. Si ya estaba
-   abierto en otra aplicación, OB-Pulse se conecta y muestra "External service": por seguridad,
-   no te permitirá apagar un servidor que no abrió.
+3. Si el servidor está cerrado, el botón grande de encendido permite iniciarlo desde Pulse. Si ya
+   estaba abierto, puedes observarlo o elegir **Take control**. Esa acción confirma la instancia
+   concreta; después, Stop o salir de Pulse cierra esa app y sus procesos hijos. **Release control**
+   devuelve la instancia a modo observación y la deja encendida.
 4. La lista de modelos muestra qué está descargado y qué está cargado en memoria.
 5. **Load / Unload** carga o descarga un modelo de RAM; no elimina el modelo del disco.
 6. **Test speed** ejecuta una pequeña prueba real de lectura/prefill y escritura/decode.
@@ -44,13 +45,14 @@ LM Studio en `127.0.0.1:1234`.
   consumos e indicadores. Usa el botón de contraer para volver al gadget.
 - La franja superior muestra simultáneamente todos los runtimes habilitados. Pulsa una tarjeta para
   ver su detalle; los errores, modelos y acciones pertenecen únicamente a ese proveedor.
-- Cada tarjeta ofrece solo una acción permitida y segura: iniciar, detener un proceso propio, tomar
-  control explícito o liberarlo. Los runtimes de solo observación no muestran controles falsos.
-- Al iniciar LM Studio desde Pulse se usa `llmster` sin abrir la interfaz gráfica; Stop cierra ese
-  daemon solo si Pulse lo inició en esta sesión. Si ya había un daemon o servidor activo, Pulse no
-  lo cierra salvo que concedas control explícito del toggle del servidor, que tampoco cierra la GUI.
-- En Ollama, Pulse detiene únicamente el proceso de servidor que inició; no cierra una app iniciada
-  por fuera.
+- Cada tarjeta ofrece iniciar, detener, tomar control explícito o liberarlo. Take control avisa
+  que Stop/salir cerrará la instancia adoptada; si la propiedad del proceso es ambigua, Pulse
+  rechazará la acción sin cerrar nada.
+- Al iniciar LM Studio desde Pulse se usa `llmster` sin abrir la interfaz gráfica. Si ya había una
+  instancia activa, Take control permite adoptar solo el proceso que sirve el endpoint local; Stop
+  cierra esa instancia y sus procesos hijos. Release control la deja abierta.
+- En Ollama, Take control también permite adoptar una instancia externa identificada; Stop cierra
+  esa app y sus procesos hijos, mientras Release control la deja encendida.
 - El engranaje abre configuración. Si estás en el gadget compacto, OB-Pulse amplía primero la
   ventana. Apariencia, runtimes visibles, credenciales, instrumentación y permisos viven allí.
 - Al salir de configuración vuelves al monitor ampliado; al contraer vuelves siempre al gadget.

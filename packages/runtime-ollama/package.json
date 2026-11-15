@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@obpulse/contracts": "workspace:*",
-    "@obpulse/domain": "workspace:*"
+    "@obpulse/domain": "workspace:*",
+    "@obpulse/process-control": "workspace:*"
   }
 }

@@ -1,28 +1,27 @@
 # Provider support matrix (v0.1 scaffold)
 
-| Provider                         | Detect server | Installed models | Loaded models |                      Start/stop server | Load/unload model | Speeds              |
-| -------------------------------- | ------------: | ---------------: | ------------: | -------------------------------------: | ----------------: | ------------------- |
-| Ollama                           |           yes |              yes |           yes |                  managed instance only |               yes | explicit local test |
-| LM Studio v1                     |           yes |        yes (API) |     yes (API) | Pulse-owned daemon or delegated server |         yes (API) | explicit local test |
-| llama.cpp server                 |           yes |               no |           yes |                       observation only |                no | no                  |
-| MLX-LM server                    |  yes (opt-in) |  yes (available) |            no |                       observation only |                no | no                  |
-| Other OpenAI-compatible runtimes |       planned |                — |             — |                                      — |                 — | —                   |
+| Provider                         | Detect server | Installed models | Loaded models |                    Start/stop server | Load/unload model | Speeds              |
+| -------------------------------- | ------------: | ---------------: | ------------: | -----------------------------------: | ----------------: | ------------------- |
+| Ollama                           |           yes |              yes |           yes |      owned or explicitly adopted PID |               yes | explicit local test |
+| LM Studio v1                     |           yes |        yes (API) |     yes (API) | owned daemon or adopted process tree |         yes (API) | explicit local test |
+| llama.cpp server                 |           yes |               no |           yes |                     observation only |                no | no                  |
+| MLX-LM server                    |  yes (opt-in) |  yes (available) |            no |                     observation only |                no | no                  |
+| Other OpenAI-compatible runtimes |       planned |                — |             — |                                    — |                 — | —                   |
 
 Provider addresses are pinned to loopback; no connection to external URL or LAN in this scaffold.
-Each built-in adapter exposes manifest contract `1.0.0`. Ollama declares owned-child process control
-and no credential storage; LM Studio declares provider-server-toggle control and OS-protected
-write-only credentials. llama.cpp declares no server control or credential storage. All three
-explicitly deny external-process termination, model-file deletion and inference-content access. The
-live authority shown by Pulse is evaluated separately.
+Each built-in adapter exposes manifest contract `1.0.0`. Ollama and LM Studio declare explicit
+process takeover and no external credentials; LM Studio also declares OS-protected write-only token
+storage. llama.cpp declares no server control or credential storage. Every adapter denies model-file
+deletion and inference-content access. The live authority shown by Pulse is evaluated separately.
 No process manager or launch-daemon/service setting is changed.
 `ollama serve` binary must be installed/available; inability to spawn is presented as an error.
 LM Studio lifecycle commands use the resolved machine-local `lms` executable with fixed arguments
 and no shell. On explicit start, Pulse starts headless `llmster` with `lms daemon up --json` only when
-`lms daemon status --json` reports no daemon, then tracks the returned PID. Explicit stop and app
-quit use `lms daemon down` only when a fresh status confirms that same PID. A pre-existing daemon or
-GUI remains external. If the user delegates a reachable server, Pulse may stop only its server toggle;
-delegation is released without stopping it on app exit. Releasing session ownership leaves the
-server/daemon running. `lms` installation and removal remain external.
+`lms daemon status --json` reports no daemon, then tracks the returned PID. Stop and app quit use
+`lms daemon down` only when a fresh status confirms that same PID. A pre-existing server remains
+external until the user explicitly takes control; Pulse then records the unique listener PID and
+process identity. Stop/quit closes that process tree, while Release leaves it running. Ambiguous
+listener ownership disables takeover. `lms` installation and removal remain external.
 LM Studio model load/unload uses only its native v1 loopback API. An unload is refused when a model
 has multiple loaded instances because the current UI selects the model key, not a specific instance.
 LM Studio bearer tokens can be configured through write-only IPC and are attached to every native

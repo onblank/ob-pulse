@@ -46,17 +46,16 @@ A background/tray process is not a promise of monitoring when the **application 
   selection changes.
 - Show `unavailable`, `external-running` or `managed-running` distinctly.
 - Start a supported _managed_ runtime on demand with no shell injection.
-- Stop only an OB-Pulse-owned process or an explicitly delegated provider server control, with
-  confirmation before taking delegated control.
+- Stop only an OB-Pulse-owned process or a unique process the user explicitly adopted with
+  **Take control**. Confirm takeover and explain that Stop/quit closes that app instance and its
+  child processes. **Release control** leaves the adopted process tree running.
 - Load/unload supported models from RAM without deleting downloaded model weights.
-- External servers are observed, never generically killed. Handover appears only when an adapter
-  proves a reviewed provider-native stop mechanism.
+- External servers remain observation-only until explicit takeover. Handover appears only when the
+  adapter resolves one loopback listener PID and can revalidate its process identity before stop.
 - LM Studio starts through its headless `llmster` daemon only when no daemon was already running;
   Pulse owns the PID returned by that start and stops that same daemon on explicit stop or app quit.
-  A pre-existing daemon or GUI remains external. Explicit delegation can stop only the server toggle
-  and never closes the desktop GUI; delegation is released without stopping on exit.
-- Release LM Studio control explicitly without stopping its server; the runtime immediately returns
-  to external observation and will not be stopped when Pulse exits.
+  A pre-existing daemon or GUI remains external until explicit process takeover. Stop or app quit
+  closes the adopted process tree; release leaves it running and returns Pulse to observation.
 - Manager permissions and process ownership survive UI hide, not OS reboot.
 - Show the selected adapter's contract version, supported actions, loopback scope, server-control
   boundary, credential mode and prohibited content/model/process actions in settings.

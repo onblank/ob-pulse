@@ -1,15 +1,19 @@
 # Verification report
 
-Current local verification as of 2026-11-13:
+Current local verification as of 2026-11-15:
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
-- Formatting, ESLint, TypeScript checks for all twelve packages, 78 tests and
-  the Electron main/preload/renderer production builds.
+- Previous full-suite baseline: formatting, ESLint, TypeScript checks for all packages, 78 tests and
+  Electron main/preload/renderer production builds passed before the runtime takeover change.
+- This change: macOS `pnpm dev` startup completed without the tray icon initialization error;
+  TypeScript checks for process-control, Ollama, LM Studio and desktop, ESLint for changed code,
+  formatting and the three Electron production bundles passed. Cross-platform process-tree control
+  still requires the pending native CI/manual validation in roadmap item 2.5.
 - Instrumentation tests open an ephemeral IPv4 loopback port and cover bearer authentication,
   schema/content rejection, request limiting, replay/session semantics, context compaction,
   throughput calculations and warning/overflow state.
 - LM Studio adapter tests cover v1 model parsing, fixed CLI lifecycle commands, session-owned,
-  delegated and observer server behavior, delegation release without shutdown, native load/unload
+  adopted-process and observer server behavior, release without shutdown, native load/unload
   requests, ambiguous-instance refusal and a
   non-persistent benchmark that keeps only numeric stats. A local LM Studio 0.4.26 smoke test started
   and stopped the server, detected six installed linked models and loaded no model.

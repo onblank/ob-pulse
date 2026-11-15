@@ -14,11 +14,18 @@ import type {
   ServerState,
 } from '@obpulse/contracts';
 import { RUNTIME_ADAPTER_CONTRACT_VERSION } from '@obpulse/contracts';
+import {
+  NodeProcessControl,
+  type ProcessControlPort,
+  type ProcessIdentity,
+} from '@obpulse/process-control';
 
 const BASE = 'http://127.0.0.1:1234';
 const MODELS_PATH = '/api/v1/models';
 const execFileAsync = promisify(execFile);
 const CLI_TIMEOUT_MS = 60_000;
+const LMSTUDIO_PROCESS_PATTERN =
+  /lm studio\.app|(?:^|[\\/])lm studio(?:\.exe)?$|^lm studio(?:\.exe)?$|(?:^|[\\/])llmster(?:\s|$)/i;
 
 const CAPABILITIES: Capabilities = {
   listInstalled: true,
@@ -37,9 +44,9 @@ const MANIFEST: RuntimeAdapterManifest = {
   capabilities: CAPABILITIES,
   permissions: {
     networkScope: 'loopback-only',
-    serverControl: 'provider-server-toggle',
+    serverControl: 'explicit-process-takeover',
     credentialMode: 'os-protected-write-only',
-    externalProcessTermination: false,
+    externalProcessTermination: true,
     modelFileDeletion: false,
     inferenceContentAccess: false,
   },
@@ -223,19 +230,22 @@ export class LMStudioRuntime implements RuntimePort {
   private ownsDaemon = false;
   private ownedDaemonPid: number | null = null;
   private delegatedControl = false;
+  private adoptedProcess: ProcessIdentity | null = null;
   private apiToken: string | null = null;
 
   constructor(
     private readonly fetcher: Fetcher = fetch,
     private readonly lifecycle: LMStudioLifecycle = new LmsCliLifecycle(),
+    private readonly processControl: ProcessControlPort = new NodeProcessControl(),
   ) {}
 
   ownedProcessId(): number | null {
-    return this.ownsDaemon ? this.ownedDaemonPid : null;
+    return this.ownsDaemon ? this.ownedDaemonPid : (this.adoptedProcess?.pid ?? null);
   }
 
   controlAuthority(): ControlAuthority {
     if (this.ownsDaemon) return 'process-owned';
+    if (this.adoptedProcess) return 'process-owned';
     if (this.ownsServer) return 'session-managed';
     if (this.delegatedControl) return 'delegated';
     return 'observer';
@@ -304,7 +314,19 @@ export class LMStudioRuntime implements RuntimePort {
     this.ownsServer = false;
   }
 
+  private async captureListenerProcess(): Promise<ProcessIdentity> {
+    const identity = await this.processControl.findListeningProcess(1234);
+    if (!LMSTUDIO_PROCESS_PATTERN.test(identity.executable))
+      throw new Error('The loopback server process is not identifiable as LM Studio');
+    return identity;
+  }
+
   async state(): Promise<ServerState> {
+    if (this.adoptedProcess) {
+      const current = await this.processControl.inspect(this.adoptedProcess.pid).catch(() => null);
+      if (!current || current.createdAt !== this.adoptedProcess.createdAt)
+        this.adoptedProcess = null;
+    }
     if (this.ownsDaemon && this.lifecycle.daemonStatus) {
       const daemon = await this.lifecycle.daemonStatus();
       if (!daemon.running || daemon.pid !== this.ownedDaemonPid) {
@@ -314,10 +336,13 @@ export class LMStudioRuntime implements RuntimePort {
       }
     }
     if (await this.probe())
-      return this.ownsDaemon || this.ownsServer || this.delegatedControl
+      return this.ownsDaemon ||
+        this.ownsServer ||
+        this.delegatedControl ||
+        this.adoptedProcess !== null
         ? 'managed-running'
         : 'external-running';
-    if (!this.ownsServer && !this.delegatedControl) return 'stopped';
+    if (!this.ownsServer && !this.delegatedControl && !this.adoptedProcess) return 'stopped';
     if (await this.lifecycle.serverRunning()) return 'managed-running';
     this.ownsServer = false;
     this.delegatedControl = false;
@@ -379,7 +404,10 @@ export class LMStudioRuntime implements RuntimePort {
       this.ownsServer = true;
       this.delegatedControl = false;
       for (let attempt = 0; attempt < 40; attempt += 1) {
-        if (await this.probe()) return;
+        if (await this.probe()) {
+          if (!this.ownsDaemon) this.adoptedProcess = await this.captureListenerProcess();
+          return;
+        }
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
       throw new Error('LM Studio did not become reachable on 127.0.0.1:1234');
@@ -392,17 +420,30 @@ export class LMStudioRuntime implements RuntimePort {
         } catch {
           // Keep ownership so the normal quit cleanup can retry the daemon shutdown.
         }
+      } else if (this.ownsServer) {
+        try {
+          await this.lifecycle.stopServer();
+        } catch {
+          // Best-effort rollback of a server toggle enabled by this failed start action.
+        }
       }
       this.ownsServer = false;
       this.delegatedControl = false;
+      this.adoptedProcess = null;
       throw error;
     }
   }
 
   async stopServer(): Promise<void> {
-    if (!this.ownsServer && !this.ownsDaemon && !this.delegatedControl)
-      throw new Error('Cannot stop LM Studio: control has not been delegated to OB-Pulse');
-    if (this.ownsDaemon) {
+    if (!this.ownsServer && !this.ownsDaemon && !this.delegatedControl && !this.adoptedProcess)
+      throw new Error('Cannot stop LM Studio: OB-Pulse does not own or adopt this process');
+    if (this.adoptedProcess) {
+      const identity = this.adoptedProcess;
+      await this.processControl.terminateTree(identity, LMSTUDIO_PROCESS_PATTERN);
+      this.adoptedProcess = null;
+      this.delegatedControl = false;
+      this.ownsServer = false;
+    } else if (this.ownsDaemon) {
       await this.stopOwnedDaemon();
     } else {
       await this.lifecycle.stopServer();
@@ -412,23 +453,29 @@ export class LMStudioRuntime implements RuntimePort {
   }
 
   async takeControl(): Promise<void> {
-    if (this.ownsServer || this.delegatedControl) return;
+    if (this.ownsServer || this.ownsDaemon || this.adoptedProcess) return;
     if (!(await this.probe()))
       throw new Error('Cannot take control of LM Studio: its loopback server is not reachable');
-    this.delegatedControl = true;
+    this.adoptedProcess = await this.captureListenerProcess();
   }
 
   async releaseControl(): Promise<void> {
-    if (!this.ownsServer && !this.ownsDaemon && !this.delegatedControl)
-      throw new Error('Cannot release LM Studio control: OB-Pulse is only observing this server');
+    if (!this.ownsServer && !this.ownsDaemon && !this.delegatedControl && !this.adoptedProcess)
+      throw new Error(
+        'Cannot release LM Studio control: OB-Pulse does not own or adopt this process',
+      );
     this.ownsServer = false;
     this.ownsDaemon = false;
     this.ownedDaemonPid = null;
     this.delegatedControl = false;
+    this.adoptedProcess = null;
   }
 
   async shutdownOwned(): Promise<void> {
-    if (this.ownsDaemon) {
+    if (this.adoptedProcess) {
+      await this.processControl.terminateTree(this.adoptedProcess, LMSTUDIO_PROCESS_PATTERN);
+      this.adoptedProcess = null;
+    } else if (this.ownsDaemon) {
       await this.stopOwnedDaemon();
     } else if (this.ownsServer) {
       await this.lifecycle.stopServer();

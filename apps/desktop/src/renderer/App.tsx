@@ -265,7 +265,7 @@ function PowerControl({
   const external = state === 'external-running';
   const canTakeControl = external && !!capabilities?.takeControl;
   const canReleaseControl = state === 'managed-running' && !!capabilities?.releaseControl;
-  const enabled = !busy && !runtime?.error && (canStart || canStop);
+  const enabled = !busy && (canStop || (!runtime?.error && canStart));
   const stateLabel = external
     ? 'Server managed externally'
     : state === 'managed-running'
@@ -295,13 +295,15 @@ function PowerControl({
             ? canTakeControl
               ? 'Take explicit control before stopping this external server'
               : 'This runtime server was started outside OB-Pulse and cannot be stopped here'
-            : canStop && runtime?.id === 'lmstudio'
-              ? 'Stops the llmster daemon started by Pulse. A separate LM Studio GUI stays open.'
-              : canStop && runtime?.id === 'ollama'
-                ? 'Stops only the Ollama server process started by OB-Pulse; any Ollama app stays open.'
-                : canStart && runtime?.id === 'lmstudio'
-                  ? 'Starts headless llmster without opening the LM Studio GUI.'
-                  : ''
+            : canStop && runtime?.controlAuthority === 'process-owned'
+              ? 'Stops the exact process tree owned or adopted by Pulse. Release control to leave it running.'
+              : canStop && runtime?.id === 'lmstudio'
+                ? 'Stops the LM Studio server toggle enabled by Pulse.'
+                : canStop && runtime?.id === 'ollama'
+                  ? 'Stops the Ollama server process started by OB-Pulse.'
+                  : canStart && runtime?.id === 'lmstudio'
+                    ? 'Starts headless llmster without opening the LM Studio GUI.'
+                    : ''
         }
       >
         <span className="power-symbol">⏻</span>
@@ -468,7 +470,9 @@ function RuntimeAccessPanel({ snapshot }: { snapshot: DashboardSnapshot | null }
       ? 'Observation only'
       : manifest.permissions.serverControl === 'owned-process-only'
         ? 'Owned child process only'
-        : 'Provider server toggle';
+        : manifest.permissions.serverControl === 'explicit-process-takeover'
+          ? 'Explicit process takeover'
+          : 'Provider server toggle';
   const credentialLabel =
     manifest.permissions.credentialMode === 'os-protected-write-only'
       ? 'OS-protected, write-only'
@@ -506,7 +510,9 @@ function RuntimeAccessPanel({ snapshot }: { snapshot: DashboardSnapshot | null }
         <div>
           <span>External processes</span>
           <strong>
-            {manifest.permissions.externalProcessTermination ? 'Can terminate' : 'Never terminate'}
+            {manifest.permissions.externalProcessTermination
+              ? 'Only with explicit takeover'
+              : 'Never terminate'}
           </strong>
         </div>
         <div>
@@ -1174,7 +1180,7 @@ export default function App() {
   const takeControl = () => {
     if (
       !window.confirm(
-        'Give OB-Pulse control of this LM Studio server for the current session? Stopping it later may interrupt active requests.',
+        'Give OB-Pulse control of this LM Studio process? Stop or quitting Pulse will close this LM Studio app and its child processes. Use Release control to leave it running.',
       )
     )
       return;
@@ -1195,7 +1201,7 @@ export default function App() {
     if (
       intent === 'take-control' &&
       !window.confirm(
-        `Give OB-Pulse control of ${runtimeSnapshot.displayName} for this session? Stopping it later may interrupt other applications.`,
+        `Give OB-Pulse control of this ${runtimeSnapshot.displayName} process? Stop or quitting Pulse will close this app instance and its child processes. Use Release control to leave it running.`,
       )
     )
       return;
