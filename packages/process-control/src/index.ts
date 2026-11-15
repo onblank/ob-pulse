@@ -43,14 +43,20 @@ async function run(
   env?: NodeJS.ProcessEnv,
   maxBuffer = 64 * 1024,
 ): Promise<string> {
-  const result = await execFileAsync(executable, [...args], {
-    encoding: 'utf8',
-    timeout: 5000,
-    maxBuffer,
-    windowsHide: true,
-    env,
-  });
-  return String(result.stdout).trim();
+  try {
+    const result = await execFileAsync(executable, [...args], {
+      encoding: 'utf8',
+      timeout: 5000,
+      maxBuffer,
+      windowsHide: true,
+      env,
+    });
+    return String(result.stdout).trim();
+  } catch (error) {
+    const details = error as NodeJS.ErrnoException & { stderr?: string };
+    if (details.stderr?.trim()) throw new Error(details.stderr.trim(), { cause: error });
+    throw error;
+  }
 }
 
 export interface ProcessIdentity {
