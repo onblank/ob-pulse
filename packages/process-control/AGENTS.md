@@ -2,9 +2,9 @@
 
 This package is the main-process-only OS boundary for explicit runtime process adoption. It may
 resolve a fixed loopback port to one PID, capture PID plus creation time/executable identity and
-terminate that process tree after the adapter confirms provider identity and user authority. If the
-app host is separate from the listener, include it only when exactly one matching provider app root
-can be identified; refuse ambiguous roots before terminating anything.
+terminate that process tree after the adapter confirms provider identity and user authority. Include
+a provider app host only when it is an ancestor of the verified listener in the captured process
+tree. Never infer association from a unique process name elsewhere on the host.
 
 Use fixed executable paths and argument arrays; never use a shell, process-name-only matching,
 renderer access, persisted PID ownership or fallback guesses. Refuse missing, ambiguous or changed

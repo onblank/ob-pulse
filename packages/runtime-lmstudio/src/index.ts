@@ -231,6 +231,7 @@ export class LMStudioRuntime implements RuntimePort {
   private ownsServer = false;
   private ownsDaemon = false;
   private ownedDaemonPid: number | null = null;
+  private ownedDaemonIdentity: ProcessIdentity | null = null;
   private delegatedControl = false;
   private adoptedProcess: ProcessIdentity | null = null;
   private apiToken: string | null = null;
@@ -304,15 +305,25 @@ export class LMStudioRuntime implements RuntimePort {
     if (!this.lifecycle.daemonStatus || !this.lifecycle.stopDaemon)
       throw new Error('Cannot verify ownership of the LM Studio daemon');
     const daemon = await this.lifecycle.daemonStatus();
-    if (!daemon.running || daemon.pid !== this.ownedDaemonPid) {
+    const current = await this.processControl.inspect(this.ownedDaemonPid).catch(() => null);
+    if (
+      !daemon.running ||
+      daemon.pid !== this.ownedDaemonPid ||
+      !current ||
+      !this.ownedDaemonIdentity ||
+      current.createdAt !== this.ownedDaemonIdentity.createdAt ||
+      current.executable !== this.ownedDaemonIdentity.executable
+    ) {
       this.ownsDaemon = false;
       this.ownedDaemonPid = null;
+      this.ownedDaemonIdentity = null;
       this.ownsServer = false;
       throw new Error('LM Studio daemon ownership changed; Pulse stopped no process');
     }
     await this.lifecycle.stopDaemon();
     this.ownsDaemon = false;
     this.ownedDaemonPid = null;
+    this.ownedDaemonIdentity = null;
     this.ownsServer = false;
   }
 
@@ -331,9 +342,20 @@ export class LMStudioRuntime implements RuntimePort {
     }
     if (this.ownsDaemon && this.lifecycle.daemonStatus) {
       const daemon = await this.lifecycle.daemonStatus();
-      if (!daemon.running || daemon.pid !== this.ownedDaemonPid) {
+      const current = this.ownedDaemonPid
+        ? await this.processControl.inspect(this.ownedDaemonPid).catch(() => null)
+        : null;
+      if (
+        !daemon.running ||
+        daemon.pid !== this.ownedDaemonPid ||
+        !current ||
+        !this.ownedDaemonIdentity ||
+        current.createdAt !== this.ownedDaemonIdentity.createdAt ||
+        current.executable !== this.ownedDaemonIdentity.executable
+      ) {
         this.ownsDaemon = false;
         this.ownedDaemonPid = null;
+        this.ownedDaemonIdentity = null;
         this.ownsServer = false;
       }
     }
@@ -395,13 +417,25 @@ export class LMStudioRuntime implements RuntimePort {
         if (!started.running || started.pid === null)
           throw new Error('LM Studio did not report an owned llmster process');
         if (started.isDaemon === false) {
-          const identity = await this.processControl.inspect(started.pid);
+          const identity = await this.processControl.inspect(started.pid).catch(() => {
+            throw new Error(
+              `LM Studio started process ${started.pid}, but Pulse could not verify its identity. It may still be running; close it manually before retrying.`,
+            );
+          });
           if (!LMSTUDIO_PROCESS_PATTERN.test(identity.executable))
             throw new Error('LM Studio service PID does not identify the LM Studio application');
           this.adoptedProcess = identity;
         } else {
+          const identity = await this.processControl.inspect(started.pid).catch(() => {
+            throw new Error(
+              `LM Studio started daemon ${started.pid}, but Pulse could not verify its identity. It may still be running; close it manually before retrying.`,
+            );
+          });
+          if (!LMSTUDIO_PROCESS_PATTERN.test(identity.executable))
+            throw new Error('LM Studio daemon PID does not identify the owned runtime process');
           this.ownsDaemon = true;
           this.ownedDaemonPid = started.pid;
+          this.ownedDaemonIdentity = identity;
         }
         startedDaemon = true;
       }
@@ -432,6 +466,7 @@ export class LMStudioRuntime implements RuntimePort {
           await stopDaemon.call(this.lifecycle);
           this.ownsDaemon = false;
           this.ownedDaemonPid = null;
+          this.ownedDaemonIdentity = null;
         } catch {
           // Keep ownership so the normal quit cleanup can retry the daemon shutdown.
         }
@@ -482,6 +517,7 @@ export class LMStudioRuntime implements RuntimePort {
     this.ownsServer = false;
     this.ownsDaemon = false;
     this.ownedDaemonPid = null;
+    this.ownedDaemonIdentity = null;
     this.delegatedControl = false;
     this.adoptedProcess = null;
   }
