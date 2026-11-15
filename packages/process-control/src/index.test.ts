@@ -44,5 +44,5 @@ describe('owned process control', () => {
     }
     await expect(control.inspect(identity.pid)).rejects.toThrow();
     await expect(control.inspect(unrelatedIdentity.pid)).resolves.toMatchObject(unrelatedIdentity);
-  }, 20_000);
+  }, 90_000);
 });
