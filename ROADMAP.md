@@ -6,9 +6,9 @@
 
 **Roadmap version:** 2026-11-15
 
-**Last completed iteration:** 6.1 — Native packaging matrix
+**Last completed iteration:** 6.1 — Native packaging matrix (later process-control corrections merged)
 
-**Next planned iteration:** 2.5 — Owned runtime shutdown and native tray assets
+**Next planned iteration:** 2.5 — real-engine ownership acceptance, then 5.6 and 5.7 before 6.2
 
 ## Objective
 
@@ -48,6 +48,9 @@ automatic inference interception and product/Gateway integration are outside v1.
   edited. Do not start another iteration until promotion passes. Do not duplicate completed work.
 - If discovery changes scope or order, explain it in the PR and update dependencies. A manifest,
   UI placeholder or plan alone is never evidence of a shipped capability.
+- At the start and end of every remaining iteration, review the audit register below. Close a
+  finding only with the specified evidence and record the implementation/promotion PRs. A passed
+  build does not close a manual journey, signing, or ownership finding.
 
 **Iteration done:** behavior and failure path work at the real boundary; contracts, UI and docs
 agree; authority, privacy and metric semantics hold; targeted tests and `pnpm check` pass; manual
@@ -59,14 +62,14 @@ reviewable evidence, not code tests. If a required check cannot run, keep the it
 issue contradicts the phase goal. Owner action is required for signing credentials, final brand
 approval and public release.
 
-| Phase | Outcome                                      | Status                                                                                                                 |
-| ----- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 1     | Local-first foundation and desktop shell     | Complete                                                                                                               |
-| 2     | Safe runtime and model control               | Complete for v1 scope; explicit process takeover validation remains open (2.5)                                         |
-| 3     | Truthful telemetry and one-hour history      | Complete for implemented sources                                                                                       |
-| 4     | Compact, expanded and settings surfaces      | Complete in code                                                                                                       |
-| 5     | End-to-end validation and platform decisions | Complete; packaged startup and tray smoke validated in 6.1; full Windows/Linux control-flow journeys remain unverified |
-| 6     | Native distribution and public v1            | Planned; resume with 6.2 after the owner-requested 2.5 correction                                                      |
+| Phase | Outcome                                      | Status                                                                                              |
+| ----- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 1     | Local-first foundation and desktop shell     | Complete                                                                                            |
+| 2     | Safe runtime and model control               | Open: 2.5 real-engine acceptance remains unverified                                                 |
+| 3     | Truthful telemetry and one-hour history      | Complete for implemented sources                                                                    |
+| 4     | Compact, expanded and settings surfaces      | Complete in code                                                                                    |
+| 5     | End-to-end validation and platform decisions | Open: ownership hardening, current macOS journeys and Windows/Linux control flows remain unverified |
+| 6     | Native distribution and public v1            | Open: 6.1 passed; 6.2 signing and release safety, then 6.3 publication                              |
 
 ## [x] Phase 1 — Foundation and desktop shell
 
@@ -83,7 +86,7 @@ approval and public release.
 **Exit:** app starts locally, renderer has no generic OS/HTTP/process access and history disappears
 on quit. Native packaged-app smoke remains in phase 5.
 
-## [x] Phase 2 — Safe runtime and model control
+## [ ] Phase 2 — Safe runtime and model control
 
 **Goal:** observe enabled runtimes together and offer only authorized actions.
 
@@ -105,10 +108,14 @@ on quit. Native packaged-app smoke remains in phase 5.
       adopted application process tree on Stop/quit and leave it alive on Release. Bundle valid PNG
       tray assets: monochrome template on macOS and compact brand color on Windows/Linux. Closure:
       CI process-control smoke passes on all OSes and the maintainer confirms Start/Take control,
-      Stop, Release and quit behavior against real LM Studio and Ollama instances.
+      Stop, Release and quit behavior against real LM Studio and Ollama instances. Tray and
+      process-control changes: [PR #102](https://github.com/onblank/ob-pulse/pull/102),
+      [PR #104](https://github.com/onblank/ob-pulse/pull/104),
+      [PR #106](https://github.com/onblank/ob-pulse/pull/106). One real LM Studio Start→Stop
+      cycle passed on macOS; the rest of the matrix is still open (A3).
 
-**Exit:** unadopted external servers cannot be stopped; unsupported actions stay disabled; one
-adapter failure does not erase healthy cards. Current adapters and CI meet this v1 scope.
+**Exit (open):** unadopted external servers cannot be stopped; unsupported actions stay disabled;
+one adapter failure does not erase healthy cards. Real-engine ownership acceptance remains open.
 
 ## [x] Phase 3 — Truthful telemetry and one-hour history
 
@@ -191,18 +198,45 @@ actions; settings has its own surface. Manual visual/interaction smoke remains i
       `packages/application/src/instrumentation.test.ts`.
       [Implementation PR](https://github.com/onblank/ob-pulse/pull/84); [promotion PR](https://github.com/onblank/ob-pulse/pull/85).
 
-**Exit:** users can complete observe/control/inspect journeys on target systems; unsupported cases
-are documented from observed behavior. macOS journeys and cross-platform runtime/CI gates are
-validated; native Windows/Linux install, launch and basic window/tray lifecycle passed in 6.1;
-full manual control-flow journeys remain unverified.
+**Exit (open):** users must complete observe/control/inspect journeys on supported systems, with
+unsupported cases documented from observed behavior. Native Windows/Linux install, launch and
+basic window/tray lifecycle passed in 6.1. Current macOS ownership and full Windows/Linux control
+journeys remain unverified (A3–A5).
+
+### Phase 5/6 audit register — 2026-11-15
+
+These are findings from source, workflow and evidence review, not claims that a failure has been
+reproduced on every OS. Review each open row at every subsequent iteration. The cited paths are
+the implementation to inspect; closure requires the evidence in the last column.
+
+| ID  | Priority             | Finding and evidence                                                                                                                                                                                                                                                                                                                                                                                                              | Required closure                                                                                                                                                                                                                                          |
+| --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1  | High, safety         | `packages/process-control/src/index.ts` falls back from a verified listener PID to a _unique name-pattern match_ across the system process list. On macOS/Linux it tests the full command line, and Windows uses an executable-path regex. Uniqueness alone does not prove that a separate GUI belongs to the listener. An unrelated matching app could be closed. This conflicts with the no-name-only-kill rule in `AGENTS.md`. | Remove the unrelated-root fallback or prove a stable provider-specific association. Exercise one owned and one unrelated parallel instance; Stop/quit must affect only the owned instance, and ambiguous cases must fail closed before signaling any PID. |
+| A2  | High, correctness    | `packages/runtime-lmstudio/src/index.ts` tracks a headless daemon by PID from `lms daemon up`, but `stopOwnedDaemon()` checks only a fresh PID from the CLI, not the process creation identity used for GUI takeover. The GUI-start path can also leave a newly opened service running if identity inspection fails before entering the rollback `try`.                                                                           | Use the same creation-time/executable identity boundary for all owned LM Studio process paths; make failed Start clean up a _verified_ newly started instance or report explicit residual ownership. Cover PID change and failed identity capture.        |
+| A3  | High, validation     | The 5.1 macOS manual confirmation predates the tray and ownership changes in PRs #102, #104 and #106. PR #106 verified one real macOS Start→Stop cycle and no residual LM Studio processes, but Take control, Release, quit, external parallel instances and real Ollama closure were not exercised end to end. `native-package-smoke.mjs` verifies launch/tray, not those controls.                                              | Re-run the current macOS packaged/development journeys for LM Studio and Ollama, recording owned, adopted, released and unrelated-process outcomes. Keep 2.5 open until this passes.                                                                      |
+| A4  | Medium, coverage     | 6.1 CI installs and launches Windows/Linux packages but does not click through runtime controls, model load/unload, settings or instrumented sessions. Phase 5 exit text currently overstates target-system journey evidence.                                                                                                                                                                                                     | Record manual or OS-level automated Windows/Linux control-flow smoke for both manageable engines, or explicitly narrow the supported v1 platform/engine claim before release.                                                                             |
+| A5  | Medium, consistency  | `docs/VERIFY.md` and 5.5 cite 90 tests at the original gate; subsequent runtime changes added tests but did not re-run the assembled manual journey. The phase table previously said phases 2/5 complete while their phase headers and 2.5 were open.                                                                                                                                                                             | Keep status and test counts tied to a dated run; update the verification document and phase status after A1–A4 are resolved.                                                                                                                              |
+| A6  | High, release        | `.github/workflows/release.yml` runs Release Please first; a release may exist before native signing/notarization jobs pass. `gh release upload --clobber` also permits replacing files for an existing tag, despite the workflow input calling tags immutable.                                                                                                                                                                   | Gate public publication on complete signed assets and owner approval; define draft/failure recovery and a no-overwrite policy or reviewed replacement procedure. Verify with a controlled release rehearsal.                                              |
+| A7  | Medium, identity     | The release workflow checks signature _validity_ (`Get-AuthenticodeSignature`, `codesign`, `spctl`) but does not assert the expected Windows publisher or Apple Team ID. It has never completed with production credentials.                                                                                                                                                                                                      | Pin and verify expected publisher/Team ID against owner-approved identities; archive the signed/notarized run, installer hashes, manifest and provenance evidence.                                                                                        |
+| A8  | Medium, supply chain | `release-assets.mjs` validates filenames, sizes and SHA-256, but source reproducibility expectations and tag movement protection are not yet demonstrated. A manual `workflow_dispatch` can rebuild and overwrite existing assets.                                                                                                                                                                                                | Document what is and is not reproducible (including signing timestamps), protect version tags, rehearse artifact/attestation verification from a clean download, and enforce the A6 replacement policy.                                                   |
+
+- [ ] **5.6 — Process ownership hardening.** Resolve A1–A2 before another control feature or a
+      signed release. Record provider-specific identity, rollback and parallel-instance evidence;
+      preserve fail-closed behavior. Depends on 2.5 diagnosis but may implement before its manual
+      acceptance is complete.
+- [ ] **5.7 — Current cross-platform journey evidence.** Resolve A3–A5: current macOS LM Studio and
+      Ollama ownership matrix; Windows/Linux runtime controls, model actions, settings and
+      instrumentation; update `docs/VERIFY.md` with dates, versions and observed limits. Depends
+      on 5.6. Phase 5 closes only when these journeys support its exit claim.
 
 ## [ ] Phase 6 — Installable v1 and release
 
 **Goal:** trustworthy native installers usable without development tooling.
 
 - [x] **6.1 — Packaging matrix.** Windows `.exe`, macOS universal `.dmg`, Linux `.AppImage`/`.deb`;
-      clean install, upgrade, quit/tray, discovery and offline-launch checks on each OS. Depends on
-      phase 5. An unsigned CI smoke installs a same-source `0.0.1` baseline, upgrades it to the
+      clean install, upgrade, quit/tray, discovery and offline-launch checks on each OS. Its
+      packaging evidence remains valid while phase 5 control journeys are reopened. An unsigned CI
+      smoke installs a same-source `0.0.1` baseline, upgrades it to the
       current build, checks that local user data survives, verifies the tray remains after closing
       the widget, and launches with the four runtime adapters available while no service is required.
       Linux additionally launches both AppImage artifacts and upgrades the DEB package. Closure:
@@ -210,10 +244,25 @@ full manual control-flow journeys remain unverified.
       [implementation PR #87](https://github.com/onblank/ob-pulse/pull/87), [native run #43458682550](https://github.com/onblank/ob-pulse/actions/runs/43458682550).
 - [ ] **6.2 — Signing, identity and supply chain.** Owner approves final mark/trademark; Windows
       signing and macOS Developer ID signing/notarization; release checksums and reproducibility
-      expectations verified. Depends on 6.1. Pipeline gates, immutable action pins, deterministic
-      manifest/checksum verification and provenance attestation are implemented. Closure still
-      requires owner-approved final artwork, configured credentials and a successful signed
-      Windows/macOS release build. No release has been published by this iteration.
+      expectations verified. Depends on 6.1 and the phase 5 safety/validation findings A1–A5.
+      Pipeline gates, pinned actions, manifest/checksum verification and provenance attestation
+      code exist; the production signing path has not been proven. Closure checklist:
+
+      1. Owner approves the final product name, trademark clearance, app/tray/installer artwork,
+         Windows publisher and Apple Team ID. Record approval before setting the brand gate.
+      2. Configure the organization release GitHub App and signing/notarization values in
+         `docs/RELEASING.md`; verify availability without exposing secrets.
+      3. Resolve A6: gate public publication on validated assets; prevent silent replacement of
+         assets for an existing version and document draft/failure recovery.
+      4. Resolve A7–A8: verify expected signer identity, protect tags, document reproducibility
+         limits and independently verify downloaded hashes, manifest and provenance.
+      5. Run a controlled signed Windows and Developer ID signed/notarized macOS release build;
+         check Authenticode, Gatekeeper, stapling and clean installation. Record run, tag, artifact
+         hashes and installer versions. Linux remains checksum/provenance verified.
+
+      The open Release Please PR #8 is release metadata, not evidence of these gates. No verified
+      signed release exists yet.
+
 - [ ] **6.3 — Public release gate.** Security/privacy review, installation guide, supported
       hardware/runtime matrix, rollback instructions and release CI. Depends on 6.1–6.2. Closure:
       owner approves publication and verified versioned downloads exist.
@@ -232,10 +281,8 @@ full manual control-flow journeys remain unverified.
 
 ## Dependency order and next handoff
 
-Phases 1–5 are the validated baseline. Packaging 6.1 follows the regression gate; signing/brand work
-can be prepared in parallel but cannot close before artifacts exist. Publication 6.3 follows
-6.1–6.2. Revisit deferred candidates only when the user changes scope.
-
-Next agent: verify that implementation PR #87 and its promotion to `main` have merged before starting
-another iteration. Then review **6.2** and its owner-provided identity/credential prerequisites; do
-not sign or notarize installers without the required owner approval and credentials.
+Phases 2 and 5 remain open. Reconcile the audit register at each iteration: finish 2.5's real-engine
+acceptance, resolve A1–A2 through 5.6, then A3–A5 through 5.7. Packaging 6.1 remains validated.
+Prepare owner identity/credential prerequisites and A6–A8 in parallel, but close 6.2 only after
+the signed release rehearsal and independent verification above. Publication 6.3 follows 6.2.
+Revisit deferred candidates only when the user changes scope.
