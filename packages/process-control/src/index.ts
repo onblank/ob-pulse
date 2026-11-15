@@ -46,7 +46,7 @@ async function run(
   try {
     const result = await execFileAsync(executable, [...args], {
       encoding: 'utf8',
-      timeout: 5000,
+      timeout: 15_000,
       maxBuffer,
       windowsHide: true,
       env,
