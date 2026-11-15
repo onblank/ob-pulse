@@ -52,8 +52,9 @@ A background/tray process is not a promise of monitoring when the **application 
 - Load/unload supported models from RAM without deleting downloaded model weights.
 - External servers remain observation-only until explicit takeover. Handover appears only when the
   adapter resolves one loopback listener PID and can revalidate its process identity before stop.
-- LM Studio starts through its headless `llmster` daemon only when no daemon was already running;
-  Pulse owns the PID returned by that start and stops that same daemon on explicit stop or app quit.
+- LM Studio starts through its CLI only when no daemon was already running; the CLI can open a GUI
+  service or a headless daemon. Pulse owns the returned PID and closes that same verified instance
+  on explicit stop or app quit.
   A pre-existing daemon or GUI remains external until explicit process takeover. Stop or app quit
   closes the adopted process tree; release leaves it running and returns Pulse to observation.
 - Manager permissions and process ownership survive UI hide, not OS reboot.

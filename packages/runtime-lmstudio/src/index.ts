@@ -73,6 +73,7 @@ export interface LMStudioLifecycle {
 export interface LMStudioDaemonStatus {
   running: boolean;
   pid: number | null;
+  isDaemon?: boolean;
 }
 
 class LMStudioHttpError extends Error {
@@ -159,11 +160,12 @@ export function parseDaemonStatus(stdout: string): LMStudioDaemonStatus {
       const parsed: unknown = JSON.parse(line);
       if (!obj(parsed)) continue;
       if (parsed.status === 'not-running') return { running: false, pid: null };
-      if (parsed.status === 'running' && parsed.isDaemon === true) {
+      if (parsed.status === 'running' && typeof parsed.isDaemon === 'boolean') {
         const pid = parsed.pid;
         return {
           running: true,
           pid: typeof pid === 'number' && Number.isSafeInteger(pid) && pid > 0 ? pid : null,
+          isDaemon: parsed.isDaemon,
         };
       }
     } catch {
@@ -392,8 +394,15 @@ export class LMStudioRuntime implements RuntimePort {
         const started = await startDaemon.call(this.lifecycle);
         if (!started.running || started.pid === null)
           throw new Error('LM Studio did not report an owned llmster process');
-        this.ownsDaemon = true;
-        this.ownedDaemonPid = started.pid;
+        if (started.isDaemon === false) {
+          const identity = await this.processControl.inspect(started.pid);
+          if (!LMSTUDIO_PROCESS_PATTERN.test(identity.executable))
+            throw new Error('LM Studio service PID does not identify the LM Studio application');
+          this.adoptedProcess = identity;
+        } else {
+          this.ownsDaemon = true;
+          this.ownedDaemonPid = started.pid;
+        }
         startedDaemon = true;
       }
     } else if (await this.lifecycle.serverRunning()) {
@@ -405,14 +414,20 @@ export class LMStudioRuntime implements RuntimePort {
       this.delegatedControl = false;
       for (let attempt = 0; attempt < 40; attempt += 1) {
         if (await this.probe()) {
-          if (!this.ownsDaemon) this.adoptedProcess = await this.captureListenerProcess();
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
       throw new Error('LM Studio did not become reachable on 127.0.0.1:1234');
     } catch (error) {
-      if (startedDaemon && stopDaemon) {
+      if (startedDaemon && this.adoptedProcess) {
+        try {
+          await this.processControl.terminateTree(this.adoptedProcess, LMSTUDIO_PROCESS_PATTERN);
+        } catch {
+          // Keep ownership so the normal quit cleanup can retry the service shutdown.
+          throw error;
+        }
+      } else if (startedDaemon && stopDaemon) {
         try {
           await stopDaemon.call(this.lifecycle);
           this.ownsDaemon = false;

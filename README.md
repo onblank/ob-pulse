@@ -44,7 +44,7 @@
 - Passive token-speed capture from arbitrary third-party apps; clients must explicitly implement and authenticate against the instrumentation contract.
 - Automatic session/context discovery from clients that do not emit the instrumentation contract.
 - Per-model CPU/GPU utilization on every OS, persistent/long-term chart history and external model installs.
-- LM Studio GUI/daemon process ownership, llama.cpp/MLX-LM lifecycle or model management, signing/notarization, production
+- Unambiguous control of every externally started LM Studio instance, llama.cpp/MLX-LM lifecycle or model management, signing/notarization, production
   native installers and automated distribution.
 
 Unsupported values appear as `—`, **never** as fabricated zero.

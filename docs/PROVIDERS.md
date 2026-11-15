@@ -16,9 +16,10 @@ deletion and inference-content access. The live authority shown by Pulse is eval
 No process manager or launch-daemon/service setting is changed.
 `ollama serve` binary must be installed/available; inability to spawn is presented as an error.
 LM Studio lifecycle commands use the resolved machine-local `lms` executable with fixed arguments
-and no shell. On explicit start, Pulse starts headless `llmster` with `lms daemon up --json` only when
-`lms daemon status --json` reports no daemon, then tracks the returned PID. Stop and app quit use
-`lms daemon down` only when a fresh status confirms that same PID. A pre-existing server remains
+and no shell. On explicit start, Pulse calls `lms daemon up --json` only when
+`lms daemon status --json` reports no daemon, then tracks the returned PID. This CLI may open the
+GUI service (`isDaemon:false`); Stop/quit terminate its verified process tree. A headless daemon
+uses `lms daemon down` only when a fresh status confirms the same PID. A pre-existing server remains
 external until the user explicitly takes control; Pulse then records the unique listener PID and
 process identity. Stop/quit closes that process tree, while Release leaves it running. Ambiguous
 listener ownership disables takeover. `lms` installation and removal remain external.
