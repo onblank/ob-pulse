@@ -37,9 +37,10 @@
   the process identity is verified. Stop and app quit terminate that process tree only while the
   captured identity still matches. Release drops the authority and leaves it running.
 - LM Studio uses only the resolved `~/.lmstudio/bin/lms` executable with fixed arguments and no
-  shell. After an explicit start, Pulse checks `lms daemon status --json`; it starts headless
-  `llmster` only when absent, records the PID returned by `lms daemon up --json`, and uses
-  `lms daemon down` only when a fresh status confirms that same PID. A pre-existing daemon or GUI
+  shell. After an explicit start, Pulse checks `lms daemon status --json`; it records the PID
+  returned by `lms daemon up --json`. If the CLI reports a GUI service (`isDaemon:false`),
+  Stop/quit terminate that verified process tree. It uses `lms daemon down` only when a fresh
+  status confirms the same headless daemon PID. A pre-existing daemon or GUI
   remains external until the user explicitly adopts the unique process listening on LM Studio's
   loopback port. Stop and app quit terminate the adopted process tree after PID/start-time checks;
   Release leaves it running. Pulse never kills by process name alone or acts on ambiguous ownership.

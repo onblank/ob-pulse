@@ -77,8 +77,10 @@ streams, database history, updater or signed installers have shipped unless impl
 authenticated clients may report content-free session/request/compaction events only while the user-enabled
 loopback bridge is active. Pulse may explicitly adopt a uniquely identified external Ollama or LM
 Studio process after user confirmation. Stop or app quit terminates only that adopted process tree;
-**Release control** leaves it running. On explicit start, Pulse can start headless LM Studio `llmster`
-only after confirming no daemon exists, then stop only the daemon PID returned to that start request.
+**Release control** leaves it running. On explicit start, `lms daemon up --json` may return a
+headless daemon or a GUI service (`isDaemon:false`). Pulse must retain the returned PID and close
+the verified GUI service process tree on Stop/quit; only a verified headless daemon uses
+`lms daemon down`.
 All unadopted daemons, servers and GUIs remain external and untouched. After release Pulse returns to
 observer authority and must not stop the released process on quit.
 LM Studio API-token support may accept a token through narrow IPC, but only Electron main may retain

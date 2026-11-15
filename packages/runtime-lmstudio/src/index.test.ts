@@ -116,6 +116,20 @@ describe('LM Studio v1 runtime', () => {
     ]);
   });
 
+  it('accepts the GUI service PID returned by lms daemon up', async () => {
+    const execute = vi.fn(async () => ({
+      stdout: 'Waking up LM Studio service...\n{"status":"running","pid":4695,"isDaemon":false}',
+    }));
+    const lifecycle = new LmsCliLifecycle(() => '/fixed/lms', execute);
+
+    await expect(lifecycle.startDaemon()).resolves.toEqual({
+      running: true,
+      pid: 4695,
+      isDaemon: false,
+    });
+    expect(execute).toHaveBeenCalledWith('/fixed/lms', ['daemon', 'up', '--json'], 60_000);
+  });
+
   it('reports downloaded and loaded models without inventing residency metrics', async () => {
     const fetcher = vi.fn<FetchStub>(async () => json(modelList));
     const runtime = new LMStudioRuntime(fetcher);
@@ -233,7 +247,7 @@ describe('LM Studio v1 runtime', () => {
     expect(fetcher).toHaveBeenCalledOnce();
   });
 
-  it('starts and stops only the loopback server it enabled', async () => {
+  it('stops only the server toggle when an existing app hosts it', async () => {
     const harness = lifecycleHarness();
     const control = processControlHarness();
     const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle, control.processControl);
@@ -243,15 +257,39 @@ describe('LM Studio v1 runtime', () => {
 
     expect(harness.lifecycle.startServer).toHaveBeenCalledOnce();
     await expect(runtime.state()).resolves.toBe('managed-running');
-    expect(runtime.controlAuthority()).toBe('process-owned');
-    expect(runtime.ownedProcessId()).toBe(control.identity.pid);
+    expect(runtime.controlAuthority()).toBe('session-managed');
+    expect(runtime.ownedProcessId()).toBeNull();
     expect(runtime.manifest.capabilities).toMatchObject({ startServer: true, stopServer: true });
 
     await runtime.stopServer();
 
-    expect(control.processControl.terminateTree).toHaveBeenCalledOnce();
-    expect(harness.lifecycle.stopServer).not.toHaveBeenCalled();
+    expect(control.processControl.terminateTree).not.toHaveBeenCalled();
+    expect(harness.lifecycle.stopServer).toHaveBeenCalledOnce();
     expect(runtime.ownedProcessId()).toBeNull();
+  });
+
+  it('owns and closes the GUI service returned by daemon up', async () => {
+    const harness = lifecycleHarness();
+    const control = processControlHarness();
+    harness.lifecycle.daemonStatus = vi.fn(async () => ({ running: false, pid: null }));
+    harness.lifecycle.startDaemon = vi.fn(async () => ({
+      running: true,
+      pid: control.identity.pid,
+      isDaemon: false,
+    }));
+    harness.lifecycle.stopDaemon = vi.fn(async () => undefined);
+    const runtime = new LMStudioRuntime(harness.fetcher, harness.lifecycle, control.processControl);
+
+    await runtime.startServer();
+    expect(runtime.controlAuthority()).toBe('process-owned');
+    expect(runtime.ownedProcessId()).toBe(control.identity.pid);
+    await runtime.stopServer();
+    expect(control.processControl.terminateTree).toHaveBeenCalledWith(
+      control.identity,
+      expect.any(RegExp),
+    );
+    expect(harness.lifecycle.stopDaemon).not.toHaveBeenCalled();
+    expect(runtime.controlAuthority()).toBe('observer');
   });
 
   it('takes explicit session control of an existing server before stopping it', async () => {
