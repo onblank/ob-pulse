@@ -5,10 +5,11 @@ Read `../../AGENTS.md` and, if available, workspace-level `../../../AGENTS.md`.
 Scope: LM Studio v1 infrastructure adapter only; nullable response parsing, explicit model
 load/unload and user-invoked benchmark through the native loopback REST API. Benchmarks use a fixed
 synthetic prompt, request `store:false`, discard generated output and retain numeric stats only. On
-an explicit start, the machine-local `lms` CLI may start headless `llmster` only after confirming
-that no daemon is running. Track the PID returned by `lms daemon up --json`; run `lms daemon down`
-only while `lms daemon status --json` confirms that same PID. If a daemon already exists, Pulse may
-start a server toggle and capture its listener process identity. A reachable external server may receive explicit
+an explicit start, the machine-local `lms` CLI may start a headless daemon or GUI service after confirming
+that no daemon is running. Track the PID returned by `lms daemon up --json`; a GUI service reports
+`isDaemon:false` and must be stopped by its verified process identity. Run `lms daemon down`
+only while `lms daemon status --json` confirms the same headless daemon PID. If an app already exists,
+Pulse may start its server toggle without acquiring the app process. A reachable external server may receive explicit
 `Take control` after Pulse resolves the unique loopback listener to one process identity. Stop or
 app quit may then terminate that verified process and its LM Studio app descendants. `Release
 control` leaves the adopted process tree alive. Invoke only the resolved `~/.lmstudio/bin/lms`

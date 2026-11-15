@@ -41,11 +41,12 @@ async function run(
   executable: string,
   args: readonly string[],
   env?: NodeJS.ProcessEnv,
+  maxBuffer = 64 * 1024,
 ): Promise<string> {
   const result = await execFileAsync(executable, [...args], {
     encoding: 'utf8',
     timeout: 5000,
-    maxBuffer: 64 * 1024,
+    maxBuffer,
     windowsHide: true,
     env,
   });
@@ -145,10 +146,15 @@ export class NodeProcessControl implements ProcessControlPort {
       return;
     }
 
-    const snapshot = await run('/bin/ps', ['-axo', 'pid=,ppid=,lstart=,command='], {
-      ...process.env,
-      LC_ALL: 'C',
-    });
+    const snapshot = await run(
+      '/bin/ps',
+      ['-axo', 'pid=,ppid=,lstart=,command='],
+      {
+        ...process.env,
+        LC_ALL: 'C',
+      },
+      16 * 1024 * 1024,
+    );
     const entries = snapshot.split(/\r?\n/).flatMap((line) => {
       const match = line
         .trim()
@@ -176,7 +182,7 @@ export class NodeProcessControl implements ProcessControlPort {
       parent = candidate.parent;
     }
     const rootPids = new Set([rootPid ?? identity.pid]);
-    if (rootPid === null) {
+    if (rootPid === null && !appPattern.test(target.command)) {
       const matchingRoots = entries.filter((entry) => {
         if (!appPattern.test(entry.command)) return false;
         let ancestor = entry.parent;

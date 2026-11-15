@@ -44,10 +44,11 @@ only when API isn't already responding. External Ollama remains observer-only un
 resolves the fixed loopback port to exactly one PID and captures its process identity. Stop and app
 quit may terminate that process tree only while the identity still matches; Release returns it to
 external observation without stopping it.
-For LM Studio, an explicit start checks `lms daemon status --json` and starts headless `llmster` with
-`lms daemon up --json` only when no daemon is already running. It records the returned PID and starts
-the local server on `127.0.0.1:1234`. Stop and app quit call `lms daemon down` only after a fresh
-status confirms that same PID. A pre-existing daemon remains external until user-confirmed
+For LM Studio, an explicit start checks `lms daemon status --json` and calls
+`lms daemon up --json` only when no daemon is already running. The CLI can return a headless daemon
+or a GUI service (`isDaemon:false`). Pulse records the returned PID and starts the local server on
+`127.0.0.1:1234`. Stop/quit close the verified GUI service process tree; only a headless daemon
+uses `lms daemon down` after a fresh status confirms the same PID. A pre-existing app remains external until user-confirmed
 `takeControl()` resolves the loopback listener to one PID and captures its identity. Stop or app quit
 terminates the adopted process tree after revalidation. `releaseControl()` leaves any adopted
 process running. A multi-instance model

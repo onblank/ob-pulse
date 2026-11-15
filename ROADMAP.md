@@ -99,8 +99,9 @@ on quit. Native packaged-app smoke remains in phase 5.
 - [x] **2.4 — Capability and control center.** Versioned manifests, enabled-runtime settings,
       concurrent bounded failure-isolated polling, runtime-scoped actions and history. Evidence:
       [PR #43](https://github.com/onblank/ob-pulse/pull/43), [PR #61](https://github.com/onblank/ob-pulse/pull/61).
-- [ ] **2.5 — Owned runtime shutdown and native tray assets.** Start `llmster` only when no daemon
-      exists; explicitly adopt only a uniquely identified LM Studio/Ollama listener; close the
+- [ ] **2.5 — Owned runtime shutdown and native tray assets.** Track the PID returned when the LM
+      Studio CLI opens either a GUI service or a headless daemon; explicitly adopt only a uniquely
+      identified LM Studio/Ollama listener; close the
       adopted application process tree on Stop/quit and leave it alive on Release. Bundle valid PNG
       tray assets: monochrome template on macOS and compact brand color on Windows/Linux. Closure:
       CI process-control smoke passes on all OSes and the maintainer confirms Start/Take control,

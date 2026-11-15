@@ -48,9 +48,9 @@ LM Studio en `127.0.0.1:1234`.
 - Cada tarjeta ofrece iniciar, detener, tomar control explícito o liberarlo. Take control avisa
   que Stop/salir cerrará la instancia adoptada; si la propiedad del proceso es ambigua, Pulse
   rechazará la acción sin cerrar nada.
-- Al iniciar LM Studio desde Pulse se usa `llmster` sin abrir la interfaz gráfica. Si ya había una
-  instancia activa, Take control permite adoptar solo el proceso que sirve el endpoint local; Stop
-  cierra esa instancia y sus procesos hijos. Release control la deja abierta.
+- Al iniciar LM Studio desde Pulse, su CLI puede abrir la app o un daemon. Pulse registra el PID
+  que abrió y Stop cierra esa instancia completa. Si la app ya estaba abierta, Start solo activa
+  su servidor; para cerrar también esa app hay que usar Take control. Release control la deja abierta.
 - En Ollama, Take control también permite adoptar una instancia externa identificada; Stop cierra
   esa app y sus procesos hijos, mientras Release control la deja encendida.
 - El engranaje abre configuración. Si estás en el gadget compacto, OB-Pulse amplía primero la
