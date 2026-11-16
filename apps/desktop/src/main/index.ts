@@ -30,6 +30,7 @@ import { MlxLmRuntime } from '@obpulse/runtime-mlxlm';
 import { OllamaRuntime } from '@obpulse/runtime-ollama';
 import { LMStudioRuntime } from '@obpulse/runtime-lmstudio';
 import { EncryptedCredentialStore, validApiToken, type SecretCipher } from './credentials.js';
+import { createControlJourneyRuntimes } from './control-journey-smoke.js';
 import {
   DEFAULT_WIDGET_PREFERENCES,
   calculateWidgetPosition,
@@ -44,11 +45,25 @@ const lmstudio = new LMStudioRuntime();
 const llamacpp = new LlamaCppRuntime();
 const mlxlm = new MlxLmRuntime();
 const providers: RuntimePort[] = [ollama, lmstudio, llamacpp, mlxlm];
-const service = new MonitorService(
+const controlJourneySmoke = process.argv.includes('--obpulse-package-smoke=control-journey');
+if (controlJourneySmoke) {
+  const smokeUserDataPath = process.env.OBPULSE_SMOKE_USER_DATA;
+  if (!smokeUserDataPath || !path.isAbsolute(smokeUserDataPath)) {
+    console.error('Control journey smoke requires an isolated absolute user-data path');
+    app.exit(1);
+  } else app.setPath('userData', smokeUserDataPath);
+}
+let service = new MonitorService(
   new Map(providers.map((provider) => [provider.id, provider])),
   new NodeHostMetrics(),
   new NodeProcessMetrics(),
 );
+if (controlJourneySmoke)
+  service = new MonitorService(
+    new Map(createControlJourneyRuntimes().map((provider) => [provider.id, provider])),
+    new NodeHostMetrics(),
+    new NodeProcessMetrics(),
+  );
 const instrumentationBridge = new LoopbackInstrumentationBridge((event) =>
   service.ingestInstrumentation(event),
 );
@@ -324,6 +339,264 @@ function refreshMenu() {
     ]),
   );
 }
+
+async function evaluateRenderer<T>(expression: string): Promise<T> {
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error('Smoke window is unavailable');
+  return (await mainWindow.webContents.executeJavaScript(expression)) as T;
+}
+
+async function waitForRenderer(expression: string, description: string): Promise<void> {
+  const startedAt = Date.now();
+  while (!(await evaluateRenderer<boolean>(expression))) {
+    if (Date.now() - startedAt > 10_000)
+      throw new Error(`Renderer smoke timed out: ${description}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+async function clickRendererButton(
+  label: string,
+  rootSelector = 'body',
+  attribute: 'text' | 'aria-label' | 'title' = 'text',
+): Promise<void> {
+  const value = JSON.stringify(label);
+  const matcher =
+    attribute === 'text'
+      ? `candidate.textContent?.trim() === ${value}`
+      : `candidate.getAttribute(${JSON.stringify(attribute)}) === ${value}`;
+  await evaluateRenderer<boolean>(`(() => {
+    const root = document.querySelector(${JSON.stringify(rootSelector)});
+    const candidate = Array.from(root?.querySelectorAll('button') ?? []).find((button) => ${matcher});
+    if (!(candidate instanceof HTMLButtonElement) || candidate.disabled)
+      throw new Error('Smoke button is missing or disabled: ' + ${value});
+    candidate.click();
+    return true;
+  })()`);
+}
+
+async function selectCompactRuntime(runtimeId: RuntimeId): Promise<void> {
+  await evaluateRenderer<boolean>(`(() => {
+    const select = document.querySelector('#compact-runtime-selector');
+    if (!(select instanceof HTMLSelectElement)) throw new Error('Compact runtime selector is missing');
+    const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set;
+    setter?.call(select, ${JSON.stringify(runtimeId)});
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  })()`);
+  await waitForRenderer(
+    `document.querySelector('#compact-runtime-selector')?.value === ${JSON.stringify(runtimeId)}`,
+    `select ${runtimeId} in compact view`,
+  );
+}
+
+async function selectRuntimeCard(name: string): Promise<void> {
+  await evaluateRenderer<boolean>(`(() => {
+    const candidate = Array.from(document.querySelectorAll('.runtime-card-select'))
+      .find((button) => button.textContent?.includes(${JSON.stringify(name)}));
+    if (!(candidate instanceof HTMLButtonElement) || candidate.disabled)
+      throw new Error('Runtime card is missing or disabled: ' + ${JSON.stringify(name)});
+    candidate.click();
+    return true;
+  })()`);
+  await waitForRenderer(
+    `document.querySelector('.runtime-card.selected .runtime-card-title strong')?.textContent === ${JSON.stringify(name)}`,
+    `select ${name} runtime card`,
+  );
+}
+
+async function runControlJourneySmoke(): Promise<void> {
+  await evaluateRenderer<boolean>('(() => { window.confirm = () => true; return true; })()');
+  await waitForRenderer(
+    `Boolean(document.querySelector('#compact-runtime-selector'))`,
+    'compact runtime selector',
+  );
+
+  await clickRendererButton('Expand', 'header', 'title');
+  await waitForRenderer(
+    `Boolean(document.querySelector('#runtime-center-title'))`,
+    'expanded monitor',
+  );
+  await selectRuntimeCard('Ollama');
+  await clickRendererButton('Take control', '.runtime-card.selected');
+  await waitForRenderer(
+    `document.querySelector('.runtime-card.selected')?.textContent?.includes('Managed')`,
+    'Ollama takeover',
+  );
+
+  await clickRendererButton('Compact', 'header', 'title');
+  await waitForRenderer(
+    `Boolean(document.querySelector('#compact-runtime-selector'))`,
+    'compact monitor',
+  );
+  await clickRendererButton('Release control', '.power-control');
+  await waitForRenderer(
+    `document.querySelector('.power-control .state')?.textContent?.includes('externally')`,
+    'release leaves Ollama external',
+  );
+  await clickRendererButton('Take control', '.power-control');
+  await waitForRenderer(
+    `document.querySelector('.power-control .state')?.textContent?.includes('Process owned')`,
+    'Ollama retake control',
+  );
+  await clickRendererButton('Stop Ollama server', '.power-control', 'aria-label');
+  await waitForRenderer(
+    `document.querySelector('.power-button')?.getAttribute('aria-label') === 'Start Ollama server'`,
+    'stop adopted Ollama',
+  );
+
+  await selectCompactRuntime('lmstudio');
+  await clickRendererButton('Start LM Studio server', '.power-control', 'aria-label');
+  await waitForRenderer(
+    `document.querySelector('.power-button')?.getAttribute('aria-label') === 'Stop LM Studio server'`,
+    'start LM Studio',
+  );
+  await clickRendererButton('Expand', 'header', 'title');
+  await waitForRenderer(
+    `Boolean(document.querySelector('#runtime-center-title'))`,
+    'expanded monitor',
+  );
+  await selectRuntimeCard('LM Studio');
+  await waitForRenderer(`Boolean(document.querySelector('.model-card'))`, 'installed smoke model');
+  await clickRendererButton('Load model', '.model-card');
+  await waitForRenderer(
+    `document.querySelector('.model-heading small')?.textContent === 'Loaded'`,
+    'load installed model',
+  );
+  await clickRendererButton('Unload', '.model-card');
+  await waitForRenderer(
+    `document.querySelector('.model-heading small')?.textContent === 'Installed'`,
+    'unload model without deleting it',
+  );
+  await clickRendererButton('Compact', 'header', 'title');
+  await clickRendererButton('Stop LM Studio server', '.power-control', 'aria-label');
+  await waitForRenderer(
+    `document.querySelector('.power-button')?.getAttribute('aria-label') === 'Start LM Studio server'`,
+    'stop Pulse-owned LM Studio',
+  );
+
+  await clickRendererButton('Open settings', 'header', 'aria-label');
+  await waitForRenderer(
+    `Boolean(document.querySelector('#runtime-settings-title')) && Array.from(document.querySelectorAll('h2')).some((heading) => heading.textContent === 'Sessions & request history')`,
+    'settings surface',
+  );
+  await evaluateRenderer<boolean>(`(() => {
+    const label = Array.from(document.querySelectorAll('.runtime-options label'))
+      .find((candidate) => candidate.textContent?.includes('llama.cpp'));
+    const checkbox = label?.querySelector('input[type="checkbox"]');
+    if (!(checkbox instanceof HTMLInputElement) || !checkbox.checked)
+      throw new Error('llama.cpp runtime preference was not enabled at startup');
+    checkbox.click();
+    return true;
+  })()`);
+  await waitForRenderer(
+    `window.obpulse.runtimePreferences().then((preferences) => !preferences.enabledRuntimeIds.includes('llamacpp'))`,
+    'disable observation-only runtime in settings',
+  );
+  await evaluateRenderer<boolean>(`(() => {
+    const label = Array.from(document.querySelectorAll('.runtime-options label'))
+      .find((candidate) => candidate.textContent?.includes('llama.cpp'));
+    const checkbox = label?.querySelector('input[type="checkbox"]');
+    if (!(checkbox instanceof HTMLInputElement) || checkbox.checked)
+      throw new Error('llama.cpp runtime preference did not update');
+    checkbox.click();
+    return true;
+  })()`);
+  await waitForRenderer(
+    `window.obpulse.runtimePreferences().then((preferences) => preferences.enabledRuntimeIds.includes('llamacpp'))`,
+    're-enable observation-only runtime',
+  );
+
+  await clickRendererButton('Enable bridge');
+  await waitForRenderer(
+    `document.querySelector('.bridge-live')?.textContent?.includes('LOCAL BRIDGE ACTIVE')`,
+    'enable instrumentation through settings',
+  );
+  const bridge = instrumentationBridge.status();
+  if (!bridge.enabled || !bridge.endpoint || !bridge.authToken)
+    throw new Error('Instrumentation bridge did not expose its active main-process status');
+  const sessionId = 'a6c0294a-2fe2-4e8d-a02a-3661a3e3e86c';
+  const eventBase = {
+    version: '1.0.0',
+    origin: 'obpulse-cross-platform-smoke',
+    runtime_id: 'ollama',
+    model_id: 'obpulse-smoke-model',
+    session_id: sessionId,
+  };
+  const sendEvent = (event: Record<string, unknown>) =>
+    fetch(bridge.endpoint!, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${bridge.authToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(event),
+    });
+  const started = await sendEvent({
+    ...eventBase,
+    event_id: '550e8400-e29b-41d4-a716-446655440000',
+    at: new Date().toISOString(),
+    type: 'session.started',
+    data: { context_capacity_tokens: 32_000 },
+  });
+  if (started.status !== 202)
+    throw new Error(`Instrumentation session event returned ${started.status}`);
+  const completed = await sendEvent({
+    ...eventBase,
+    event_id: '550e8400-e29b-41d4-a716-446655440001',
+    at: new Date(Date.now() + 1000).toISOString(),
+    type: 'request.completed',
+    data: {
+      prompt_tokens: 300,
+      completion_tokens: 60,
+      prompt_eval_duration_ns: 1_000_000_000,
+      completion_eval_duration_ns: 2_000_000_000,
+      context_used_tokens: 4_000,
+      time_to_first_token_ms: 120,
+    },
+  });
+  if (completed.status !== 202)
+    throw new Error(`Instrumentation request event returned ${completed.status}`);
+  const rejected = await sendEvent({
+    ...eventBase,
+    event_id: '550e8400-e29b-41d4-a716-446655440002',
+    at: new Date(Date.now() + 2000).toISOString(),
+    type: 'request.completed',
+    data: {
+      prompt_tokens: 1,
+      completion_tokens: 1,
+      prompt_eval_duration_ns: 1,
+      completion_eval_duration_ns: 1,
+      context_used_tokens: 4_001,
+      time_to_first_token_ms: 1,
+    },
+    prompt: 'must not be accepted or persisted',
+  });
+  if (rejected.status !== 400)
+    throw new Error(`Instrumentation content rejection returned ${rejected.status}`);
+  await waitForRenderer(
+    `document.querySelector('.session-heading strong')?.textContent === 'obpulse-smoke-model'`,
+    'display numeric session telemetry',
+  );
+  await clickRendererButton('Disable bridge');
+  await waitForRenderer(
+    `window.obpulse.instrumentationSessions().then((snapshot) => snapshot.sessions.length === 0 && snapshot.requestHistory.samples.length === 0)`,
+    'clear instrumentation on disable',
+  );
+
+  await clickRendererButton('Back to monitor', '.settings-heading');
+  await waitForRenderer(
+    `Boolean(document.querySelector('#runtime-center-title'))`,
+    'return to monitor',
+  );
+  await clickRendererButton('Compact', 'header', 'title');
+  await clickRendererButton('Hide to tray', 'header', 'title');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  if (!mainWindow || mainWindow.isVisible())
+    throw new Error('Hide-to-tray control left the window visible');
+  show();
+  if (!mainWindow?.isVisible()) throw new Error('Tray reopen path did not show the window');
+}
+
 async function runPackageSmoke(): Promise<void> {
   const argument = process.argv.find((value) => value.startsWith('--obpulse-package-smoke='));
   if (!argument) return;
@@ -335,7 +608,7 @@ async function runPackageSmoke(): Promise<void> {
     app.quit();
   };
   try {
-    if (!['baseline', 'upgrade', 'launch'].includes(mode))
+    if (!['baseline', 'upgrade', 'launch', 'control-journey'].includes(mode))
       throw new Error(`Unsupported smoke mode: ${mode}`);
     const expectedRuntimeIds = [...RUNTIME_IDS].sort();
     service.setEnabledRuntimes(RUNTIME_IDS);
@@ -362,6 +635,13 @@ async function runPackageSmoke(): Promise<void> {
     const snapshot = await service.snapshot();
     if (snapshot.runtimes.length !== expectedRuntimeIds.length)
       throw new Error(`Expected four runtime observations, received ${snapshot.runtimes.length}`);
+
+    if (mode === 'control-journey') {
+      await runControlJourneySmoke();
+      console.log('[native-package-smoke] control-journey passed');
+      app.quit();
+      return;
+    }
 
     mainWindow.close();
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -438,6 +718,7 @@ app
     );
     widgetPreferences = await loadWidgetPreferences(widgetPreferencesPath);
     runtimePreferences = await loadRuntimePreferences(runtimePreferencesPath);
+    if (controlJourneySmoke) runtimePreferences = { enabledRuntimeIds: [...RUNTIME_IDS] };
     try {
       lmstudio.setApiToken(await lmStudioCredentialStore.load());
     } catch {

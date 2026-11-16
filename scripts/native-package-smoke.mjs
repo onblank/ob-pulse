@@ -42,14 +42,23 @@ async function run(command, args, options = {}) {
 async function launch(executable, mode) {
   await access(executable);
   const args = [`--obpulse-package-smoke=${mode}`];
+  const options =
+    mode === 'control-journey'
+      ? {
+          env: {
+            ...process.env,
+            OBPULSE_SMOKE_USER_DATA: path.join(workDir, 'control-journey-user-data'),
+          },
+        }
+      : {};
   if (process.platform === 'linux' && executable.endsWith('.AppImage')) {
     args.unshift('--appimage-extract-and-run');
   }
   if (process.platform === 'linux') {
-    await run('xvfb-run', ['-a', executable, ...args], { timeout: 120_000 });
+    await run('xvfb-run', ['-a', executable, ...args], { timeout: 120_000, ...options });
     return;
   }
-  await run(executable, args, { timeout: 120_000 });
+  await run(executable, args, { timeout: 120_000, ...options });
 }
 
 async function smokeWindows() {
@@ -63,6 +72,7 @@ async function smokeWindows() {
   await launch(executable, 'baseline');
   await install(path.join(currentDir, current));
   await launch(executable, 'upgrade');
+  await launch(executable, 'control-journey');
 }
 
 async function mountDmg(dmg, destination) {
@@ -97,6 +107,7 @@ async function smokeMac() {
     path.join(workDir, 'mount-current'),
   );
   await launch(currentApp, 'upgrade');
+  await launch(currentApp, 'control-journey');
 }
 
 async function installDeb(deb) {
@@ -127,6 +138,7 @@ async function smokeLinux() {
   await launch(executable, 'baseline');
   await installDeb(path.join(currentDir, currentDeb));
   await launch(executable, 'upgrade');
+  await launch(executable, 'control-journey');
 }
 
 await rm(workDir, { recursive: true, force: true });
