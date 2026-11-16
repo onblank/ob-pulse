@@ -4,7 +4,7 @@
 > `docs/PRODUCT_SPEC.md` defines product behavior; `docs/ARCHITECTURE.md` and `docs/METRICS.md`
 > define technical boundaries. Checkboxes describe validated state, not merely code that exists.
 
-**Roadmap version:** 2026-11-15
+**Roadmap version:** 2026-11-16
 
 **Last completed iteration:** 2.5 — Owned runtime shutdown and native tray assets
 
@@ -234,7 +234,11 @@ the implementation to inspect; closure requires the evidence in the last column.
 - [ ] **5.7 — Current cross-platform journey evidence.** Resolve A4: current macOS LM Studio and
       Ollama ownership matrix; Windows/Linux runtime controls, model actions, settings and
       instrumentation; update `docs/VERIFY.md` with dates, versions and observed limits. Depends
-      on 5.6. Phase 5 closes only when these journeys support its exit claim.
+      on 5.6. Phase 5 closes only when these journeys support its exit claim. Current macOS host and
+      installed engine versions plus a Windows/Linux acceptance sequence are recorded in
+      `docs/VERIFY.md`; the maintainer has a Windows host but no Linux host, so Linux needs an
+      OS-level automated journey or an explicit supported-platform scope decision. Keep this item
+      open until both gaps have evidence.
 
 ## [ ] Phase 6 — Installable v1 and release
 
