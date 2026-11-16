@@ -23,15 +23,26 @@ above under iteration 2.5. The assembled macOS UI journey (tray, compact selecto
 cards/model controls, settings and return paths) was maintainer-confirmed on 2026-11-12. The current
 native package CI verifies install/upgrade, launch and tray/window behavior on Windows, Linux and
 macOS, while the process-control probe verifies owned-tree termination and parallel-process
-preservation on all three operating systems. Those automated checks do not exercise provider/model
-actions or settings through the Windows/Linux UI.
+preservation on all three operating systems. This branch adds a native packaged-app control journey
+to that matrix using isolated in-memory runtime fixtures. It drives runtime controls, model
+load/unload, runtime visibility, settings navigation and the authenticated instrumentation bridge.
+Because the providers are simulated, this covers Electron UI/IPC and OS window/tray behavior but does
+not validate provider-specific Windows/Linux integration.
 
 **5.7 remains open.** The maintainer has access to Windows but not Linux. Neither platform's
-runtime-control journey has been performed yet. Do not use CI package startup or the macOS evidence
-to infer that they passed. Windows needs a maintainer-run UI journey; Linux needs either access to a
-Linux host or an OS-level automated control journey in CI. Record OS/build/architecture, Pulse
-commit, LM Studio and Ollama versions, test model identifiers, date, each observed result and any
-error text. Do not record prompts, completions, API tokens or other inference content.
+real-provider runtime-control journey has been performed yet, and the new native control journey is
+pending CI on this branch. Do not use package startup or macOS evidence to infer that either
+platform's provider integration passed. The maintainer has no Windows providers or models installed;
+the real Windows journey requires installing Ollama and LM Studio and at least one local test model
+for each. Linux can use the native automated fixture journey, with provider-specific limits recorded.
+Record OS/build/architecture, Pulse commit, engine versions, test model identifiers, date, each
+observed result and any error text. Do not record prompts, completions, API tokens or other inference
+content.
+
+Local verification for this branch: 3 fixture tests pass; the full Vitest suite passes 97 tests in
+20 files; desktop typecheck and main/preload/renderer production builds pass; changed-file ESLint,
+Prettier and diff checks pass. The full Turborepo typecheck did not complete locally and remains
+subject to the required GitHub `pnpm check`. Native packaged control-journey jobs have not run yet.
 
 Run this acceptance sequence on Windows and, if using a Linux host, on Linux for each installed
 provider:
@@ -56,10 +67,11 @@ provider:
 7. Verify compact-to-expanded, the settings surface and return-to-monitor paths, plus tray hide,
    reopen and quit behavior. Record any platform-specific differences instead of assuming parity.
 
-**Required evidence before closing 5.7:** completed Windows and Linux results for runtime control,
-model load/unload, settings, instrumentation and tray/window navigation, or an approved scope decision
-that narrows the supported platform claims. The dated results must be added here and the A4 audit row
-resolved in `ROADMAP.md`.
+**Required evidence before closing 5.7:** the native packaged-app control journey passes on Linux and
+Windows; the maintainer completes a real Windows LM Studio/Ollama control and model load/unload
+journey after installing both providers and local models; settings, instrumentation and tray/window
+results pass on both platforms; or the owner approves a decision that narrows supported platform
+claims. Add dated results here and resolve A4 in `ROADMAP.md`.
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
 - Previous full-suite baseline: formatting, ESLint, TypeScript checks for all packages, 78 tests and

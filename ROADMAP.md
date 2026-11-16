@@ -237,8 +237,10 @@ the implementation to inspect; closure requires the evidence in the last column.
       on 5.6. Phase 5 closes only when these journeys support its exit claim. Current macOS host and
       installed engine versions plus a Windows/Linux acceptance sequence are recorded in
       `docs/VERIFY.md`; the maintainer has a Windows host but no Linux host, so Linux needs an
-      OS-level automated journey or an explicit supported-platform scope decision. Keep this item
-      open until both gaps have evidence.
+      OS-level automated journey or an explicit supported-platform scope decision. This branch adds
+      a native packaged-app fixture journey for UI/IPC/process-independent controls on all OSes; it
+      does not replace real Windows provider/model acceptance. Keep this item open until CI passes
+      the Linux journey and the Windows real-engine evidence is recorded.
 
 ## [ ] Phase 6 — Installable v1 and release
 
