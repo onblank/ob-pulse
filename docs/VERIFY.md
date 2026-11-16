@@ -32,17 +32,22 @@ not validate provider-specific Windows/Linux integration.
 **5.7 remains open.** The maintainer has access to Windows but not Linux. Neither platform's
 real-provider runtime-control journey has been performed yet, and the new native control journey is
 pending CI on this branch. Do not use package startup or macOS evidence to infer that either
-platform's provider integration passed. The maintainer has no Windows providers or models installed;
-the real Windows journey requires installing Ollama and LM Studio and at least one local test model
-for each. Linux can use the native automated fixture journey, with provider-specific limits recorded.
-Record OS/build/architecture, Pulse commit, engine versions, test model identifiers, date, each
-observed result and any error text. Do not record prompts, completions, API tokens or other inference
-content.
+platform's provider integration passed. The native fixture journey passed on Windows, Linux and
+macOS in [workflow run #43920026730](https://github.com/onblank/ob-pulse/actions/runs/43920026730).
+It drives the packaged UI/IPC and instrumentation paths with simulated providers; it does not
+exercise the actual LM Studio/Ollama services, CLIs or models on Windows/Linux. The maintainer has
+no Windows providers or models installed; the real Windows journey requires installing Ollama and
+LM Studio and at least one local test model for each. Linux uses the native automated fixture
+journey plus the real process-tree probe, with its provider-specific limits recorded. Record
+OS/build/architecture, Pulse commit, engine versions, test model identifiers, date, each observed
+result and any error text. Do not record prompts, completions, API tokens or other inference content.
 
 Local verification for this branch: 3 fixture tests pass; the full Vitest suite passes 97 tests in
 20 files; desktop typecheck and main/preload/renderer production builds pass; changed-file ESLint,
-Prettier and diff checks pass. The full Turborepo typecheck did not complete locally and remains
-subject to the required GitHub `pnpm check`. Native packaged control-journey jobs have not run yet.
+Prettier and diff checks pass. The full Turborepo typecheck did not complete locally. GitHub
+`pnpm check` passes in [workflow run #43920026708](https://github.com/onblank/ob-pulse/actions/runs/43920026708),
+and native package/install/control-journey smoke passes on all three OSes in
+[workflow run #43920026730](https://github.com/onblank/ob-pulse/actions/runs/43920026730).
 
 Run this acceptance sequence on Windows and, if using a Linux host, on Linux for each installed
 provider:
@@ -67,11 +72,11 @@ provider:
 7. Verify compact-to-expanded, the settings surface and return-to-monitor paths, plus tray hide,
    reopen and quit behavior. Record any platform-specific differences instead of assuming parity.
 
-**Required evidence before closing 5.7:** the native packaged-app control journey passes on Linux and
-Windows; the maintainer completes a real Windows LM Studio/Ollama control and model load/unload
-journey after installing both providers and local models; settings, instrumentation and tray/window
-results pass on both platforms; or the owner approves a decision that narrows supported platform
-claims. Add dated results here and resolve A4 in `ROADMAP.md`.
+**Required evidence before closing 5.7:** native packaged-app control journeys pass on all three
+OSes (now recorded above); the maintainer completes a real Windows LM Studio/Ollama control and model
+load/unload journey after installing both providers and local models; settings, instrumentation and
+tray/window results pass on Windows; or the owner approves a decision that narrows supported
+platform claims. Add dated results here and resolve A4 in `ROADMAP.md`.
 
 - `pnpm install` completed with the pinned pnpm 12.6.0 workspace.
 - Previous full-suite baseline: formatting, ESLint, TypeScript checks for all packages, 78 tests and
@@ -149,8 +154,8 @@ claims. Add dated results here and resolve A4 in `ROADMAP.md`.
   package typechecks, ESLint, formatting and Electron production builds. GitHub CI provides full
   validation on Ubuntu and native owned-process probing on Windows. The app's macOS navigation smoke
   was confirmed by the maintainer on 2026-11-12; native Windows/Linux install/upgrade and basic
-  window/tray smoke is recorded in iteration 6.1, while full manual control-flow journeys remain
-  unverified.
+  window/tray smoke is recorded in iteration 6.1 and the packaged UI/IPC control-journey fixture
+  now passes natively; actual provider-service/model integration remains unverified on Windows/Linux.
 - Iteration 6.1 passed on native GitHub Actions runners with unsigned Windows NSIS `.exe`, universal
   macOS `.dmg`, and Linux `.AppImage`/`.deb` builds. Each platform installed/launched a same-source
   `0.0.1` baseline, checked renderer readiness, four-runtime discovery and close-to-tray behavior,
